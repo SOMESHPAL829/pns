@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KARAM Theme Portal — Login</title>
+  <link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-card-head">
+        <div class="app-sidebar-logo" aria-hidden="true">K</div>
+        <div>
+          <div class="app-topbar-title">Theme Portal</div>
+          <div class="app-topbar-sub">KS GROUP · Sign in to continue</div>
+        </div>
+      </div>
+      <form class="login-card-body" action="app.html" method="get">
+        <div>
+          <label class="form-label">Username</label>
+          <input class="form-input" name="username" value="planner" autocomplete="username" required>
+        </div>
+        <div>
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" name="password" value="demo" autocomplete="current-password" required>
+        </div>
+        <label class="login-remember">
+          <input type="checkbox" checked>
+          <span>Remember me</span>
+        </label>
+        <button type="submit" class="login-submit">Login</button>
+        <p class="form-note">Demo only — any values open the app shell.</p>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
