@@ -5,6 +5,10 @@
   const pageTitle = document.getElementById("page-title");
   const titles = {
     dashboard: "Dashboard",
+    "oee-report": "Production report",
+    "scada-logs": "SCADA logs",
+    downtime: "Downtime review",
+    "oee-masters": "OEE master data",
     requests: "Records",
     create: "New record",
     detail: "Record detail",
@@ -41,7 +45,9 @@
   }
 
   function setView(name) {
-    const key = titles[name] ? name : "dashboard";
+    const routeParts = name.split("/");
+    const routeName = routeParts[0].split("?")[0];
+    const key = titles[routeName] ? routeName : "dashboard";
     views.forEach(function (view) {
       view.classList.toggle("active", view.getAttribute("data-view") === key);
     });
@@ -51,8 +57,11 @@
       link.classList.toggle("is-active", on);
     });
     if (pageTitle) pageTitle.textContent = titles[key];
-    if (location.hash !== "#/" + key)
-      history.replaceState(null, "", "#/" + key);
+    const routeHash = key === "detail" && routeParts[1]
+      ? "#/detail/" + encodeURIComponent(routeParts[1])
+      : "#/" + key;
+    if (location.hash !== routeHash)
+      history.replaceState(null, "", routeHash);
     if (shell) shell.classList.remove("sidebar-open");
     closeHeaderMenus();
   }
