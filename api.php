@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/security.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/oee_ingest.php';
 require_once __DIR__ . '/includes/oee_calculator.php';
+require_once __DIR__ . '/includes/oee_export.php';
 
 function api_user(PDO $pdo): array
 {
@@ -303,6 +304,16 @@ try {
             }
             if ($action === 'report') {
                 json_response(oee_report($pdo, $requestedDate, $requestedMachine));
+            }
+            if ($action === 'export') {
+                $report = oee_report($pdo, $requestedDate, $requestedMachine);
+                if (!($report['available'] ?? false)) json_response($report, 503);
+                $filename = 'pns-oee-' . ($report['date'] ?? date('Y-m-d')) . '-' . strtolower($requestedMachine) . '.xlsx';
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Cache-Control: no-store');
+                echo oee_export_xlsx($report);
+                exit;
             }
             if ($action === 'logs') {
                 json_response(oee_logs($pdo));

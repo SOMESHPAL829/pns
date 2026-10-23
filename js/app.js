@@ -210,32 +210,14 @@
     renderReportRows(app.reportRows);
   }
 
-  function exportReportCsv() {
-    if (!app.reportData || !app.reportRows.length) { showOeeAlert("oee-report-alert", "Load a report with data before exporting.", true); return; }
-    const search = (document.getElementById("report-search")?.value || "").trim().toLowerCase();
-    const grade = document.getElementById("report-grade-filter")?.value || "";
-    const colour = document.getElementById("report-colour-filter")?.value || "";
-    const state = document.getElementById("report-state-filter")?.value || "";
-    const rows = app.reportRows.filter(function (item) {
-      const text = [item.seq, item.part_code, item.used_colour, item.report_colour].join(" ").toLowerCase();
-      const itemState = Number(item.is_productive) === 1 ? "productive" : "empty";
-      return (!search || text.includes(search)) && (!grade || item.grade === grade) && (!colour || (item.used_colour || item.report_colour) === colour) && (!state || itemState === state);
-    });
-    const csvCell = function (value) { return '"' + String(value ?? "").replace(/"/g, '""') + '"'; };
-    const snapshot = app.reportData.oee || {};
-    const lines = [
-      ["Report date", app.reportDate],
-      ["Line / machine", app.reportData.machine === "ALL" ? "All lines" : app.reportData.machine],
-      ["OEE", percent(snapshot.oee)],
-      ["Availability", percent(snapshot.availability)],
-      ["Performance", percent(snapshot.performance)],
-      ["Quality", percent(snapshot.quality)],
-      [],
-      ["Line", "SI", "Sequence", "Part", "Grade", "Colour", "Loading", "Unloading", "PCS", "Total SA", "State"],
-    ];
-    rows.forEach(function (item) { lines.push([item.line_code, item.si_no, item.seq, item.part_code, item.grade, item.used_colour || item.report_colour, item.loading_at, item.unloading_at, item.pcs, item.total_surface_area == null ? "" : Number(item.total_surface_area).toFixed(2), Number(item.is_productive) === 1 ? "Productive" : "Empty"]); });
-    const blob = new Blob([lines.map(function (line) { return line.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + app.reportDate + "-" + (app.reportData.machine || "ALL") + ".csv"; link.click(); URL.revokeObjectURL(link.href);
+  async function exportReportExcel() {
+    if (!app.reportData) { showOeeAlert("oee-report-alert", "Load a report before exporting.", true); return; }
+    const date = app.reportDate || document.getElementById("report-date")?.value || "";
+    const machine = document.getElementById("report-machine-filter")?.value || "ALL";
+    const response = await fetch(apiUrl + "?resource=oee&action=export&machine=" + encodeURIComponent(machine) + "&date=" + encodeURIComponent(date), { credentials: "same-origin", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+    if (!response.ok) { let message = "Excel export failed."; try { const payload = await response.json(); message = payload.error || message; } catch (error) {} showOeeAlert("oee-report-alert", message, true); return; }
+    const blob = await response.blob();
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + date + "-" + machine + ".xlsx"; link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   }
 
   function renderLogs(data) {
@@ -559,7 +541,7 @@
   const reportLoad = document.getElementById("report-load");
   if (reportLoad) reportLoad.addEventListener("click", loadOeeReport);
   const reportExport = document.getElementById("report-export");
-  if (reportExport) reportExport.addEventListener("click", exportReportCsv);
+  if (reportExport) reportExport.addEventListener("click", exportReportExcel);
   const reportMachine = document.getElementById("report-machine-filter");
   if (reportMachine) reportMachine.addEventListener("change", loadOeeReport);
   ["report-search", "report-grade-filter", "report-colour-filter", "report-state-filter"].forEach(function (id) {
