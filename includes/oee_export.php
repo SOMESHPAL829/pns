@@ -71,7 +71,7 @@ function oee_export_xlsx(array $report): string
     $sheetRows = [];
     $summaryRows = [
         1 => [oee_xlsx_cell('A1', 'PNS OEE report', 1), oee_xlsx_cell('H1', 'Calculation inputs', 1), oee_xlsx_cell('I1', 'Value', 1)],
-        2 => [oee_xlsx_cell('A2', 'Report date'), oee_xlsx_cell('B2', $report['date'] ?? ''), oee_xlsx_cell('D2', 'Duration (min)'), oee_xlsx_cell('E2', (int) ($report['window']['duration_minutes'] ?? 1440)), oee_xlsx_cell('F2', 'Start: ' . ($report['window']['start_time'] ?? '00:00'))],
+        2 => [oee_xlsx_cell('A2', isset($report['from_date']) ? 'From / to dates (inclusive)' : 'Report date'), oee_xlsx_cell('B2', isset($report['from_date']) ? $report['from_date'] . ' to ' . $report['to_date'] : ($report['date'] ?? '')), oee_xlsx_cell('D2', 'Daily duration (min)'), oee_xlsx_cell('E2', (int) ($report['window']['duration_minutes'] ?? 1440)), oee_xlsx_cell('F2', 'Start: ' . ($report['window']['start_time'] ?? '00:00'))],
         3 => [oee_xlsx_cell('A3', 'Line / machine'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All lines' : ($report['machine'] ?? ''))],
         4 => [oee_xlsx_cell('A4', 'Blue values = database inputs. Black values = Excel calculations.')],
         5 => [oee_xlsx_cell('A5', 'Aggregate calculation', 1), oee_xlsx_cell('B5', 'Value', 1), oee_xlsx_cell('C5', 'Formula', 1)],
@@ -100,7 +100,7 @@ function oee_export_xlsx(array $report): string
     }
     ksort($summaryRows);
     foreach ($summaryRows as $number => $cells) $sheetRows[] = oee_xlsx_row($number, $cells);
-    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', 'Window utilization', 'Window (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Window start', 'Window end', 'Rejected FB', 'Reworked FB'];
+    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', 'Window utilization', 'Window (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Window start', 'Window end', 'Rejected FB', 'Reworked FB', 'Reporting date'];
     $headerCells = [];
     foreach ($lineHeaders as $index => $label) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . '12', $label, 1);
     $sheetRows[] = oee_xlsx_row(12, $headerCells);
@@ -111,6 +111,7 @@ function oee_export_xlsx(array $report): string
     $lastSegment = $sources['last_segment'];
     $lastQuality = $sources['last_quality'];
     foreach ($lines as $index => $line) {
+        $timeCriteria = isset($report['from_date']) ? ",\$P\$$firstDetail:\$P\$$lastDetail,\">=\"&P$lineRow,\$P\$$firstDetail:\$P\$$lastDetail,\"<\"&Q$lineRow" : '';
         $values = $calculations[$index];
         $a = $ratio($values, 'run_minutes', 'planned_minutes');
         $p = $ratio($values, 'ideal_output_minutes', 'run_minutes');
@@ -123,23 +124,25 @@ function oee_export_xlsx(array $report): string
             oee_xlsx_cell('E' . $lineRow, $a * $p * $q, 2, "B$lineRow*C$lineRow*D$lineRow"),
             oee_xlsx_cell('F' . $lineRow, $ratio($values, 'run_minutes', 'calendar_minutes'), 2, "IF(O$lineRow>0,K$lineRow/O$lineRow,0)"),
             oee_xlsx_cell('G' . $lineRow, $values['window_minutes'], 3, "O$lineRow"),
-            oee_xlsx_cell('H' . $lineRow, $values['planned_stop_minutes'], 3, "ROUND(SUMIFS('Downtime calculation'!\$G\$2:\$G\$$lastSegment,'Downtime calculation'!\$A\$2:\$A\$$lastSegment,A$lineRow),3)"),
+            oee_xlsx_cell('H' . $lineRow, $values['planned_stop_minutes'], 3, "ROUND(SUMIFS('Downtime calculation'!\$G\$2:\$G\$$lastSegment,'Downtime calculation'!\$H\$2:\$H\$$lastSegment,$lineRow),3)"),
             oee_xlsx_cell('I' . $lineRow, $values['planned_minutes'], 3, "MAX(0,G$lineRow-H$lineRow)"),
-            oee_xlsx_cell('J' . $lineRow, $values['unplanned_minutes'], 3, "ROUND(SUMIFS('Downtime calculation'!\$F\$2:\$F\$$lastSegment,'Downtime calculation'!\$A\$2:\$A\$$lastSegment,A$lineRow),3)"),
+            oee_xlsx_cell('J' . $lineRow, $values['unplanned_minutes'], 3, "ROUND(SUMIFS('Downtime calculation'!\$F\$2:\$F\$$lastSegment,'Downtime calculation'!\$H\$2:\$H\$$lastSegment,$lineRow),3)"),
             oee_xlsx_cell('K' . $lineRow, $values['run_minutes'], 3, "MAX(0,I$lineRow-J$lineRow)"),
-            oee_xlsx_cell('L' . $lineRow, $values['ideal_output_minutes'], 3, "ROUND(SUMIFS(\$N\$$firstDetail:\$N\$$lastDetail,$detailLines,A$lineRow),3)"),
-            oee_xlsx_cell('M' . $lineRow, $values['productive_fb'], 0, "SUMIFS(\$M\$$firstDetail:\$M\$$lastDetail,$detailLines,A$lineRow)"),
+            oee_xlsx_cell('L' . $lineRow, $values['ideal_output_minutes'], 3, "ROUND(SUMIFS(\$N\$$firstDetail:\$N\$$lastDetail,$detailLines,A$lineRow$timeCriteria),3)"),
+            oee_xlsx_cell('M' . $lineRow, $values['productive_fb'], 0, "SUMIFS(\$M\$$firstDetail:\$M\$$lastDetail,$detailLines,A$lineRow$timeCriteria)"),
             oee_xlsx_cell('N' . $lineRow, $values['good_fb'], 0, "MAX(0,M$lineRow-R$lineRow-S$lineRow)"),
             oee_xlsx_cell('O' . $lineRow, $values['calendar_minutes'], 3, "ROUND(MAX(0,Q$lineRow-P$lineRow)*1440,3)"),
             oee_xlsx_cell('P' . $lineRow, $line['excel_start'], 6),
             oee_xlsx_cell('Q' . $lineRow, $line['excel_end'], 6),
-            oee_xlsx_cell('R' . $lineRow, $line['rejected_fb'], 0, "SUMIFS('Quality'!\$C\$2:\$C\$$lastQuality,'Quality'!\$A\$2:\$A\$$lastQuality,A$lineRow)"),
-            oee_xlsx_cell('S' . $lineRow, $line['reworked_fb'], 0, "SUMIFS('Quality'!\$D\$2:\$D\$$lastQuality,'Quality'!\$A\$2:\$A\$$lastQuality,A$lineRow)"),
+            oee_xlsx_cell('R' . $lineRow, $line['rejected_fb'], 0, "SUMIFS('Quality'!\$C\$2:\$C\$$lastQuality,'Quality'!\$F\$2:\$F\$$lastQuality,$lineRow)"),
+            oee_xlsx_cell('S' . $lineRow, $line['reworked_fb'], 0, "SUMIFS('Quality'!\$D\$2:\$D\$$lastQuality,'Quality'!\$F\$2:\$F\$$lastQuality,$lineRow)"),
+            oee_xlsx_cell('T' . $lineRow, $line['report_date'] ?? $report['date'] ?? ''),
         ]);
         $lineRow++;
     }
     $detailHeader = $lineRow + 2;
     $headers = ['Line', 'SI', 'Sequence', 'Part', 'Grade', 'Colour', 'Loading', 'Unloading', 'PCS', 'Total SA', 'State', 'Applied cycle min / FB', 'Productive flag', 'Ideal output min', 'Cycle-time notes'];
+    if (isset($report['from_date'])) $headers[] = 'Loading timestamp (Excel)';
     $headerCells = [];
     foreach ($headers as $index => $header) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . $detailHeader, $header, 1);
     $sheetRows[] = oee_xlsx_row($detailHeader, $headerCells);
@@ -156,12 +159,13 @@ function oee_export_xlsx(array $report): string
         $cells[] = oee_xlsx_cell('M' . $detailRow, $productive, 0, "IF(I$detailRow>0,1,0)");
         $cells[] = oee_xlsx_cell('N' . $detailRow, $productive * $cycle, 3, "IF(M$detailRow=1,L$detailRow,0)");
         $cells[] = oee_xlsx_cell('O' . $detailRow, !empty($flags['colour_no_standard']) ? 'Missing cycle standard: server fallback applied' : 'Applied cycle-time snapshot');
+        if (isset($report['from_date'])) $cells[] = oee_xlsx_cell('P' . $detailRow, oee_excel_datetime($item['loading_at'] ?? ''), 6);
         $sheetRows[] = oee_xlsx_row($detailRow, $cells);
         $detailRow++;
     }
     $lastRow = max(1, $detailRow - 1);
     $columns = '<cols><col min="1" max="1" width="27" customWidth="1"/><col min="2" max="2" width="18" customWidth="1"/><col min="3" max="3" width="43" customWidth="1"/><col min="4" max="7" width="23" customWidth="1"/><col min="8" max="9" width="30" customWidth="1"/><col min="10" max="19" width="24" customWidth="1"/></cols>';
-    $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:O' . $lastRow . '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>' . $columns . '<sheetData>' . implode('', $sheetRows) . '</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>';
+    $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:T' . $lastRow . '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>' . $columns . '<sheetData>' . implode('', $sheetRows) . '</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>';
     $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="165" formatCode="0.0%"/><numFmt numFmtId="166" formatCode="yyyy-mm-dd hh:mm:ss"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF0070C0"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="2" fillId="0" borderId="0"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0"/><xf numFmtId="166" fontId="2" fillId="0" borderId="0"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
     $worksheets = ['OEE Report' => $sheet, 'Downtime' => $sources['events'], 'Downtime calculation' => $sources['segments'], 'Quality' => $sources['quality']];
     $definitions = $relationships = $overrides = '';

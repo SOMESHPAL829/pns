@@ -24,8 +24,8 @@ function oee_export_source_header(array $headers): string
 function oee_export_sources(array $report): array
 {
     $eventsRows = [oee_export_source_header(['Line', 'Start', 'End', 'Type', 'Status', 'Source', 'Reason / notes', 'Window start', 'Window end', 'Clipped start', 'Clipped end', 'Elapsed min (may overlap)', 'Included'])];
-    $segmentRows = [oee_export_source_header(['Line', 'Start boundary', 'End boundary', 'Active unplanned', 'Active planned', 'Unplanned min', 'Planned min'])];
-    $qualityRows = [oee_export_source_header(['Line', 'Shift', 'Rejected FB', 'Reworked FB', 'Notes'])];
+    $segmentRows = [oee_export_source_header(['Line', 'Start boundary', 'End boundary', 'Active unplanned', 'Active planned', 'Unplanned min', 'Planned min', 'Calculation row'])];
+    $qualityRows = [oee_export_source_header(['Line', 'Shift', 'Rejected FB', 'Reworked FB', 'Notes', 'Calculation row', 'Reporting date'])];
     $prepared = [];
     foreach ($report['line_metrics'] ?? [] as $index => $line) {
         $code = $line['line_code'];
@@ -37,20 +37,23 @@ function oee_export_sources(array $report): array
         $rejected = $reworked = 0;
         foreach ($report['quality_entries'] ?? [] as $entry) {
             if ($entry['line_code'] !== $code) continue;
+            if (isset($report['from_date']) && (($entry['report_date'] ?? '') !== $line['report_date'] || (($line['duration_hours'] ?? 24) === 12 && ($entry['shift_code'] ?? '') !== $line['shift_code']))) continue;
             $r = count($qualityRows) + 1;
             $reject = (int) $entry['rejected_fb'];
             $rework = (int) $entry['reworked_fb'];
-            $qualityRows[] = oee_xlsx_row($r, [oee_xlsx_cell("A$r", $code), oee_xlsx_cell("B$r", $entry['shift_code'] ?? ''), oee_xlsx_cell("C$r", $reject, 5), oee_xlsx_cell("D$r", $rework, 5), oee_xlsx_cell("E$r", $entry['notes'] ?? '')]);
+            $qualityRows[] = oee_xlsx_row($r, [oee_xlsx_cell("A$r", $code), oee_xlsx_cell("B$r", $entry['shift_code'] ?? ''), oee_xlsx_cell("C$r", $reject, 5), oee_xlsx_cell("D$r", $rework, 5), oee_xlsx_cell("E$r", $entry['notes'] ?? ''), oee_xlsx_cell("F$r", $mainRow), oee_xlsx_cell("G$r", $entry['report_date'] ?? $report['date'] ?? '')]);
             $rejected += $reject;
             $reworked += $rework;
         }
         if (count($qualityRows) + 1 === $qStart) {
-            $qualityRows[] = oee_xlsx_row($qStart, [oee_xlsx_cell("A$qStart", $code), oee_xlsx_cell("C$qStart", 0, 5), oee_xlsx_cell("D$qStart", 0, 5), oee_xlsx_cell("E$qStart", 'No quality entry: zero rejected/reworked FB assumed.')]);
+            $qualityRows[] = oee_xlsx_row($qStart, [oee_xlsx_cell("A$qStart", $code), oee_xlsx_cell("C$qStart", 0, 5), oee_xlsx_cell("D$qStart", 0, 5), oee_xlsx_cell("E$qStart", 'No quality entry: zero rejected/reworked FB assumed.'), oee_xlsx_cell("F$qStart", $mainRow), oee_xlsx_cell("G$qStart", $line['report_date'] ?? $report['date'] ?? '')]);
         }
         // Include a window boundary row so there is a complete boundary range
         // even when no downtime exists. This row never counts as an event.
         $lineEvents = [['starts_at' => $line['window_start'], 'ends_at' => $line['window_end'], 'event_type' => 'window', 'status' => 'boundary', 'source' => 'window', 'reason_code' => 'Window boundaries']];
-        foreach ($report['downtime_events'] ?? [] as $event) if ($event['line_code'] === $code) $lineEvents[] = $event;
+        foreach ($report['downtime_events'] ?? [] as $event) {
+            if ($event['line_code'] === $code && (!isset($event['window_date']) || $event['window_date'] === ($line['report_date'] ?? ''))) $lineEvents[] = $event;
+        }
         $firstEvent = count($eventsRows) + 1;
         $boundaries = [];
         $activeEvents = [];
@@ -102,17 +105,19 @@ function oee_export_sources(array $report): array
                 oee_xlsx_cell("E$r", $plannedActive, 0, "COUNTIFS('Downtime'!\$D\$$firstEvent:\$D\$$lastEvent,\"planned\"" . $criteria),
                 oee_xlsx_cell("F$r", $u, 3, "IF(D$r>0,MAX(0,(C$r-B$r)*1440),0)"),
                 oee_xlsx_cell("G$r", $p, 3, "IF(AND(D$r=0,E$r>0),MAX(0,(C$r-B$r)*1440),0)"),
+                oee_xlsx_cell("H$r", $mainRow),
             ]);
         }
         $productive = 0;
         $ideal = 0.0;
         foreach ($report['rows'] ?? [] as $item) {
             if (($item['line_code'] ?? '') !== $code || (int) ($item['pcs'] ?? 0) <= 0) continue;
+            if (isset($report['from_date']) && (($item['loading_at'] ?? '') < $line['window_start'] || ($item['loading_at'] ?? '') >= $line['window_end'])) continue;
             if (!isset($item['cycle_minutes']) || !is_numeric($item['cycle_minutes']) || (float) $item['cycle_minutes'] <= 0) throw new InvalidArgumentException('Applied cycle time missing for productive FB');
             $productive++;
             $ideal += (float) $item['cycle_minutes'];
         }
         $prepared[] = array_replace($line, ['window_minutes' => round(($end - $start) * 1440, 3), 'calendar_minutes' => round(($end - $start) * 1440, 3), 'planned_stop_minutes' => round($planned, 3), 'unplanned_minutes' => round($unplanned, 3), 'ideal_output_minutes' => round($ideal, 3), 'productive_fb' => $productive, 'good_fb' => max(0, $productive - $rejected - $reworked), 'rejected_fb' => $rejected, 'reworked_fb' => $reworked, 'excel_start' => $start, 'excel_end' => $end]);
     }
-    return ['lines' => $prepared, 'events' => oee_export_source_sheet($eventsRows, 'M'), 'segments' => oee_export_source_sheet($segmentRows, 'G'), 'quality' => oee_export_source_sheet($qualityRows, 'E'), 'last_segment' => max(2, count($segmentRows)), 'last_quality' => max(2, count($qualityRows))];
+    return ['lines' => $prepared, 'events' => oee_export_source_sheet($eventsRows, 'M'), 'segments' => oee_export_source_sheet($segmentRows, 'H'), 'quality' => oee_export_source_sheet($qualityRows, 'G'), 'last_segment' => max(2, count($segmentRows)), 'last_quality' => max(2, count($qualityRows))];
 }

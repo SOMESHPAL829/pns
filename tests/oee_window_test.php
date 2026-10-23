@@ -49,4 +49,23 @@ $shiftQuality = [['report_date' => '2026-10-22', 'shift_code' => 'H12_0000', 're
 window_check(oee_window_metrics($morning, $rows, $events, $shiftQuality)['good_fb'] === 1, 'matching shift quality not applied');
 $all = oee_window_aggregate([$m, $e]);
 window_check(abs($all['availability'] - 1290 / 1380) < 1e-10 && abs($all['utilization_window'] - 1290 / 1440) < 1e-10, 'weighted aggregate incorrect');
-echo "OEE 12h/24h window tests passed\n";
+$range = oee_date_range_definition('2026-10-22', '2026-10-23', 12, '18:00');
+window_check($range['day_count'] === 2 && $range['calendar_minutes'] === 1440, 'range must include both days and selected minutes per day');
+window_check(count($range['windows']) === 2 && $range['windows'][1]['window_start'] === '2026-10-23 18:00:00' && $range['window_end'] === '2026-10-24 06:00:00', '12h range must contain disjoint daily windows');
+window_check(oee_date_range_definition('2024-02-28', '2024-03-01')['day_count'] === 3, 'leap day missing');
+window_check(oee_date_range_definition('2026-10-22', '2026-10-22')['calendar_minutes'] === 1440, 'single-day range changed');
+foreach ([['2026-10-23', '2026-10-22'], ['2026-02-30', '2026-03-01'], ['2026-01-01', '2026-04-04']] as [$from, $to]) {
+    try {
+        oee_date_range_definition($from, $to);
+        throw new RuntimeException('Invalid date range accepted');
+    } catch (InvalidArgumentException $expected) {}
+}
+$rangeMetrics = array_map(static fn (array $w): array => oee_window_metrics($w, $rows, $events, []), $range['windows']);
+$combined = oee_window_aggregate($rangeMetrics);
+window_check($combined['productive_fb'] === 3 && $combined['ideal_output_minutes'] === 150.0, 'range includes off-shift rows or duplicates');
+window_check($combined['calendar_minutes'] === 1440 && abs($combined['utilization_24h'] - $combined['run_minutes'] / 2880) < 1e-10, 'range calendar denominator incorrect');
+$nested = oee_window_aggregate([$combined, $combined]);
+window_check($nested['calendar_24h_minutes'] === 5760 && abs($nested['utilization_24h'] - $combined['utilization_24h']) < 1e-10, 'multi-line range lost the number of days');
+$empty = oee_window_aggregate(array_map(static fn (array $w): array => oee_window_metrics($w, [], [], []), $range['windows']));
+window_check($empty['productive_fb'] === 0 && $empty['calendar_minutes'] === 1440 && $empty['oee'] === 0.0, 'empty days must retain their selected time and zero OEE');
+echo "OEE date-range and 12h/24h window tests passed\n";

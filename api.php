@@ -334,6 +334,30 @@ try {
             $requestedDate = oee_requested_date();
             $requestedMachine = oee_requested_machine();
             [$durationHours, $startTime] = oee_requested_window_selection();
+            if (in_array($action, ['range-dashboard', 'range-export'], true)) {
+                $from = $_GET['from_date'] ?? null;
+                $to = $_GET['to_date'] ?? null;
+                if (!is_string($from) || !is_string($to)) json_response(['error' => 'Choose both From date and To date.'], 422);
+                try {
+                    $range = oee_date_range_definition($from, $to, $durationHours, $startTime);
+                } catch (InvalidArgumentException $exception) {
+                    json_response(['error' => $exception->getMessage()], 422);
+                }
+                if (!oee_tables_ready($pdo)) json_response(['available' => false, 'message' => 'OEE database migration is not installed yet.'], 503);
+                $report = oee_date_range_report($pdo, $requestedMachine, $range);
+                if ($action === 'range-dashboard') {
+                    unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
+                    json_response($report);
+                }
+                $report['line_metrics'] = $report['window_metrics'];
+                $workbook = oee_export_xlsx($report);
+                $filename = 'pns-oee-' . $from . '-to-' . $to . '-' . strtolower($requestedMachine) . '-' . ($durationHours * 60) . 'min-' . str_replace(':', '', $startTime) . '.xlsx';
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Cache-Control: no-store');
+                echo $workbook;
+                exit;
+            }
             if ($action === 'dashboard') {
                 json_response(oee_dashboard($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));
             }

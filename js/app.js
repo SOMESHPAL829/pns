@@ -292,6 +292,90 @@
     catch (error) { if (requestId === app.reportRequest) showOeeAlert("oee-report-alert", error.message, true); }
   }
 
+  let rangeRequest = 0;
+  let rangeInitialized = false;
+
+  function rangeQuery() {
+    const from = document.getElementById("range-from-date").value;
+    const to = document.getElementById("range-to-date").value;
+    const days = (Date.parse(to) - Date.parse(from)) / 86400000 + 1;
+    if (!from || !to || !Number.isFinite(days) || days < 1 || days > 93) throw new Error("Choose From date before or equal to To date, up to 93 days inclusive.");
+    const minutes = document.getElementById("range-duration").value;
+    return { from_date: from, to_date: to, machine: document.getElementById("range-machine").value,
+      duration_minutes: minutes, start_time: minutes === "1440" ? "00:00" : document.getElementById("range-start-time").value };
+  }
+
+  function renderRangeDashboard(data) {
+    if (!data.available) { showOeeAlert("range-alert", data.message, true); return; }
+    const oee = data.oee || {}, metrics = data.metrics || {}, window = data.window;
+    ["oee", "availability", "performance", "quality"].forEach(function (key) { setText("range-" + key, percent(oee[key])); });
+    [["total-fb", "total_fb"], ["productive-fb", "productive_fb"], ["empty-fb", "empty_fb"], ["pcs", "pcs"]].forEach(function (pair) { setText("range-" + pair[0], Number(metrics[pair[1]] || 0).toLocaleString()); });
+    setText("range-area", Number(metrics.total_surface_area || 0).toFixed(2));
+    setText("range-days", window.day_count);
+    [["calendar", "calendar_minutes"], ["planned-stop", "planned_stop_minutes"], ["planned", "planned_minutes"], ["unplanned", "unplanned_minutes"], ["run", "run_minutes"]].forEach(function (pair) { setText("range-" + pair[0], Number(oee[pair[1]] || 0).toFixed(1) + " min"); });
+    setText("range-utilization", percent(oee.utilization_window));
+    setText("range-window", data.from_date + " → " + data.to_date + " (inclusive) · " + window.day_count + " day(s) × " + window.duration_minutes + " min per line · Daily start " + window.start_time + " · " + (data.machine === "ALL" ? "All machines" : data.machine));
+    const flags = oee.calculation_flags || {}, warnings = [];
+    if (flags.missing_cycle_time) warnings.push("Missing cycle standards: fallback 12 min/FB applied. " + (flags.missing_cycle_colours || []).join(", "));
+    if (flags.performance_above_100) warnings.push("Performance exceeds 100% in one or more windows; verify cycle time and downtime.");
+    if (oeeQualityWarning(oee)) warnings.push(oeeQualityWarning(oee));
+    if (!metrics.total_fb) warnings.push("No production in this date range. Selected time is still included in the denominator.");
+    showOeeAlert("range-alert", warnings.join(" "), warnings.length > 0);
+    const body = document.getElementById("range-lines-body");
+    body.replaceChildren();
+    (data.line_metrics || []).forEach(function (line) {
+      const row = document.createElement("tr");
+      [line.line_code, line.productive_fb, Number(line.run_minutes).toFixed(1), Number(line.ideal_output_minutes).toFixed(1), percent(line.availability), percent(line.performance), percent(line.quality), percent(line.oee), percent(line.utilization_window)].forEach(function (value) { makeCell(row, value); });
+      body.appendChild(row);
+    });
+    const daily = document.getElementById("range-days-body");
+    daily.replaceChildren();
+    (data.window_metrics || []).forEach(function (line) {
+      const row = document.createElement("tr");
+      [line.report_date, line.line_code, readableDateTime(line.window_start), readableDateTime(line.window_end), line.productive_fb, Number(line.run_minutes).toFixed(1), percent(line.oee)].forEach(function (value) { makeCell(row, value); });
+      daily.appendChild(row);
+    });
+  }
+
+  async function loadRangeDashboard() {
+    const requestId = ++rangeRequest;
+    try {
+      const fallback = app.oee?.date || new Date().toLocaleDateString("en-CA");
+      if (!rangeInitialized) {
+        ["range-from-date", "range-to-date"].forEach(function (id) { const field = document.getElementById(id); if (!field.value) field.value = fallback; });
+        rangeInitialized = true;
+      }
+      const query = rangeQuery();
+      showOeeAlert("range-alert", "", false);
+      setText("range-window", "Calculating selected date range…");
+      const data = await request("oee", "range-dashboard", { query: query });
+      if (requestId === rangeRequest) renderRangeDashboard(data);
+    } catch (error) {
+      if (requestId === rangeRequest) { setText("range-window", "Calculation not completed."); showOeeAlert("range-alert", error.message, true); }
+    }
+  }
+
+  async function exportRangeExcel() {
+    const button = document.getElementById("range-export");
+    try {
+      const query = rangeQuery();
+      button.disabled = true;
+      button.textContent = "Exporting…";
+      const params = new URLSearchParams({ resource: "oee", action: "range-export", ...query });
+      const response = await fetch(apiUrl + "?" + params, { credentials: "same-origin" });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || data.message || "Excel export failed."); }
+      const blob = await response.blob();
+      const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+      if (!response.headers.get("Content-Type")?.includes("spreadsheetml.sheet") || signature[0] !== 80 || signature[1] !== 75 || signature[2] !== 3 || signature[3] !== 4) throw new Error("The server did not return a valid Excel workbook.");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "pns-oee-" + query.from_date + "-to-" + query.to_date + "-" + query.machine + "-" + query.duration_minutes + "min-" + query.start_time.replace(":", "") + ".xlsx";
+      link.click();
+      setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+    } catch (error) { showOeeAlert("range-alert", error.message, true); }
+    finally { button.disabled = false; button.textContent = "Export Excel"; }
+  }
+
   function renderDowntime(data) {
     const body = document.getElementById("downtime-body");
     if (!body) return;
@@ -576,6 +660,21 @@
   if (userSearch) userSearch.addEventListener("input", function () { renderUsers(app.users); });
 
   const dashboardRefresh = document.getElementById("dashboard-refresh");
+  const rangeForm = document.getElementById("range-form");
+  if (rangeForm) {
+    rangeForm.addEventListener("submit", function (event) { event.preventDefault(); loadRangeDashboard(); });
+    rangeForm.addEventListener("change", function () {
+      rangeRequest++;
+      const start = document.getElementById("range-start-time");
+      start.disabled = document.getElementById("range-duration").value === "1440";
+      if (start.disabled) start.value = "00:00";
+      setText("range-window", "Selection changed. Click Calculate OEE to update the results.");
+      ["oee", "availability", "performance", "quality", "total-fb", "productive-fb", "empty-fb", "pcs", "area", "days", "calendar", "planned-stop", "planned", "unplanned", "run", "utilization"].forEach(function (key) { setText("range-" + key, "—"); });
+      document.getElementById("range-lines-body").replaceChildren();
+      document.getElementById("range-days-body").replaceChildren();
+    });
+  }
+  document.getElementById("range-export")?.addEventListener("click", exportRangeExcel);
   if (dashboardRefresh) dashboardRefresh.addEventListener("click", loadOeeDashboard);
   const dashboardDate = document.getElementById("dashboard-date");
   if (dashboardDate) dashboardDate.addEventListener("change", loadOeeDashboard);
@@ -643,6 +742,7 @@
   window.addEventListener("hashchange", function () {
     const route = (location.hash || "#/dashboard").replace("#/", "").split("/")[0];
     if (route === "dashboard") loadOeeDashboard();
+    if (route === "oee-range") loadRangeDashboard();
     if (route === "oee-report") loadOeeReport();
     if (route === "scada-logs") loadScadaLogs();
     if (route === "downtime") loadDowntime();
@@ -654,6 +754,7 @@
     const route = navigation.getAttribute("data-nav") || navigation.getAttribute("data-goto");
     setTimeout(function () {
       if (route === "dashboard") loadOeeDashboard();
+      if (route === "oee-range") loadRangeDashboard();
       if (route === "oee-report") loadOeeReport();
       if (route === "scada-logs") loadScadaLogs();
       if (route === "downtime") loadDowntime();
@@ -712,6 +813,7 @@
   });
   const initialRoute = (location.hash || "#/dashboard").replace("#/", "").split("/")[0];
   if (initialRoute === "oee-report") loadOeeReport();
+  if (initialRoute === "oee-range") loadRangeDashboard();
   if (initialRoute === "scada-logs") loadScadaLogs();
   if (initialRoute === "downtime") loadDowntime();
   if (initialRoute === "oee-masters") loadMasters();

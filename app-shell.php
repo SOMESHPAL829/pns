@@ -25,6 +25,7 @@ $csrfToken = csrf_token();
       </div>
       <nav class="app-sidebar-nav">
         <a class="app-sidebar-link is-active" href="#/dashboard" data-nav="dashboard" title="Dashboard"><span class="app-sidebar-icon" data-icon="dashboard"></span><span class="app-sidebar-label">OEE dashboard</span></a>
+        <a class="app-sidebar-link" href="#/oee-range" data-nav="oee-range" title="Date-range OEE"><span class="app-sidebar-icon" data-icon="dashboard"></span><span class="app-sidebar-label">Date-range OEE</span></a>
         <a class="app-sidebar-link" href="#/oee-report" data-nav="oee-report" title="Production report"><span class="app-sidebar-icon" data-icon="report"></span><span class="app-sidebar-label">Production report</span></a>
         <a class="app-sidebar-link" href="#/scada-logs" data-nav="scada-logs" title="SCADA logs"><span class="app-sidebar-icon" data-icon="report"></span><span class="app-sidebar-label">SCADA logs</span></a>
         <a class="app-sidebar-link" href="#/downtime" data-nav="downtime" title="Downtime review"><span class="app-sidebar-icon" data-icon="report"></span><span class="app-sidebar-label">Downtime review</span></a>
@@ -87,6 +88,36 @@ $csrfToken = csrf_token();
             <section class="dash-card oee-card"><div class="dash-card-head">Time losses</div><div class="oee-loss-list"><div><span>Planned stop</span><strong id="planned-minutes">—</strong></div><div><span>Unplanned downtime</span><strong id="unplanned-minutes">—</strong></div><div><span>Run time</span><strong id="run-minutes">—</strong></div><div><span id="utilization-label">24h utilization</span><strong id="utilization-value">—</strong></div></div></section>
           </div>
           <div class="oee-grid oee-grid-bottom"><section class="dash-card oee-card"><div class="dash-card-head">Recent imports</div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Batch</th><th>Date</th><th>Rows</th><th>Status</th><th>Received</th></tr></thead><tbody id="oee-imports-body"></tbody></table></div></section><section class="dash-card oee-card"><div class="dash-card-head">Sync health</div><div id="oee-sync-list" class="oee-sync-list"></div></section></div>
+        </section>
+
+        <section class="view" data-view="oee-range">
+          <div class="page-heading"><div><div class="dash-eyebrow">Period intelligence</div><h1>Date-range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and line.</p></div></div>
+          <section class="data-card">
+            <form id="range-form" class="report-filters">
+              <label>From date<input id="range-from-date" type="date" required></label>
+              <label>To date<input id="range-to-date" type="date" required></label>
+              <label>Machine<select id="range-machine"><option value="ALL">All machines</option><option value="APP-06">APP-06</option><option value="APP-07">APP-07</option><option value="APP-10">APP-10</option></select></label>
+              <label>Minutes per day<select id="range-duration"><option value="1440">1440 min (24 hours)</option><option value="720">720 min (12 hours)</option></select></label>
+              <label>Daily window start<input id="range-start-time" type="time" value="00:00" step="60" disabled></label>
+              <button class="btn" type="submit" id="range-load">Calculate OEE</button>
+              <button class="btn ghost" type="button" id="range-export">Export Excel</button>
+            </form>
+            <p class="report-summary">Both dates included · Maximum 93 days · Percentages use combined totals, not daily averages.</p>
+          </section>
+          <div id="range-window" class="oee-window-summary" role="status" aria-live="polite"></div>
+          <div id="range-alert" class="oee-alert" role="status" hidden></div>
+          <div class="oee-kpis">
+            <article class="oee-kpi"><div class="oee-kpi-label">OEE</div><div class="oee-kpi-value" id="range-oee">—</div><div class="oee-kpi-note">Availability × Performance × Quality</div></article>
+            <article class="oee-kpi"><div class="oee-kpi-label">Availability</div><div class="oee-kpi-value" id="range-availability">—</div><div class="oee-kpi-note">Total run / total planned time</div></article>
+            <article class="oee-kpi"><div class="oee-kpi-label">Performance</div><div class="oee-kpi-value" id="range-performance">—</div><div class="oee-kpi-note">Total ideal output time / total run time</div></article>
+            <article class="oee-kpi"><div class="oee-kpi-label">Quality</div><div class="oee-kpi-value" id="range-quality">—</div><div class="oee-kpi-note">Total good FB / total productive FB</div></article>
+          </div>
+          <div class="oee-grid oee-grid-main">
+            <section class="dash-card oee-card"><div class="dash-card-head">Production summary</div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="range-total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="range-productive-fb">—</strong></div><div><span class="oee-stat-label">Empty racks</span><strong id="range-empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="range-pcs">—</strong></div><div><span class="oee-stat-label">Surface area</span><strong id="range-area">—</strong></div><div><span class="oee-stat-label">Days selected</span><strong id="range-days">—</strong></div></div></section>
+            <section class="dash-card oee-card"><div class="dash-card-head">Time accounting</div><div class="oee-loss-list"><div><span>Selected window time</span><strong id="range-calendar">—</strong></div><div><span>Planned stops</span><strong id="range-planned-stop">—</strong></div><div><span>Planned production time</span><strong id="range-planned">—</strong></div><div><span>Unplanned downtime</span><strong id="range-unplanned">—</strong></div><div><span>Run time</span><strong id="range-run">—</strong></div><div><span>Window utilization</span><strong id="range-utilization">—</strong></div></div></section>
+          </div>
+          <section class="data-card"><div class="dash-card-head">Line-wise OEE · selected period</div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (min)</th><th>Ideal output (min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th>Window utilization</th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head">Daily line breakdown</div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting date</th><th>Line</th><th>Window start</th><th>Window end</th><th>Productive FB</th><th>Run (min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="oee-report">

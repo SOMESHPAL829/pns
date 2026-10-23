@@ -5,6 +5,7 @@
   const pageTitle = document.getElementById("page-title");
   const titles = {
     dashboard: "Dashboard",
+    "oee-range": "Date-range OEE",
     "oee-report": "Production report",
     "scada-logs": "SCADA logs",
     downtime: "Downtime review",

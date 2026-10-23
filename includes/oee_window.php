@@ -13,6 +13,21 @@ function oee_window_definition(string $date, int $hours = 24, string $startTime 
         'calendar_minutes' => $hours * 60, 'shift_code' => $hours === 24 ? 'DAY' : 'H12_' . str_replace(':', '', $startTime)];
 }
 
+/** Both reporting dates are inclusive; each day has its own selected window. */
+function oee_date_range_definition(string $from, string $to, int $hours = 24, string $startTime = '00:00'): array
+{
+    $first = oee_window_definition($from, $hours, $startTime);
+    $last = oee_window_definition($to, $hours, $startTime);
+    $days = (int) (new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->format('%r%a') + 1;
+    if ($days < 1 || $days > 93) throw new InvalidArgumentException('Choose From date before or equal to To date, up to 93 days inclusive.');
+    $windows = [];
+    for ($day = new DateTimeImmutable($from); $day->format('Y-m-d') <= $to; $day = $day->modify('+1 day')) {
+        $windows[] = oee_window_definition($day->format('Y-m-d'), $hours, $startTime);
+    }
+    return array_replace($first, ['from_date' => $from, 'to_date' => $to, 'day_count' => $days,
+        'calendar_minutes' => $days * $hours * 60, 'window_end' => $last['window_end'], 'windows' => $windows]);
+}
+
 function oee_window_metrics(array $window, array $rows, array $events, array $quality): array
 {
     $flags = [];
@@ -79,7 +94,9 @@ function oee_window_aggregate(array $lines): array
 {
     $totals = array_fill_keys(['productive_fb', 'good_fb', 'planned_minutes', 'planned_stop_minutes', 'unplanned_minutes', 'run_minutes', 'ideal_output_minutes', 'window_minutes', 'calendar_minutes'], 0);
     $flags = [];
+    $calendar24 = 0;
     foreach ($lines as $line) {
+        $calendar24 += $line['calendar_24h_minutes'] ?? 1440;
         foreach ($totals as $key => $value) $totals[$key] += $line[$key];
         foreach ($line['calculation_flags'] as $key => $value) {
             $flags[$key] = is_array($value) ? array_values(array_unique(array_merge($flags[$key] ?? [], $value))) : $value;
@@ -90,7 +107,8 @@ function oee_window_aggregate(array $lines): array
     $totals['quality'] = $totals['productive_fb'] > 0 ? $totals['good_fb'] / $totals['productive_fb'] : 0.0;
     $totals['oee'] = $totals['availability'] * $totals['performance'] * $totals['quality'];
     $totals['utilization_window'] = $totals['calendar_minutes'] > 0 ? $totals['run_minutes'] / $totals['calendar_minutes'] : 0.0;
-    $totals['utilization_24h'] = $lines ? $totals['run_minutes'] / (1440 * count($lines)) : 0.0;
+    $totals['calendar_24h_minutes'] = $calendar24;
+    $totals['utilization_24h'] = $calendar24 > 0 ? $totals['run_minutes'] / $calendar24 : 0.0;
     $totals['calculation_flags'] = $flags;
     return $totals;
 }
@@ -103,7 +121,7 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         'metrics' => ['total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0.0]];
     $rowsQuery = $pdo->prepare('SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code = ? AND loading_at >= ? AND loading_at < ? ORDER BY loading_at, si_no');
     $eventQuery = $pdo->prepare('SELECT line_code, starts_at, ends_at, event_type, status, source, reason_code, notes FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at, id');
-    $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ? AND shift_code = ?');
+    $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ?' . ($window['duration_hours'] === 12 ? ' AND shift_code = ?' : ''));
     foreach ($lines as $line) {
         // Refresh colour-cycle snapshots and inferred events for every day the
         // selected window touches. Only DAY snapshots are persisted.
@@ -114,7 +132,7 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         $rows = $rowsQuery->fetchAll();
         $eventQuery->execute([$line, $window['window_end'], $window['window_start']]);
         $events = $eventQuery->fetchAll();
-        $qualityQuery->execute([$line, $date, $window['shift_code']]);
+        $qualityQuery->execute($window['duration_hours'] === 12 ? [$line, $date, $window['shift_code']] : [$line, $date]);
         $quality = $qualityQuery->fetchAll();
         $result['line_metrics'][] = array_merge(['line_code' => $line], oee_window_metrics($window, $rows, $events, $quality));
         array_push($result['rows'], ...$rows);
@@ -133,5 +151,38 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
     $imports = $pdo->prepare('SELECT id, batch_id, source, report_date, row_count, status, received_at, processed_at, error_message FROM oee_import_batches WHERE line_code IN (' . $in . ') ORDER BY received_at DESC LIMIT 8');
     $imports->execute($lines);
     $result['imports'] = $imports->fetchAll();
+    return $result;
+}
+
+function oee_date_range_report(PDO $pdo, string $machine, array $range): array
+{
+    $result = ['available' => true, 'date' => $range['from_date'], 'from_date' => $range['from_date'], 'to_date' => $range['to_date'],
+        'machine' => $machine, 'window' => $range, 'rows' => [], 'window_metrics' => [], 'line_metrics' => [],
+        'downtime_events' => [], 'quality_entries' => [],
+        'metrics' => ['total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0.0]];
+    $byLine = [];
+    foreach ($range['windows'] as $window) {
+        $daily = oee_window_report($pdo, $window['date'], $machine, $window);
+        foreach ($daily['line_metrics'] as $line) {
+            $line['report_date'] = $window['date'];
+            $line['shift_code'] = $window['shift_code'];
+            $line['duration_hours'] = $window['duration_hours'];
+            $result['window_metrics'][] = $line;
+            $byLine[$line['line_code']][] = $line;
+        }
+        foreach ($daily['downtime_events'] as $event) {
+            // A spanning event may appear on several days, each clipped only
+            // within that day's window. Preserve that scope for Excel formulas.
+            $event['window_date'] = $window['date'];
+            $result['downtime_events'][] = $event;
+        }
+        array_push($result['rows'], ...$daily['rows']);
+        array_push($result['quality_entries'], ...$daily['quality_entries']);
+        foreach ($result['metrics'] as $key => $value) $result['metrics'][$key] += $daily['metrics'][$key];
+        $result['sync'] = $daily['sync'];
+        $result['imports'] = $daily['imports'];
+    }
+    foreach ($byLine as $code => $windows) $result['line_metrics'][] = array_merge(['line_code' => $code], oee_window_aggregate($windows));
+    $result['oee'] = oee_window_aggregate($result['line_metrics']);
     return $result;
 }

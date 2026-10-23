@@ -121,6 +121,33 @@ Run `php tests/oee_export_test.php` to verify formulas, weighted totals, source
 text handling and no-data cases. If `officecli` is installed, this test also
 validates the workbook against the strict OpenXML schema.
 
+## Date-range OEE dashboard
+
+Open **Date-range OEE** in the sidebar (`app.php#/oee-range`). The original
+daily dashboard and production report remain separate. Choose From date and
+To date (inclusive, up to 93 days), one machine or all machines, and 1440 or
+720 minutes **per day**. For 720 minutes choose the daily start time, then
+click **Calculate OEE**. The page shows aggregate KPIs, line-wise OEE, a daily
+breakdown, and time/production totals. Excel export uses the same selections.
+
+Percentages use sums, not averages: availability = total run / total planned,
+performance = total ideal / total run, quality = total good / total productive,
+OEE = availability × performance × quality. Utilization = total run /
+(days × selected lines × selected minutes). A 12-hour overnight range includes
+each day's selected shift, not the daytime gaps. Empty days remain in the time
+denominator. See [duration/range rules](OEE_DURATION_SELECTION.md).
+
+API: authenticated `resource=oee&action=range-dashboard` or `range-export`, with
+`from_date`, `to_date`, `machine`, `duration_minutes`, and `start_time`.
+Excel has one calculation row per day/line; source formulas are isolated by
+window so repeated line names do not multiply production or quality losses.
+
+Verification: `php tests/oee_window_test.php`,
+`php tests/oee_range_export_test.php`, and `php tests/oee_export_test.php`.
+For isolated browser checks, install Playwright and run
+`node tests/oee_range_browser_test.cjs` (optional `PLAYWRIGHT_MODULE` and
+`CHROMIUM_EXECUTABLE` overrides). No database migration is required.
+
 ## Theme assets
 
 `css/theme.css` contains design tokens. `css/portal.css` contains the shared layout and components. `js/icons.js` contains Heroicons Outline icons (MIT), and `js/portal.js` handles navigation and toasts. Add icons with `<span class="app-sidebar-icon" data-icon="users"></span>`.
