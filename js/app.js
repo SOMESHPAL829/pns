@@ -193,6 +193,19 @@
     app.reportDate = data.date || "";
     app.reportData = data;
     app.reportRows = data.rows || [];
+    setText("report-oee-value", percent((data.oee || {}).oee));
+    setText("report-availability-value", percent((data.oee || {}).availability));
+    setText("report-performance-value", percent((data.oee || {}).performance));
+    setText("report-quality-value", percent((data.oee || {}).quality));
+    const lineBody = document.getElementById("report-line-metrics-body");
+    if (lineBody) {
+      lineBody.replaceChildren();
+      (data.line_metrics || []).forEach(function (item) {
+        const row = document.createElement("tr");
+        makeCell(row, item.line_code); makeCell(row, percent(item.oee)); makeCell(row, percent(item.availability)); makeCell(row, percent(item.performance)); makeCell(row, percent(item.quality)); makeCell(row, percent(item.utilization_24h));
+        lineBody.appendChild(row);
+      });
+    }
     populateReportFilters(app.reportRows);
     renderReportRows(app.reportRows);
   }

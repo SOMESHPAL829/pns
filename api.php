@@ -137,6 +137,15 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
     );
     $rows->execute([...$lines, $dashboard['date']]);
     $dashboard['rows'] = $rows->fetchAll();
+    $lineMetrics = $pdo->prepare(
+        'SELECT line_code, availability, performance, quality, oee, utilization_24h FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
+    );
+    $dashboard['line_metrics'] = [];
+    foreach ($lines as $line) {
+        $lineMetrics->execute([$line, $dashboard['date']]);
+        $metric = $lineMetrics->fetch();
+        if ($metric) $dashboard['line_metrics'][] = $metric;
+    }
     return $dashboard;
 }
 
