@@ -26,11 +26,36 @@ function oee_xlsx_row(int $rowNumber, array $cells): string
     return '<row r="' . $rowNumber . '">' . implode('', $cells) . '</row>';
 }
 
+/** Raw database inputs plus cached results of the same formulas used in Excel. */
+function oee_export_line_calculation(array $line): array
+{
+    $values = [];
+    foreach (['window_minutes', 'planned_stop_minutes', 'unplanned_minutes', 'ideal_output_minutes', 'productive_fb', 'good_fb', 'calendar_minutes'] as $key) {
+        if (!isset($line[$key]) || !is_numeric($line[$key]) || !is_finite((float) $line[$key]) || (float) $line[$key] < 0) {
+            throw new InvalidArgumentException('Excel calculation input missing or invalid: ' . $key);
+        }
+        $values[$key] = (float) $line[$key];
+    }
+    $values['planned_minutes'] = max(0.0, $values['window_minutes'] - $values['planned_stop_minutes']);
+    $values['run_minutes'] = max(0.0, $values['planned_minutes'] - $values['unplanned_minutes']);
+    return $values;
+}
+
 function oee_export_xlsx(array $report): string
 {
     if (!class_exists('ZipArchive')) {
         throw new RuntimeException('Excel export is not available on this server.');
     }
+    $lines = $report['line_metrics'] ?? [];
+    $calculations = array_map('oee_export_line_calculation', $lines);
+    $totals = [];
+    foreach ($calculations as $calculation) {
+        foreach ($calculation as $key => $value) $totals[$key] = ($totals[$key] ?? 0.0) + $value;
+    }
+    $ratio = static fn (array $values, string $numerator, string $denominator): float => ($values[$denominator] ?? 0) > 0 ? $values[$numerator] / $values[$denominator] : 0.0;
+    $availability = $ratio($totals, 'run_minutes', 'planned_minutes');
+    $performance = $ratio($totals, 'ideal_output_minutes', 'run_minutes');
+    $quality = $ratio($totals, 'good_fb', 'productive_fb');
     $temporary = tempnam(sys_get_temp_dir(), 'pns-oee-');
     if ($temporary === false) throw new RuntimeException('Could not create the Excel export.');
     $zip = new ZipArchive();
@@ -39,29 +64,65 @@ function oee_export_xlsx(array $report): string
         throw new RuntimeException('Could not create the Excel workbook.');
     }
 
-    $snapshot = $report['oee'] ?? [];
-    $lines = $report['line_metrics'] ?? [];
     $rows = $report['rows'] ?? [];
     $sheetRows = [];
-    $sheetRows[] = oee_xlsx_row(1, [oee_xlsx_cell('A1', 'PNS OEE report', 1)]);
-    $sheetRows[] = oee_xlsx_row(2, [oee_xlsx_cell('A2', 'Report date'), oee_xlsx_cell('B2', $report['date'] ?? '')]);
-    $sheetRows[] = oee_xlsx_row(3, [oee_xlsx_cell('A3', 'Line / machine'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All lines' : ($report['machine'] ?? ''))]);
-    $sheetRows[] = oee_xlsx_row(5, [oee_xlsx_cell('A5', 'Aggregate calculation', 1), oee_xlsx_cell('B5', 'Value', 1), oee_xlsx_cell('C5', 'Formula', 1)]);
-    $sheetRows[] = oee_xlsx_row(6, [oee_xlsx_cell('A6', 'Availability'), oee_xlsx_cell('B6', (float) ($snapshot['availability'] ?? 0), 2), oee_xlsx_cell('C6', 'Run time / planned production time')]);
-    $sheetRows[] = oee_xlsx_row(7, [oee_xlsx_cell('A7', 'Performance'), oee_xlsx_cell('B7', (float) ($snapshot['performance'] ?? 0), 2), oee_xlsx_cell('C7', 'Ideal output time / run time')]);
-    $sheetRows[] = oee_xlsx_row(8, [oee_xlsx_cell('A8', 'Quality'), oee_xlsx_cell('B8', (float) ($snapshot['quality'] ?? 0), 2), oee_xlsx_cell('C8', 'Good FB / productive FB')]);
-    $sheetRows[] = oee_xlsx_row(9, [oee_xlsx_cell('A9', 'OEE'), oee_xlsx_cell('B9', (float) ($snapshot['oee'] ?? 0), 2, '=B6*B7*B8'), oee_xlsx_cell('C9', 'Availability × Performance × Quality')]);
-    $sheetRows[] = oee_xlsx_row(10, [oee_xlsx_cell('A10', '24h utilization'), oee_xlsx_cell('B10', (float) ($snapshot['utilization_24h'] ?? 0), 2), oee_xlsx_cell('C10', 'Run time / 1440 minutes')]);
-    $sheetRows[] = oee_xlsx_row(12, [oee_xlsx_cell('A12', 'Line-wise OEE', 1), oee_xlsx_cell('B12', 'Availability', 1), oee_xlsx_cell('C12', 'Performance', 1), oee_xlsx_cell('D12', 'Quality', 1), oee_xlsx_cell('E12', 'OEE', 1), oee_xlsx_cell('F12', '24h utilization', 1)]);
+    $summaryRows = [
+        1 => [oee_xlsx_cell('A1', 'PNS OEE report', 1), oee_xlsx_cell('H1', 'Calculation inputs', 1), oee_xlsx_cell('I1', 'Value', 1)],
+        2 => [oee_xlsx_cell('A2', 'Report date'), oee_xlsx_cell('B2', $report['date'] ?? '')],
+        3 => [oee_xlsx_cell('A3', 'Line / machine'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All lines' : ($report['machine'] ?? ''))],
+        4 => [oee_xlsx_cell('A4', 'Blue values = database inputs. Black values = Excel calculations.')],
+        5 => [oee_xlsx_cell('A5', 'Aggregate calculation', 1), oee_xlsx_cell('B5', 'Value', 1), oee_xlsx_cell('C5', 'Formula', 1)],
+        6 => [oee_xlsx_cell('A6', 'Availability'), oee_xlsx_cell('B6', $availability, 2, 'IF(I2>0,I4/I2,0)'), oee_xlsx_cell('C6', 'Run time / planned production time')],
+        7 => [oee_xlsx_cell('A7', 'Performance'), oee_xlsx_cell('B7', $performance, 2, 'IF(I4>0,I5/I4,0)'), oee_xlsx_cell('C7', 'Ideal output time / run time')],
+        8 => [oee_xlsx_cell('A8', 'Quality'), oee_xlsx_cell('B8', $quality, 2, 'IF(I6>0,I7/I6,0)'), oee_xlsx_cell('C8', 'Good FB / productive FB')],
+        9 => [oee_xlsx_cell('A9', 'OEE'), oee_xlsx_cell('B9', $availability * $performance * $quality, 2, 'B6*B7*B8'), oee_xlsx_cell('C9', 'Availability × Performance × Quality')],
+        10 => [oee_xlsx_cell('A10', '24h utilization'), oee_xlsx_cell('B10', $ratio($totals, 'run_minutes', 'calendar_minutes'), 2, 'IF(I8>0,I4/I8,0)'), oee_xlsx_cell('C10', 'Run time / summed calendar minutes')],
+        11 => [oee_xlsx_cell('A11', 'Line table inputs: G, H, J, L, M, N, O. Other numeric cells recalculate in Excel.')],
+    ];
+    $inputRows = [
+        2 => ['Planned production (min)', 'I', 'planned_minutes'],
+        3 => ['Unplanned downtime (min)', 'J', 'unplanned_minutes'],
+        4 => ['Run time (min)', 'K', 'run_minutes'],
+        5 => ['Ideal output time (min)', 'L', 'ideal_output_minutes'],
+        6 => ['Productive FB', 'M', 'productive_fb'],
+        7 => ['Good FB', 'N', 'good_fb'],
+        8 => ['Calendar time (min)', 'O', 'calendar_minutes'],
+        9 => ['Planned stop (min)', 'H', 'planned_stop_minutes'],
+        10 => ['Window time (min)', 'G', 'window_minutes'],
+    ];
+    $lastLineRow = 12 + count($lines);
+    foreach ($inputRows as $number => [$label, $column, $key]) {
+        $summaryRows[$number][] = oee_xlsx_cell('H' . $number, $label);
+        $summaryRows[$number][] = oee_xlsx_cell('I' . $number, $totals[$key] ?? 0.0, 3, $lines ? 'SUM(' . $column . '13:' . $column . $lastLineRow . ')' : '0');
+    }
+    ksort($summaryRows);
+    foreach ($summaryRows as $number => $cells) $sheetRows[] = oee_xlsx_row($number, $cells);
+    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', '24h utilization', 'Window (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)'];
+    $headerCells = [];
+    foreach ($lineHeaders as $index => $label) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . '12', $label, 1);
+    $sheetRows[] = oee_xlsx_row(12, $headerCells);
     $lineRow = 13;
-    foreach ($lines as $line) {
+    foreach ($lines as $index => $line) {
+        $values = $calculations[$index];
+        $a = $ratio($values, 'run_minutes', 'planned_minutes');
+        $p = $ratio($values, 'ideal_output_minutes', 'run_minutes');
+        $q = $ratio($values, 'good_fb', 'productive_fb');
         $sheetRows[] = oee_xlsx_row($lineRow, [
             oee_xlsx_cell('A' . $lineRow, $line['line_code']),
-            oee_xlsx_cell('B' . $lineRow, (float) $line['availability'], 2),
-            oee_xlsx_cell('C' . $lineRow, (float) $line['performance'], 2),
-            oee_xlsx_cell('D' . $lineRow, (float) $line['quality'], 2),
-            oee_xlsx_cell('E' . $lineRow, (float) $line['oee'], 2, '=B' . $lineRow . '*C' . $lineRow . '*D' . $lineRow),
-            oee_xlsx_cell('F' . $lineRow, (float) $line['utilization_24h'], 2),
+            oee_xlsx_cell('B' . $lineRow, $a, 2, "IF(I$lineRow>0,K$lineRow/I$lineRow,0)"),
+            oee_xlsx_cell('C' . $lineRow, $p, 2, "IF(K$lineRow>0,L$lineRow/K$lineRow,0)"),
+            oee_xlsx_cell('D' . $lineRow, $q, 2, "IF(M$lineRow>0,N$lineRow/M$lineRow,0)"),
+            oee_xlsx_cell('E' . $lineRow, $a * $p * $q, 2, "B$lineRow*C$lineRow*D$lineRow"),
+            oee_xlsx_cell('F' . $lineRow, $ratio($values, 'run_minutes', 'calendar_minutes'), 2, "IF(O$lineRow>0,K$lineRow/O$lineRow,0)"),
+            oee_xlsx_cell('G' . $lineRow, $values['window_minutes'], 4),
+            oee_xlsx_cell('H' . $lineRow, $values['planned_stop_minutes'], 4),
+            oee_xlsx_cell('I' . $lineRow, $values['planned_minutes'], 3, "MAX(0,G$lineRow-H$lineRow)"),
+            oee_xlsx_cell('J' . $lineRow, $values['unplanned_minutes'], 4),
+            oee_xlsx_cell('K' . $lineRow, $values['run_minutes'], 3, "MAX(0,I$lineRow-J$lineRow)"),
+            oee_xlsx_cell('L' . $lineRow, $values['ideal_output_minutes'], 4),
+            oee_xlsx_cell('M' . $lineRow, $values['productive_fb'], 5),
+            oee_xlsx_cell('N' . $lineRow, $values['good_fb'], 5),
+            oee_xlsx_cell('O' . $lineRow, $values['calendar_minutes'], 4),
         ]);
         $lineRow++;
     }
@@ -79,8 +140,9 @@ function oee_export_xlsx(array $report): string
         $detailRow++;
     }
     $lastRow = max(1, $detailRow - 1);
-    $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:K' . $lastRow . '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/><sheetData>' . implode('', $sheetRows) . '</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>';
-    $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="165" formatCode="0.0%"/></numFmts><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+    $columns = '<cols><col min="1" max="1" width="27" customWidth="1"/><col min="2" max="2" width="18" customWidth="1"/><col min="3" max="3" width="43" customWidth="1"/><col min="4" max="7" width="23" customWidth="1"/><col min="8" max="9" width="30" customWidth="1"/><col min="10" max="15" width="24" customWidth="1"/></cols>';
+    $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:O' . $lastRow . '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/>' . $columns . '<sheetData>' . implode('', $sheetRows) . '</sheetData><pageMargins left="0.25" right="0.25" top="0.5" bottom="0.5" header="0.2" footer="0.2"/></worksheet>';
+    $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="165" formatCode="0.0%"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF0070C0"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="6"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/><xf numFmtId="165" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="2" fillId="0" borderId="0"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
     $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>');
     $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
     $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><fileVersion appName="PNS OEE"/><sheets><sheet name="OEE Report" sheetId="1" r:id="rId1"/></sheets><calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>');

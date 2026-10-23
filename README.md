@@ -65,6 +65,29 @@ The authenticated app now includes:
 - `#/oee-report` — date-filtered flight-bar production report.
 - `#/scada-logs` — Unit 1 sync status and cloud import event log.
 
+### Formula-driven Excel export
+
+The production report's **Export Excel** downloads source minutes and FB counts
+alongside Excel formulas. The line table starts at row 13; blue cells in columns
+G, H, J, L, M, N and O are database inputs. Planned production time is
+`MAX(0, window minutes - planned stops)`; run time is
+`MAX(0, planned production minutes - unplanned downtime)`.
+
+All five aggregate cells B6:B10 and all line percentages contain live Excel
+formulas. Availability is run / planned production time; performance is ideal
+output time / run time; quality is good / productive FB; OEE multiplies these
+three ratios; utilization divides run time by calendar minutes. A zero
+denominator returns zero. All-lines results use summed inputs, including 1440
+calendar minutes per included line, rather than averaging percentages.
+
+Ideal output minutes are imported from the server's colour cycle-time
+calculation. Editing exported inputs changes the workbook only; it does not
+update database records. Excel recalculates automatically on opening or editing.
+
+Run `php tests/oee_export_test.php` to verify formulas, weighted totals, source
+text handling and no-data cases. If `officecli` is installed, this test also
+validates the workbook against the strict OpenXML schema.
+
 ## Theme assets
 
 `css/theme.css` contains design tokens. `css/portal.css` contains the shared layout and components. `js/icons.js` contains Heroicons Outline icons (MIT), and `js/portal.js` handles navigation and toasts. Add icons with `<span class="app-sidebar-icon" data-icon="users"></span>`.

@@ -139,7 +139,7 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
     $rows->execute([...$lines, $dashboard['date']]);
     $dashboard['rows'] = $rows->fetchAll();
     $lineMetrics = $pdo->prepare(
-        'SELECT line_code, availability, performance, quality, oee, utilization_24h FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
+        'SELECT line_code, availability, performance, quality, oee, utilization_24h, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 AS window_minutes, GREATEST(0, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 - planned_minutes) AS planned_stop_minutes, planned_minutes, unplanned_minutes, run_minutes, ideal_output_minutes, productive_fb, good_fb, 1440 AS calendar_minutes FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
     );
     $dashboard['line_metrics'] = [];
     foreach ($lines as $line) {
