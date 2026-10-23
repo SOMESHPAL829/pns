@@ -67,9 +67,10 @@ The authenticated app now includes:
 
 ### Formula-driven Excel export
 
-The production report's **Export Excel** downloads source minutes and FB counts
-alongside Excel formulas. The line table starts at row 13; blue cells in columns
-G, H, J, L, M, N and O are database inputs. Planned production time is
+The production report's **Export Excel** downloads FB-level cycle times, event
+timestamps, quality records and reporting windows alongside Excel formulas.
+The line table starts at row 13; all totals in G:O and R:S are formulas.
+The editable window timestamps are in P:Q. Planned production time is
 `MAX(0, window minutes - planned stops)`; run time is
 `MAX(0, planned production minutes - unplanned downtime)`.
 
@@ -80,9 +81,22 @@ three ratios; utilization divides run time by calendar minutes. A zero
 denominator returns zero. All-lines results use summed inputs, including 1440
 calendar minutes per included line, rather than averaging percentages.
 
-Ideal output minutes are imported from the server's colour cycle-time
-calculation. Editing exported inputs changes the workbook only; it does not
-update database records. Excel recalculates automatically on opening or editing.
+The FB detail table includes the applied cycle-time snapshot (L), productive
+flag `IF(pcs > 0, 1, 0)` (M), and ideal minutes per FB (N). Productive FB and
+ideal output minutes are summed from these detail formulas. Good FB is
+`MAX(0, productive FB - rejected FB - reworked FB)`, using the **Quality** sheet.
+No quality entry is visibly labelled as assuming zero quality losses.
+
+The **Downtime** sheet contains event timestamps, types, lifecycle statuses,
+and reporting-window clipping formulas. **Downtime calculation** sorts event
+boundaries and counts active events per segment. Overlaps count only once;
+unplanned takes priority over planned; rejected events do not count. The line
+totals sum these segments and round minutes to three decimal places, matching
+the stored daily snapshots. Calendar minutes are calculated from window
+timestamps, rather than exported as a fixed 1440 value.
+
+Editing exported source inputs changes the workbook only; it does not update
+database records. Excel recalculates automatically on opening or editing.
 
 Run `php tests/oee_export_test.php` to verify formulas, weighted totals, source
 text handling and no-data cases. If `officecli` is installed, this test also

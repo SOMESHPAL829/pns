@@ -134,12 +134,12 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
     $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [$dashboard['line_code']];
     $placeholders = implode(',', array_fill(0, count($lines), '?'));
     $rows = $pdo->prepare(
-        'SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, flags FROM oee_fb_runs WHERE line_code IN (' . $placeholders . ') AND report_date = ? ORDER BY line_code, si_no ASC'
+        'SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code IN (' . $placeholders . ') AND report_date = ? ORDER BY line_code, si_no ASC'
     );
     $rows->execute([...$lines, $dashboard['date']]);
     $dashboard['rows'] = $rows->fetchAll();
     $lineMetrics = $pdo->prepare(
-        'SELECT line_code, availability, performance, quality, oee, utilization_24h, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 AS window_minutes, GREATEST(0, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 - planned_minutes) AS planned_stop_minutes, planned_minutes, unplanned_minutes, run_minutes, ideal_output_minutes, productive_fb, good_fb, 1440 AS calendar_minutes FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
+        'SELECT line_code, window_start, window_end, availability, performance, quality, oee, utilization_24h, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 AS window_minutes, GREATEST(0, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 - planned_minutes) AS planned_stop_minutes, planned_minutes, unplanned_minutes, run_minutes, ideal_output_minutes, productive_fb, good_fb, 1440 AS calendar_minutes FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
     );
     $dashboard['line_metrics'] = [];
     foreach ($lines as $line) {
@@ -308,6 +308,20 @@ try {
             if ($action === 'export') {
                 $report = oee_report($pdo, $requestedDate, $requestedMachine);
                 if (!($report['available'] ?? false)) json_response($report, 503);
+                $exportLines = array_column($report['line_metrics'], 'line_code');
+                $report['downtime_events'] = [];
+                $report['quality_entries'] = [];
+                if ($exportLines !== []) {
+                    $in = implode(',', array_fill(0, count($exportLines), '?'));
+                    $dayStart = $report['date'] . ' 00:00:00';
+                    $dayEnd = date('Y-m-d H:i:s', strtotime($report['date'] . ' +1 day'));
+                    $events = $pdo->prepare('SELECT line_code, starts_at, ends_at, event_type, status, source, reason_code, notes FROM oee_downtime_events WHERE line_code IN (' . $in . ') AND starts_at < ? AND ends_at > ? ORDER BY line_code, starts_at, id');
+                    $events->execute([...$exportLines, $dayEnd, $dayStart]);
+                    $report['downtime_events'] = $events->fetchAll();
+                    $quality = $pdo->prepare('SELECT line_code, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code IN (' . $in . ') AND report_date = ? ORDER BY line_code, id');
+                    $quality->execute([...$exportLines, $report['date']]);
+                    $report['quality_entries'] = $quality->fetchAll();
+                }
                 $filename = 'pns-oee-' . ($report['date'] ?? date('Y-m-d')) . '-' . strtolower($requestedMachine) . '.xlsx';
                 // Finish generation before declaring a binary response: errors
                 // must return JSON rather than a partial spreadsheet download.
