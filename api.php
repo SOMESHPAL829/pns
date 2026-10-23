@@ -309,10 +309,13 @@ try {
                 $report = oee_report($pdo, $requestedDate, $requestedMachine);
                 if (!($report['available'] ?? false)) json_response($report, 503);
                 $filename = 'pns-oee-' . ($report['date'] ?? date('Y-m-d')) . '-' . strtolower($requestedMachine) . '.xlsx';
+                // Finish generation before declaring a binary response: errors
+                // must return JSON rather than a partial spreadsheet download.
+                $workbook = oee_export_xlsx($report);
                 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 header('Content-Disposition: attachment; filename="' . $filename . '"');
                 header('Cache-Control: no-store');
-                echo oee_export_xlsx($report);
+                echo $workbook;
                 exit;
             }
             if ($action === 'logs') {

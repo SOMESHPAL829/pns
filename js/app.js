@@ -212,12 +212,21 @@
 
   async function exportReportExcel() {
     if (!app.reportData) { showOeeAlert("oee-report-alert", "Load a report before exporting.", true); return; }
+    try {
     const date = app.reportDate || document.getElementById("report-date")?.value || "";
     const machine = document.getElementById("report-machine-filter")?.value || "ALL";
     const response = await fetch(apiUrl + "?resource=oee&action=export&machine=" + encodeURIComponent(machine) + "&date=" + encodeURIComponent(date), { credentials: "same-origin", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
     if (!response.ok) { let message = "Excel export failed."; try { const payload = await response.json(); message = payload.error || message; } catch (error) {} showOeeAlert("oee-report-alert", message, true); return; }
     const blob = await response.blob();
+    const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+    if (!response.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") || signature.length !== 4 || signature[0] !== 80 || signature[1] !== 75 || signature[2] !== 3 || signature[3] !== 4) {
+      throw new Error("The server did not return a valid Excel workbook. Refresh the page and try again.");
+    }
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + date + "-" + machine + ".xlsx"; link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
+    showOeeAlert("oee-report-alert", "", false);
+    } catch (error) {
+      showOeeAlert("oee-report-alert", error.message || "Excel export failed. Please try again.", true);
+    }
   }
 
   function renderLogs(data) {
