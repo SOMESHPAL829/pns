@@ -5,6 +5,7 @@ require_once __DIR__ . '/includes/security.php';
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/oee_ingest.php';
 require_once __DIR__ . '/includes/oee_calculator.php';
+require_once __DIR__ . '/includes/oee_window.php';
 require_once __DIR__ . '/includes/oee_export.php';
 
 function api_user(PDO $pdo): array
@@ -79,13 +80,36 @@ function oee_requested_machine(): string
     return $machine;
 }
 
-function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
+function oee_requested_window_selection(): array
+{
+    $hours = filter_var($_GET['duration_hours'] ?? 24, FILTER_VALIDATE_INT);
+    if (!in_array($hours, [12, 24], true)) json_response(['error' => 'Duration must be 12 or 24 hours.'], 422);
+    $minutes = filter_var($_GET['duration_minutes'] ?? ($hours * 60), FILTER_VALIDATE_INT);
+    $start = $_GET['start_time'] ?? '00:00';
+    if (!in_array($minutes, [720, 1440], true) || !is_string($start)) json_response(['error' => 'Choose 1440 or 720 minutes and a valid start time.'], 422);
+    if (isset($_GET['duration_hours'], $_GET['duration_minutes']) && $minutes !== $hours * 60) json_response(['error' => 'Duration hours and minutes must agree.'], 422);
+    $hours = intdiv($minutes, 60);
+    try {
+        oee_window_definition('2000-01-01', $hours, $start);
+    } catch (InvalidArgumentException $exception) {
+        json_response(['error' => $exception->getMessage()], 422);
+    }
+    return [$hours, $start];
+}
+
+function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06', int $durationHours = 24, string $startTime = '00:00'): array
 {
     if (!oee_tables_ready($pdo)) {
         return ['available' => false, 'message' => 'OEE database migration is not installed yet.'];
     }
     if ($date === null) {
         $date = (string) ($pdo->query('SELECT MAX(report_date) FROM oee_import_batches')->fetchColumn() ?: date('Y-m-d'));
+    }
+    $window = oee_window_definition($date, $durationHours, $startTime);
+    if ($durationHours === 12) {
+        $report = oee_window_report($pdo, $date, $machine, $window);
+        unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
+        return $report;
     }
     $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [oee_machine_line($machine)];
     // Cycle-time and downtime masters affect the stored snapshot. Recalculate
@@ -104,6 +128,7 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06'): arr
     );
     $snapshot->execute([...$lines, $date]);
     $oee = $snapshot->fetch() ?: null;
+    if ($oee) $oee['utilization_window'] = $oee['utilization_24h'];
     $sync = $pdo->query(
         "SELECT source, last_batch_id, last_report_date, last_received_at, last_status, last_error FROM oee_sync_state ORDER BY updated_at DESC LIMIT 10"
     )->fetchAll();
@@ -113,6 +138,7 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06'): arr
     $imports->execute($lines);
     return [
         'available' => true,
+        'window' => $window,
         'date' => $date,
         'machine' => $machine,
         'line_code' => $machine === 'ALL' ? 'ALL' : $lines[0],
@@ -125,8 +151,13 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06'): arr
     ];
 }
 
-function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
+function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06', int $durationHours = 24, string $startTime = '00:00'): array
 {
+    if ($durationHours === 12) {
+        if (!oee_tables_ready($pdo)) return ['available' => false, 'message' => 'OEE database migration is not installed yet.'];
+        $date ??= (string) ($pdo->query('SELECT MAX(report_date) FROM oee_import_batches')->fetchColumn() ?: date('Y-m-d'));
+        return oee_window_report($pdo, $date, $machine, oee_window_definition($date, $durationHours, $startTime));
+    }
     $dashboard = oee_dashboard($pdo, $date, $machine);
     if (!$dashboard['available']) {
         return $dashboard;
@@ -145,7 +176,10 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
     foreach ($lines as $line) {
         $lineMetrics->execute([$line, $dashboard['date']]);
         $metric = $lineMetrics->fetch();
-        if ($metric) $dashboard['line_metrics'][] = $metric;
+        if ($metric) {
+            $metric['utilization_window'] = $metric['utilization_24h'];
+            $dashboard['line_metrics'][] = $metric;
+        }
     }
     return $dashboard;
 }
@@ -299,19 +333,20 @@ try {
         if ($resource === 'oee') {
             $requestedDate = oee_requested_date();
             $requestedMachine = oee_requested_machine();
+            [$durationHours, $startTime] = oee_requested_window_selection();
             if ($action === 'dashboard') {
-                json_response(oee_dashboard($pdo, $requestedDate, $requestedMachine));
+                json_response(oee_dashboard($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));
             }
             if ($action === 'report') {
-                json_response(oee_report($pdo, $requestedDate, $requestedMachine));
+                json_response(oee_report($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));
             }
             if ($action === 'export') {
-                $report = oee_report($pdo, $requestedDate, $requestedMachine);
+                $report = oee_report($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime);
                 if (!($report['available'] ?? false)) json_response($report, 503);
                 $exportLines = array_column($report['line_metrics'], 'line_code');
-                $report['downtime_events'] = [];
-                $report['quality_entries'] = [];
-                if ($exportLines !== []) {
+                $report['downtime_events'] ??= [];
+                $report['quality_entries'] ??= [];
+                if ($exportLines !== [] && $durationHours === 24) {
                     $in = implode(',', array_fill(0, count($exportLines), '?'));
                     $dayStart = $report['date'] . ' 00:00:00';
                     $dayEnd = date('Y-m-d H:i:s', strtotime($report['date'] . ' +1 day'));
@@ -322,7 +357,7 @@ try {
                     $quality->execute([...$exportLines, $report['date']]);
                     $report['quality_entries'] = $quality->fetchAll();
                 }
-                $filename = 'pns-oee-' . ($report['date'] ?? date('Y-m-d')) . '-' . strtolower($requestedMachine) . '.xlsx';
+                $filename = 'pns-oee-' . ($report['date'] ?? date('Y-m-d')) . '-' . strtolower($requestedMachine) . '-' . ($durationHours * 60) . 'min-' . str_replace(':', '', $startTime) . '.xlsx';
                 // Finish generation before declaring a binary response: errors
                 // must return JSON rather than a partial spreadsheet download.
                 $workbook = oee_export_xlsx($report);

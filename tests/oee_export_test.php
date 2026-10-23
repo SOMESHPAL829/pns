@@ -130,6 +130,21 @@ try {
         // Expected: do not invent inputs from saved percentages.
     }
     $report = $singleLineReport;
+    $halfDay = ['date' => '2026-10-22', 'machine' => 'APP-06', 'window' => ['duration_minutes' => 720, 'duration_hours' => 12, 'start_time' => '00:00'],
+        'line_metrics' => [['line_code' => 'APP-06', 'window_start' => '2026-10-22 00:00:00', 'window_end' => '2026-10-22 12:00:00']],
+        'rows' => [['line_code' => 'APP-06', 'pcs' => 5, 'cycle_minutes' => 12]], 'downtime_events' => [], 'quality_entries' => []];
+    file_put_contents($path, oee_export_xlsx($halfDay));
+    $zip = new ZipArchive();
+    $zip->open($path);
+    $sheet = new DOMDocument();
+    $sheet->loadXML($zip->getFromName('xl/worksheets/sheet1.xml'));
+    $xpath = new DOMXPath($sheet);
+    $xpath->registerNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+    foreach (['E2' => 720, 'O13' => 720, 'G13' => 720, 'B9' => 12 / 720, 'B10' => 1] as $reference => $expected) {
+        $actual = (float) $xpath->evaluate('string(//s:c[@r="' . $reference . '"]/s:v)');
+        export_check(abs($actual - $expected) < 1e-10, '12h export used the wrong basis: ' . $reference);
+    }
+    $zip->close();
     file_put_contents($path, oee_export_xlsx($report));
     // openpyxl tolerates malformed OOXML. Use the strict OpenXML validator
     // when installed, so Excel-only incompatibilities cannot pass unnoticed.

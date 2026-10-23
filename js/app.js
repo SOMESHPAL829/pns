@@ -1,5 +1,5 @@
 (function () {
-  const app = { csrf: "", user: null, users: [], records: [], isAdmin: false, currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null };
+  const app = { csrf: "", user: null, users: [], records: [], isAdmin: false, currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null, durationMinutes: "1440", windowStart: "00:00", dashboardRequest: 0, reportRequest: 0 };
   const apiUrl = "api.php";
 
   function toast(message, kind) {
@@ -69,6 +69,29 @@
     node.textContent = message || "";
   }
 
+  function oeeWindowQuery(prefix) {
+    app.durationMinutes = document.getElementById(prefix + "-duration")?.value || app.durationMinutes;
+    app.windowStart = app.durationMinutes === "1440" ? "00:00" : (document.getElementById(prefix + "-start-time")?.value || "00:00");
+    ["dashboard", "report"].forEach(function (name) {
+      const duration = document.getElementById(name + "-duration");
+      const start = document.getElementById(name + "-start-time");
+      if (duration) duration.value = app.durationMinutes;
+      if (start) { start.value = app.windowStart; start.disabled = app.durationMinutes === "1440"; }
+    });
+    return { duration_minutes: app.durationMinutes, start_time: app.windowStart };
+  }
+
+  function renderOeeWindow(prefix, data) {
+    const window = data.window || {};
+    setText(prefix + "-window", window.window_start ? window.duration_minutes + " min (" + window.duration_hours + "h) · " + readableDateTime(window.window_start) + " → " + readableDateTime(window.window_end) : "");
+  }
+
+  function oeeQualityWarning(snapshot) {
+    let flags = snapshot.calculation_flags || {};
+    if (typeof flags === "string") { try { flags = JSON.parse(flags); } catch (error) { flags = {}; } }
+    return flags.shift_quality_not_entered ? "12h quality is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to this window." : "";
+  }
+
   function renderSyncList(targetId, sync) {
     const root = document.getElementById(targetId);
     if (!root) return;
@@ -106,6 +129,7 @@
     showOeeAlert("oee-dashboard-alert", "", false);
     const metrics = data.metrics || {};
     const snapshot = data.oee || {};
+    renderOeeWindow("dashboard", data);
     let calculationFlags = snapshot.calculation_flags || {};
     if (typeof calculationFlags === "string") { try { calculationFlags = JSON.parse(calculationFlags); } catch (error) { calculationFlags = {}; } }
     const checks = [];
@@ -114,6 +138,7 @@
       checks.push("Cycle time is missing; default 12 min/FB is being used." + colours);
     }
     if (calculationFlags.performance_above_100) checks.push("Performance is above 100%; verify cycle time and downtime.");
+    if (oeeQualityWarning(snapshot)) checks.push(oeeQualityWarning(snapshot));
     showOeeAlert("oee-dashboard-alert", checks.join(" "), checks.length > 0);
     setText("oee-value", percent(snapshot.oee));
     setText("availability-value", percent(snapshot.availability));
@@ -128,7 +153,8 @@
     setText("planned-minutes", snapshot.planned_stop_minutes == null ? "—" : Number(snapshot.planned_stop_minutes).toFixed(1) + " min");
     setText("unplanned-minutes", snapshot.unplanned_minutes == null ? "—" : Number(snapshot.unplanned_minutes).toFixed(1) + " min");
     setText("run-minutes", snapshot.run_minutes == null ? "—" : Number(snapshot.run_minutes).toFixed(1) + " min");
-    setText("utilization-value", percent(snapshot.utilization_24h));
+    setText("utilization-value", percent(snapshot.utilization_window ?? snapshot.utilization_24h));
+    setText("utilization-label", (data.window?.duration_hours || 24) + "h utilization");
     const sync = data.sync || [];
     const latest = sync[0];
     setText("oee-status-text", latest && latest.last_status === "ok" ? "Unit 1 sync is healthy" : "Waiting for Unit 1 sync");
@@ -189,7 +215,9 @@
     const dateInput = document.getElementById("report-date");
     if (dateInput && data.date && !dateInput.value) dateInput.value = data.date;
     if (!data.available) { showOeeAlert("oee-report-alert", data.message, true); return; }
-    showOeeAlert("oee-report-alert", "", false);
+    const qualityWarning = oeeQualityWarning(data.oee || {});
+    showOeeAlert("oee-report-alert", qualityWarning, Boolean(qualityWarning));
+    renderOeeWindow("report", data);
     app.reportDate = data.date || "";
     app.reportData = data;
     app.reportRows = data.rows || [];
@@ -202,7 +230,7 @@
       lineBody.replaceChildren();
       (data.line_metrics || []).forEach(function (item) {
         const row = document.createElement("tr");
-        makeCell(row, item.line_code); makeCell(row, percent(item.oee)); makeCell(row, percent(item.availability)); makeCell(row, percent(item.performance)); makeCell(row, percent(item.quality)); makeCell(row, percent(item.utilization_24h));
+        makeCell(row, item.line_code); makeCell(row, percent(item.oee)); makeCell(row, percent(item.availability)); makeCell(row, percent(item.performance)); makeCell(row, percent(item.quality)); makeCell(row, percent(item.utilization_window ?? item.utilization_24h));
         lineBody.appendChild(row);
       });
     }
@@ -213,17 +241,17 @@
   async function exportReportExcel() {
     if (!app.reportData) { showOeeAlert("oee-report-alert", "Load a report before exporting.", true); return; }
     try {
-    const date = app.reportDate || document.getElementById("report-date")?.value || "";
+    const date = document.getElementById("report-date")?.value || app.reportDate || "";
     const machine = document.getElementById("report-machine-filter")?.value || "ALL";
-    const response = await fetch(apiUrl + "?resource=oee&action=export&machine=" + encodeURIComponent(machine) + "&date=" + encodeURIComponent(date), { credentials: "same-origin", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+    const selection = oeeWindowQuery("report");
+    const response = await fetch(apiUrl + "?resource=oee&action=export&machine=" + encodeURIComponent(machine) + "&date=" + encodeURIComponent(date) + "&duration_minutes=" + selection.duration_minutes + "&start_time=" + encodeURIComponent(selection.start_time), { credentials: "same-origin", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
     if (!response.ok) { let message = "Excel export failed."; try { const payload = await response.json(); message = payload.error || message; } catch (error) {} showOeeAlert("oee-report-alert", message, true); return; }
     const blob = await response.blob();
     const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
     if (!response.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") || signature.length !== 4 || signature[0] !== 80 || signature[1] !== 75 || signature[2] !== 3 || signature[3] !== 4) {
       throw new Error("The server did not return a valid Excel workbook. Refresh the page and try again.");
     }
-    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + date + "-" + machine + ".xlsx"; link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
-    showOeeAlert("oee-report-alert", "", false);
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + date + "-" + machine + "-" + selection.duration_minutes + "min-" + selection.start_time.replace(":", "") + ".xlsx"; link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
     } catch (error) {
       showOeeAlert("oee-report-alert", error.message || "Excel export failed. Please try again.", true);
     }
@@ -247,15 +275,21 @@
   async function loadOeeDashboard() {
     const date = document.getElementById("dashboard-date")?.value || "";
     const machine = document.getElementById("dashboard-machine")?.value || "ALL";
-    try { renderDashboard(await request("oee", "dashboard", { query: { machine: machine, ...(date ? { date: date } : {}) } })); }
-    catch (error) { showOeeAlert("oee-dashboard-alert", error.message, true); }
+    const query = oeeWindowQuery("dashboard");
+    const requestId = ++app.dashboardRequest;
+    setText("dashboard-window", "Calculating " + query.duration_minutes + " min window…");
+    try { const data = await request("oee", "dashboard", { query: { machine: machine, ...query, ...(date ? { date: date } : {}) } }); if (requestId === app.dashboardRequest) renderDashboard(data); }
+    catch (error) { if (requestId === app.dashboardRequest) showOeeAlert("oee-dashboard-alert", error.message, true); }
   }
 
   async function loadOeeReport() {
     const date = document.getElementById("report-date")?.value || document.getElementById("dashboard-date")?.value || "";
     const machine = document.getElementById("report-machine-filter")?.value || "APP-06";
-    try { renderReport(await request("oee", "report", { query: { machine: machine, ...(date ? { date: date } : {}) } })); }
-    catch (error) { showOeeAlert("oee-report-alert", error.message, true); }
+    const query = oeeWindowQuery("report");
+    const requestId = ++app.reportRequest;
+    setText("report-window", "Calculating " + query.duration_minutes + " min window…");
+    try { const data = await request("oee", "report", { query: { machine: machine, ...query, ...(date ? { date: date } : {}) } }); if (requestId === app.reportRequest) renderReport(data); }
+    catch (error) { if (requestId === app.reportRequest) showOeeAlert("oee-report-alert", error.message, true); }
   }
 
   function renderDowntime(data) {
@@ -547,8 +581,19 @@
   if (dashboardDate) dashboardDate.addEventListener("change", loadOeeDashboard);
   const dashboardMachine = document.getElementById("dashboard-machine");
   if (dashboardMachine) dashboardMachine.addEventListener("change", loadOeeDashboard);
+  ["dashboard", "report"].forEach(function (prefix) {
+    ["duration", "start-time"].forEach(function (suffix) {
+      const control = document.getElementById(prefix + "-" + suffix);
+      if (control) control.addEventListener("change", function () {
+        oeeWindowQuery(prefix);
+        if (prefix === "dashboard") loadOeeDashboard(); else loadOeeReport();
+      });
+    });
+  });
   const reportLoad = document.getElementById("report-load");
   if (reportLoad) reportLoad.addEventListener("click", loadOeeReport);
+  const reportDateControl = document.getElementById("report-date");
+  if (reportDateControl) reportDateControl.addEventListener("change", loadOeeReport);
   const reportExport = document.getElementById("report-export");
   if (reportExport) reportExport.addEventListener("click", exportReportExcel);
   const reportMachine = document.getElementById("report-machine-filter");
@@ -597,6 +642,7 @@
   if (logsRefresh) logsRefresh.addEventListener("click", loadScadaLogs);
   window.addEventListener("hashchange", function () {
     const route = (location.hash || "#/dashboard").replace("#/", "").split("/")[0];
+    if (route === "dashboard") loadOeeDashboard();
     if (route === "oee-report") loadOeeReport();
     if (route === "scada-logs") loadScadaLogs();
     if (route === "downtime") loadDowntime();
@@ -607,6 +653,7 @@
     if (!navigation) return;
     const route = navigation.getAttribute("data-nav") || navigation.getAttribute("data-goto");
     setTimeout(function () {
+      if (route === "dashboard") loadOeeDashboard();
       if (route === "oee-report") loadOeeReport();
       if (route === "scada-logs") loadScadaLogs();
       if (route === "downtime") loadDowntime();

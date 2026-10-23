@@ -67,6 +67,25 @@ The authenticated app now includes:
 
 ### Formula-driven Excel export
 
+Dashboard and production report offer **1440 min (24 hours)** and **720 min
+(12 hours)**. The full-day default starts at midnight. For 720 minutes, choose
+the window start; overnight windows include the next day's production until the
+displayed end time. Flight bars are selected by loading timestamp, including the
+start and excluding the end; downtime is clipped to the same window.
+
+The report/export API accepts `duration_minutes=1440|720&start_time=HH:MM`
+(`duration_hours=24|12` is also supported). Window utilization uses the selected
+minutes per line; `utilization_24h` in API responses retains the fixed 1440-minute
+meaning. Exports include the selection in their filename and workbook header.
+12-hour views are calculated separately and do not replace stored DAY results.
+
+12-hour quality uses entries matching `H12_HHMM` and the selected start date;
+daily quality losses are never copied into both shifts. When matching quality
+is missing, a visible warning explains the zero-loss assumption. Details and
+acceptance criteria: `OEE_DURATION_SELECTION.md`. Run
+`php tests/oee_window_test.php` for boundary/overnight/quality and weighted-total
+checks.
+
 The production report's **Export Excel** downloads FB-level cycle times, event
 timestamps, quality records and reporting windows alongside Excel formulas.
 The line table starts at row 13; all totals in G:O and R:S are formulas.

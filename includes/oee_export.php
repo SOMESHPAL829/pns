@@ -71,7 +71,7 @@ function oee_export_xlsx(array $report): string
     $sheetRows = [];
     $summaryRows = [
         1 => [oee_xlsx_cell('A1', 'PNS OEE report', 1), oee_xlsx_cell('H1', 'Calculation inputs', 1), oee_xlsx_cell('I1', 'Value', 1)],
-        2 => [oee_xlsx_cell('A2', 'Report date'), oee_xlsx_cell('B2', $report['date'] ?? '')],
+        2 => [oee_xlsx_cell('A2', 'Report date'), oee_xlsx_cell('B2', $report['date'] ?? ''), oee_xlsx_cell('D2', 'Duration (min)'), oee_xlsx_cell('E2', (int) ($report['window']['duration_minutes'] ?? 1440)), oee_xlsx_cell('F2', 'Start: ' . ($report['window']['start_time'] ?? '00:00'))],
         3 => [oee_xlsx_cell('A3', 'Line / machine'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All lines' : ($report['machine'] ?? ''))],
         4 => [oee_xlsx_cell('A4', 'Blue values = database inputs. Black values = Excel calculations.')],
         5 => [oee_xlsx_cell('A5', 'Aggregate calculation', 1), oee_xlsx_cell('B5', 'Value', 1), oee_xlsx_cell('C5', 'Formula', 1)],
@@ -79,7 +79,7 @@ function oee_export_xlsx(array $report): string
         7 => [oee_xlsx_cell('A7', 'Performance'), oee_xlsx_cell('B7', $performance, 2, 'IF(I4>0,I5/I4,0)'), oee_xlsx_cell('C7', 'Ideal output time / run time')],
         8 => [oee_xlsx_cell('A8', 'Quality'), oee_xlsx_cell('B8', $quality, 2, 'IF(I6>0,I7/I6,0)'), oee_xlsx_cell('C8', 'Good FB / productive FB')],
         9 => [oee_xlsx_cell('A9', 'OEE'), oee_xlsx_cell('B9', $availability * $performance * $quality, 2, 'B6*B7*B8'), oee_xlsx_cell('C9', 'Availability × Performance × Quality')],
-        10 => [oee_xlsx_cell('A10', '24h utilization'), oee_xlsx_cell('B10', $ratio($totals, 'run_minutes', 'calendar_minutes'), 2, 'IF(I8>0,I4/I8,0)'), oee_xlsx_cell('C10', 'Run time / summed calendar minutes')],
+        10 => [oee_xlsx_cell('A10', 'Window utilization'), oee_xlsx_cell('B10', $ratio($totals, 'run_minutes', 'calendar_minutes'), 2, 'IF(I8>0,I4/I8,0)'), oee_xlsx_cell('C10', 'Run time / summed selected-window minutes')],
         11 => [oee_xlsx_cell('A11', 'Calculation sources: FB rows below, Downtime, Downtime calculation, Quality. Edit blue source cells to recalculate.')],
     ];
     $inputRows = [
@@ -100,7 +100,7 @@ function oee_export_xlsx(array $report): string
     }
     ksort($summaryRows);
     foreach ($summaryRows as $number => $cells) $sheetRows[] = oee_xlsx_row($number, $cells);
-    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', '24h utilization', 'Window (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Window start', 'Window end', 'Rejected FB', 'Reworked FB'];
+    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', 'Window utilization', 'Window (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Window start', 'Window end', 'Rejected FB', 'Reworked FB'];
     $headerCells = [];
     foreach ($lineHeaders as $index => $label) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . '12', $label, 1);
     $sheetRows[] = oee_xlsx_row(12, $headerCells);
