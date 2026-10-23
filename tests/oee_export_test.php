@@ -19,6 +19,11 @@ $report = [
     'rows' => [['line_code' => 'APP-06', 'si_no' => 1, 'seq' => '00123', 'part_code' => '=1+1', 'grade' => 'A&B <test>', 'used_colour' => 'BLACK-1', 'pcs' => 12, 'total_surface_area' => 1.25, 'is_productive' => 1]],
 ];
 $path = $argv[1] ?? tempnam(sys_get_temp_dir(), 'pns-export-test-');
+if (!isset($argv[1])) {
+    $xlsxPath = $path . '.xlsx';
+    rename($path, $xlsxPath);
+    $path = $xlsxPath;
+}
 try {
     $bytes = oee_export_xlsx($report);
     export_check(str_starts_with($bytes, "PK\x03\x04"), 'Export must start with ZIP signature');
