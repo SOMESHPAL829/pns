@@ -79,6 +79,24 @@ try {
         ]);
     }
 
+    // The Unit 1 sender publishes a cumulative full-day report every cycle.
+    // Keep the newest report as the calculation source instead of appending
+    // the same earlier FB rows repeatedly as the report grows during the day.
+    $previousBatches = $pdo->prepare(
+        'SELECT id FROM oee_import_batches WHERE source = ? AND report_date = ? AND status = \'processed\' FOR UPDATE'
+    );
+    $previousBatches->execute([$normalized['source'], $normalized['report_date']]);
+    $previousIds = array_map('intval', $previousBatches->fetchAll(PDO::FETCH_COLUMN));
+    if ($previousIds !== []) {
+        $previousPlaceholders = implode(',', array_fill(0, count($previousIds), '?'));
+        $deleteRows = $pdo->prepare('DELETE FROM oee_fb_runs WHERE import_batch_id IN (' . $previousPlaceholders . ')');
+        $deleteRows->execute($previousIds);
+        $supersede = $pdo->prepare(
+            "UPDATE oee_import_batches SET status = 'failed', error_message = 'Superseded by a newer cumulative full report.' WHERE id IN ($previousPlaceholders)"
+        );
+        $supersede->execute($previousIds);
+    }
+
     $insertBatch = $pdo->prepare(
         'INSERT INTO oee_import_batches (batch_id, source, line_code, report_date, schema_version, payload_sha256, row_count, raw_payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
     );
