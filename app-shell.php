@@ -210,7 +210,7 @@ $csrfToken = csrf_token();
   </div>
   <div id="toast-stack" class="app-toast-stack" aria-live="polite"></div>
   <script src="js/icons.js"></script>
-  <script src="js/portal.js"></script>
+  <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
   <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>"></script>
 </body>
 </html>
