@@ -1,5 +1,5 @@
 (function () {
-  const app = { csrf: "", user: null, users: [], records: [], isAdmin: false, currentRecord: null, oee: null, reportRows: [], downtimeEditId: null };
+  const app = { csrf: "", user: null, users: [], records: [], isAdmin: false, currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null };
   const apiUrl = "api.php";
 
   function toast(message, kind) {
@@ -163,11 +163,14 @@
     });
     filtered.forEach(function (item) {
       const row = document.createElement("tr");
-      makeCell(row, item.si_no); makeCell(row, item.seq, "mono"); makeCell(row, item.part_code); makeCell(row, item.grade); makeCell(row, item.used_colour || item.report_colour); makeCell(row, item.loading_at); makeCell(row, item.unloading_at); makeCell(row, item.pcs); makeCell(row, item.total_surface_area == null ? "—" : Number(item.total_surface_area).toFixed(2)); makeCell(row, Number(item.is_productive) === 1 ? "Productive" : "Empty");
+      makeCell(row, item.line_code || "—"); makeCell(row, item.si_no); makeCell(row, item.seq, "mono"); makeCell(row, item.part_code); makeCell(row, item.grade); makeCell(row, item.used_colour || item.report_colour); makeCell(row, item.loading_at); makeCell(row, item.unloading_at); makeCell(row, item.pcs); makeCell(row, item.total_surface_area == null ? "—" : Number(item.total_surface_area).toFixed(2)); makeCell(row, Number(item.is_productive) === 1 ? "Productive" : "Empty");
       body.appendChild(row);
     });
-    if (filtered.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No rows match these filters."); cell.colSpan = 10; body.appendChild(row); }
-    setText("report-summary", (document.getElementById("report-date")?.value || "") + " · " + filtered.length + " of " + (rows || []).length + " flight bars shown");
+    if (filtered.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No rows match these filters."); cell.colSpan = 11; body.appendChild(row); }
+    const data = app.reportData || {};
+    const snapshot = data.oee || {};
+    const kpis = snapshot.oee == null ? "" : " · OEE " + percent(snapshot.oee) + " · Availability " + percent(snapshot.availability) + " · Performance " + percent(snapshot.performance) + " · Quality " + percent(snapshot.quality);
+    setText("report-summary", (app.reportDate || document.getElementById("report-date")?.value || "") + " · " + (data.machine === "ALL" ? "All lines" : (data.machine || "")) + " · " + filtered.length + " of " + (rows || []).length + " flight bars shown" + kpis);
   }
 
   function populateReportFilters(rows) {
@@ -187,11 +190,39 @@
     if (dateInput && data.date && !dateInput.value) dateInput.value = data.date;
     if (!data.available) { showOeeAlert("oee-report-alert", data.message, true); return; }
     showOeeAlert("oee-report-alert", "", false);
-    const metrics = data.metrics || {};
-    setText("report-summary", (data.date || "") + " · " + (metrics.total_fb || 0) + " flight bars · " + (metrics.productive_fb || 0) + " productive");
+    app.reportDate = data.date || "";
+    app.reportData = data;
     app.reportRows = data.rows || [];
     populateReportFilters(app.reportRows);
     renderReportRows(app.reportRows);
+  }
+
+  function exportReportCsv() {
+    if (!app.reportData || !app.reportRows.length) { showOeeAlert("oee-report-alert", "Load a report with data before exporting.", true); return; }
+    const search = (document.getElementById("report-search")?.value || "").trim().toLowerCase();
+    const grade = document.getElementById("report-grade-filter")?.value || "";
+    const colour = document.getElementById("report-colour-filter")?.value || "";
+    const state = document.getElementById("report-state-filter")?.value || "";
+    const rows = app.reportRows.filter(function (item) {
+      const text = [item.seq, item.part_code, item.used_colour, item.report_colour].join(" ").toLowerCase();
+      const itemState = Number(item.is_productive) === 1 ? "productive" : "empty";
+      return (!search || text.includes(search)) && (!grade || item.grade === grade) && (!colour || (item.used_colour || item.report_colour) === colour) && (!state || itemState === state);
+    });
+    const csvCell = function (value) { return '"' + String(value ?? "").replace(/"/g, '""') + '"'; };
+    const snapshot = app.reportData.oee || {};
+    const lines = [
+      ["Report date", app.reportDate],
+      ["Line / machine", app.reportData.machine === "ALL" ? "All lines" : app.reportData.machine],
+      ["OEE", percent(snapshot.oee)],
+      ["Availability", percent(snapshot.availability)],
+      ["Performance", percent(snapshot.performance)],
+      ["Quality", percent(snapshot.quality)],
+      [],
+      ["Line", "SI", "Sequence", "Part", "Grade", "Colour", "Loading", "Unloading", "PCS", "Total SA", "State"],
+    ];
+    rows.forEach(function (item) { lines.push([item.line_code, item.si_no, item.seq, item.part_code, item.grade, item.used_colour || item.report_colour, item.loading_at, item.unloading_at, item.pcs, item.total_surface_area == null ? "" : Number(item.total_surface_area).toFixed(2), Number(item.is_productive) === 1 ? "Productive" : "Empty"]); });
+    const blob = new Blob([lines.map(function (line) { return line.map(csvCell).join(","); }).join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + app.reportDate + "-" + (app.reportData.machine || "ALL") + ".csv"; link.click(); URL.revokeObjectURL(link.href);
   }
 
   function renderLogs(data) {
@@ -514,6 +545,8 @@
   if (dashboardMachine) dashboardMachine.addEventListener("change", loadOeeDashboard);
   const reportLoad = document.getElementById("report-load");
   if (reportLoad) reportLoad.addEventListener("click", loadOeeReport);
+  const reportExport = document.getElementById("report-export");
+  if (reportExport) reportExport.addEventListener("click", exportReportCsv);
   const reportMachine = document.getElementById("report-machine-filter");
   if (reportMachine) reportMachine.addEventListener("change", loadOeeReport);
   ["report-search", "report-grade-filter", "report-colour-filter", "report-state-filter"].forEach(function (id) {

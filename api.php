@@ -130,10 +130,12 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06'): array
     if (!$dashboard['available']) {
         return $dashboard;
     }
+    $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [$dashboard['line_code']];
+    $placeholders = implode(',', array_fill(0, count($lines), '?'));
     $rows = $pdo->prepare(
-        'SELECT si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, flags FROM oee_fb_runs WHERE line_code = ? AND report_date = ? ORDER BY si_no ASC'
+        'SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, flags FROM oee_fb_runs WHERE line_code IN (' . $placeholders . ') AND report_date = ? ORDER BY line_code, si_no ASC'
     );
-    $rows->execute([$dashboard['line_code'], $dashboard['date']]);
+    $rows->execute([...$lines, $dashboard['date']]);
     $dashboard['rows'] = $rows->fetchAll();
     return $dashboard;
 }
