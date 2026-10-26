@@ -34,6 +34,8 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert.equal(await page.locator('#dashboard-batches-body test').count(),0,'Batch strings must not become markup');
   assert((await page.locator('#dashboard-stops-body').textContent()).includes('proposed'));
   assert((await page.locator('#dashboard-reasons').textContent()).includes('864.0 min'));
+  assert(await page.locator('#dashboard-reasons').evaluate(el=>el.closest('.pns-operations')?.firstElementChild.contains(el)===true),'Downtime by reason must replace Recent batches as the first Live operations card');
+  assert(await page.locator('#dashboard-batches-body').evaluate(el=>el.closest('.pns-batches-section')!==null),'Recent batches must move into the lower production section');
   assert.equal(await page.locator('#dashboard-run-bar').evaluate(el=>el.style.width),'80%');
   assert.equal(await page.locator('#dashboard-stopped-share').textContent(),'20.0%');
   assert(!(await page.locator('[data-view="dashboard"]').textContent()).includes('Hourly production'));
@@ -60,7 +62,7 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   await page.locator('[data-nav="dashboard"]').click();
   await page.locator('#dashboard-machine').selectOption('ALL');await page.locator('#dashboard-date').fill('2026-10-22');await page.locator('#dashboard-duration').selectOption('1440');await page.locator('#dashboard-refresh').click();
   await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('All machines'));
-  for(const width of[1440,1024,768,320]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(250);for(const id of['dashboard-machine','dashboard-date','dashboard-duration','dashboard-start-time','dashboard-refresh']){const b=await page.locator('#'+id).boundingBox();assert(b&&b.x>=0&&b.x+b.width<=width+1,id+' overflows '+width);}const operations=await page.locator('.pns-operations').boundingBox(),breakdown=await page.locator('.pns-breakdown-section').boundingBox();assert(operations&&breakdown&&breakdown.y>=operations.y+operations.height,'Downtime breakdown must appear below Live operations at '+width);}
+  for(const width of[1440,1024,768,320]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(250);for(const id of['dashboard-machine','dashboard-date','dashboard-duration','dashboard-start-time','dashboard-refresh']){const b=await page.locator('#'+id).boundingBox();assert(b&&b.x>=0&&b.x+b.width<=width+1,id+' overflows '+width+' '+JSON.stringify(b));}const operations=await page.locator('.pns-operations').boundingBox(),batches=await page.locator('.pns-batches-section').boundingBox();assert(operations&&batches&&batches.y>=operations.y+operations.height,'Recent batches must appear below Live operations at '+width);}
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Mobile dashboard has page-wide overflow');
   await page.screenshot({path:'/tmp/pns-dashboard-updated-mobile.png'});
   await page.setViewportSize({width:1440,height:1100});await page.waitForTimeout(250);await page.screenshot({path:'/tmp/pns-dashboard-updated.png',fullPage:true});
@@ -68,8 +70,9 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   fail=true;await page.locator('#dashboard-refresh').click();await page.waitForFunction(()=>document.getElementById('oee-dashboard-alert').textContent.includes('Test connection unavailable'));
   assert.equal(await page.locator('#oee-value').textContent(),'—','Failure must not leave stale KPIs');assert(!(await page.locator('#dashboard-refresh').isDisabled()));
   fail=false;empty=false;permissions={dashboard:{view:true}};const count=requests.length;await page.goto('http://127.0.0.1:4173/app.php?scope=dashboard-only#/dashboard');await page.waitForFunction(()=>document.getElementById('oee-value').textContent==='60.0%');
-  assert(!(await page.locator('.pns-breakdown-section').isVisible()));assert(!(await page.locator('#dashboard-batches-body').isVisible()));assert(!(await page.locator('#dashboard-stops-body').isVisible()));assert(await page.locator('#dashboard-detail-message').isVisible());
+  assert(!(await page.locator('.pns-reason-card').isVisible()));assert(!(await page.locator('.pns-batches-section').isVisible()));assert(!(await page.locator('#dashboard-batches-body').isVisible()));assert(!(await page.locator('#dashboard-stops-body').isVisible()));assert(await page.locator('#dashboard-detail-message').isVisible());
   assert(!requests.slice(count).some(r=>['report','downtime','masters'].includes(r.action)),'Dashboard-only must not fetch restricted endpoints');
   permissions={dashboard:{view:true},downtime:{view:true,update:false}};await page.goto('http://127.0.0.1:4173/app.php?scope=view-only#/dashboard');await page.waitForFunction(()=>document.getElementById('oee-value').textContent==='60.0%');assert.equal(await page.locator('[data-dashboard-tag]').count(),0,'View-only roles must not tag');
+  assert(await page.locator('.pns-reason-card').isVisible());assert(!(await page.locator('.pns-batches-section').isVisible()),'Downtime View must not expose the relocated batch section');
   assert.deepEqual(errors,[]);console.log('Dashboard browser tests passed: inline downtime tagging, CSRF payload, cancel/errors, exact event/line, refresh, read-only hiding, safe text, filters and responsive layouts.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

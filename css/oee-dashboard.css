@@ -1,5 +1,5 @@
 /* Scoped adaptation of deploy/PNS_Anodizing_Dashboard.html. */
-.pns-dashboard { --pns-blue: #2e679f; --pns-stop: #bc514a; --pns-planned: #a86d14; }
+.pns-dashboard { --pns-blue: #2e679f; --pns-stop: #bc514a; --pns-planned: #a86d14; min-width: 0; }
 .pns-dashboard.active { display: block; }
 .pns-dashboard .page-heading { gap: 1.25rem; margin-bottom: 0.75rem; align-items: center; }
 .pns-dashboard .page-heading h1 { font-size: 1.8rem; }

@@ -86,3 +86,14 @@ Trust boundary: HTTP/body and reason labels/notes are untrusted. The server MUST
 check Update, bind SQL parameters, validate active registered reasons and match
 the event's actual machine. Render labels/notes as text, never HTML. Existing
 CSRF checks cover the new action. Only synthetic fixtures may be mutated in tests.
+
+## Panel order update (2026-10-26)
+
+Within Live operations, Downtime by reason replaces Recent batches in the first
+card, beside Recent downtime events. Recent batches moves into the full-width
+Production batches section below Live operations. Each panel retains its own
+permission guard (Downtime/View versus Production report/View), data IDs, links
+and tagging behavior. Browser checks cover the new order at all four breakpoints
+and ensure the relocated batch section stays hidden without report access.
+The dashboard grid item has `min-width: 0` so the full-width table scrolls inside
+its card instead of forcing the page and filter controls beyond a mobile screen.
