@@ -5,8 +5,8 @@ function portal_permission_catalog(): array
 {
     return [
         'dashboard' => ['label'=>'OEE dashboard','actions'=>['view']],
-        'oee-range' => ['label'=>'Date-range OEE','actions'=>['view']],
-        'oee-report' => ['label'=>'Production report / Excel export','actions'=>['view']],
+        'oee-range' => ['label'=>'Date-range OEE','actions'=>['view','export']],
+        'oee-report' => ['label'=>'Production report / Excel export','actions'=>['view','export']],
         'scada-logs' => ['label'=>'SCADA logs','actions'=>['view']],
         'downtime' => ['label'=>'Downtime review','actions'=>['view','create','update']],
         'records' => ['label'=>'Records','actions'=>['view','create','update','delete']],
@@ -29,6 +29,7 @@ function portal_standard_permissions(): array
     $matrix = portal_permission_matrix();
     foreach (['dashboard','oee-range','oee-report','scada-logs','downtime','oee-masters','profile','records'] as $page) $matrix[$page]['view'] = true;
     foreach (['create','update','delete'] as $action) $matrix['records'][$action] = true;
+    foreach (['oee-report','oee-range'] as $page) $matrix[$page]['export'] = true;
     $matrix['profile']['update'] = true;
     return $matrix;
 }
@@ -48,7 +49,7 @@ function portal_validate_permissions(array $input): array
             if (!array_key_exists($action,$matrix[$page]) || !is_bool($allow)) throw new InvalidArgumentException('Permissions must be supported actions with true/false values.');
             $matrix[$page][$action] = $allow;
         }
-        if (!$matrix[$page]['view'] && in_array(true,$matrix[$page],true)) throw new InvalidArgumentException('View is required before Create, Update or Delete.');
+        if (!$matrix[$page]['view'] && in_array(true,$matrix[$page],true)) throw new InvalidArgumentException('View is required before Create, Update, Delete or Export.');
     }
     return $matrix;
 }
@@ -69,7 +70,7 @@ function portal_api_requirement(string $resource, string $action, string $method
         if(in_array($resource,['records','users','roles'],true)&&$action==='')return [$resource,'view'];
         if($resource==='oee'){
             $pages=['dashboard'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'];
-            if(isset($pages[$action]))return [$pages[$action],'view'];
+            if(isset($pages[$action]))return [$pages[$action],in_array($action,['export','range-export'],true)?'export':'view'];
         }
     }
     if($method==='POST'){

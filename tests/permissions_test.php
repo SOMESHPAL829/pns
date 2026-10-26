@@ -14,7 +14,7 @@ foreach ([['records' => ['create' => true]], ['unknown' => ['view' => true]], ['
 }
 $admin = portal_permission_matrix(true);
 foreach(['dashboard'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'] as $action=>$page){
-    permission_check(portal_api_requirement('oee',$action,'GET')===[$page,'view'],'GET permission missing: '.$action);
+    permission_check(portal_api_requirement('oee',$action,'GET')===[$page,in_array($action,['export','range-export'],true)?'export':'view'],'GET permission missing: '.$action);
 }
 foreach(['records'=>'record','users'=>'user','roles'=>'role'] as $resource=>$prefix){
     permission_check(portal_api_requirement($resource,$prefix.($resource==='roles'?'-save':'-create'),'POST')===[$resource,'create'],'Create permission missing');

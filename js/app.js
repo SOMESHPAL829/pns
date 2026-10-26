@@ -244,6 +244,7 @@
   }
 
   async function exportReportExcel() {
+    if (!can("oee-report", "export")) { showOeeAlert("oee-report-alert", "You do not have Export permission for this report.", true); return; }
     if (!app.reportData) { showOeeAlert("oee-report-alert", "Load a report before exporting.", true); return; }
     try {
     const date = document.getElementById("report-date")?.value || app.reportDate || "";
@@ -364,6 +365,7 @@
   }
 
   async function exportRangeExcel() {
+    if (!can("oee-range", "export")) { showOeeAlert("range-alert", "You do not have Export permission for this report.", true); return; }
     const button = document.getElementById("range-export");
     try {
       const query = rangeQuery();

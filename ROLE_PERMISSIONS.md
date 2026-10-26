@@ -13,10 +13,11 @@ both the UI and API. Hidden buttons alone are not authorization.
   may manage roles/permission grants. The built-in Standard user role MUST retain
   today's non-admin access; create a custom role to change it.
 - Every current page MUST appear in the permission matrix. Read-only pages
-  support View; Records and Roles support CRUD; Downtime, Users and OEE masters
+  support View, plus Export on the two reports; Records and Roles support CRUD; Downtime, Users and OEE masters
   support View/Create/Update; Profile supports View/Update. Unsupported operations
   MUST be shown as not applicable, not as misleading active permissions.
-- Mutations require View plus their specific action. Export uses report View.
+- Mutations require View plus their specific action. Excel downloads require
+  View **and Export**, separately for Production report and Date-range OEE.
   New roles default to no grants. Unknown pages/actions, invalid grant shapes,
   missing/deleted role assignments and unauthorized requests MUST fail closed.
 - Authentication, CSRF and record ownership checks MUST remain in force. The
@@ -38,7 +39,7 @@ both the UI and API. Hidden buttons alone are not authorization.
 
 ## Acceptance criteria
 
-1. Given a View-only role, all allowed GET/export requests work and direct
+1. Given a View-only role, allowed page reads work, exports return 403, and direct
    Create/Update/Delete requests return 403 without changing database rows.
 2. Given no page View, menus and direct routes hide content, and GET/bootstrap
    cannot return that page's data. Create without View is rejected.
@@ -64,6 +65,26 @@ precede code, with private access/data backups. Rollback to the prior revision
 can leave additive tables intact, but restores the previous broad admin/user model.
 
 ## API contract
+
+### Separate export permission (26 October 2026)
+
+Both `oee-report` and `oee-range` MUST expose an independent Export checkbox.
+New roles MUST default Export to false. Checking Export requires View; removing
+View clears Export. API downloads MUST require Export as well as View, and the UI
+MUST hide export buttons without it. Other pages show Export as not applicable.
+
+Migration 008 MUST grant Export once to existing roles which already have the
+corresponding report View, preserving their prior download access. It MUST be
+transactional and recorded in a migration ledger; rerunning MUST NOT restore
+revoked Export or grant Export to roles created later. Built-in administrators
+retain full access, and the Standard user baseline retains existing download
+access. No report formulas, formats, SCADA code or other CRUD grants change.
+
+Acceptance: View-only report/range readers can read but cannot export (buttons
+hidden, direct URLs 403); View+Export permits valid XLSX downloads; revocation
+blocks the next request without changing View; Export without View is rejected;
+save/reload and migration rerun preserve explicit decisions. Verify policy,
+real HTTP, browser controls/matrix and existing Excel/regression tests.
 
 Existing session and CSRF mechanisms are unchanged. All API routes use an exact
 resource/action/method allowlist. Denied access is 403; invalid input is 422;

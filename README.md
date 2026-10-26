@@ -15,7 +15,7 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 3. Set `APP_BASE_URL` to the public app URL and `APP_MAIL_FROM` to a sender address in the PHP environment.
 4. Ensure the database account can create and use the `portal_*` tables.
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
-6. Run `php migrate-permissions.php` to install page-level roles and permissions.
+6. Run `php migrate-permissions.php`, then `php migrate-export-permissions.php` to install page-level roles and permissions.
 
 The account recovery page returns the same confirmation for existing and unknown email addresses. Reset links expire after 30 minutes and can only be used once. PHP's `mail()` must be connected to a working mail transport for delivery.
 
@@ -43,10 +43,13 @@ Authorized account managers create accounts; there is no public sign-up route. R
 ## Roles and page permissions
 
 Open **Administration → Roles & permissions**, create a named role, and select
-View/Create/Update/Delete for each supported page action. Every existing page is
+View/Create/Update/Delete/Export for each supported page action. Every existing page is
 listed. Read-only pages show dashes for unsupported actions; no new deletion of
 SCADA data or user accounts is introduced. Users activate/deactivate with Update.
-View is required for mutations; Excel exports use the corresponding report View.
+View is required for mutations. Excel downloads require **View + Export** for
+the corresponding report: Production report and Date-range OEE have separate grants.
+Users without Export can still view allowed reports, but see no download button;
+direct export API requests return 403. New roles default to Export disabled.
 OEE threshold edits require master-data Update, not Create.
 
 Assign the role under **Users → Save role**, or choose it when creating an account.
@@ -67,7 +70,13 @@ and current deployed code privately. Rollback can leave the additive tables inta
 but the old version reverts to the broad admin/user policy. Security-sensitive
 role creation/changes/deletion/assignment/status changes have database audit records.
 
-Tests: `php tests/permissions_test.php`; isolated browser test
+For the independent Export permission, also run `php migrate-export-permissions.php`
+before deployment. Migration 008 preserves existing report download rights once,
+records completion, and never restores later revoked grants when rerun. It does
+not change other page permissions. Back up access tables and the migration ledger
+privately. Rollback to older code restores the old View-implies-export policy.
+
+Tests: `php tests/permissions_test.php`, `php tests/export_permissions_test.php`; isolated browser test
 `node tests/permissions_browser_test.cjs` (Playwright/Chromium overrides supported).
 Full database/HTTP integration: `OEE_TEST_BASE_URL=http://127.0.0.1:4173 php
 tests/permissions_api_test.php`. This opt-in test creates uniquely named temporary

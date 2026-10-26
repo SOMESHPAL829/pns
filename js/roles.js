@@ -17,7 +17,7 @@
     const body = document.getElementById("role-permissions-body"); body.replaceChildren();
     Object.entries(catalog).forEach(function ([page, item]) {
       const row = document.createElement("tr"); cell(row, item.label);
-      ["view", "create", "update", "delete"].forEach(function (action) {
+      ["view", "create", "update", "delete", "export"].forEach(function (action) {
         const td = cell(row, "");
         if (!item.actions.includes(action)) { td.textContent = "—"; return; }
         const input = document.createElement("input"); input.type = "checkbox";
