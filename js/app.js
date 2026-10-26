@@ -726,6 +726,7 @@
   }
   document.getElementById("range-export")?.addEventListener("click", exportRangeExcel);
   if (dashboardRefresh) dashboardRefresh.addEventListener("click", loadOeeDashboard);
+  window.addEventListener("pns-downtime-tagged", function () { if (document.querySelector('[data-view="dashboard"]').classList.contains("active")) loadOeeDashboard(); });
   const dashboardDate = document.getElementById("dashboard-date");
   if (dashboardDate) dashboardDate.addEventListener("change", loadOeeDashboard);
   const dashboardMachine = document.getElementById("dashboard-machine");

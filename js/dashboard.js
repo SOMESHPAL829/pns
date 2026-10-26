@@ -4,6 +4,7 @@
   const number = value => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
   const pct = value => value === null ? "—" : (value * 100).toFixed(1) + "%";
   const minutes = value => value === null ? "—" : value.toFixed(1) + " min";
+  let stopEvents = [], editingStop = null, tagRequest = 0, savingTag = false;
   function cell(row, value, detail) {
     const td = document.createElement("td"); td.textContent = value ?? "—";
     if (detail) { const small = document.createElement("span"); small.className = "pns-cell-detail"; small.textContent = detail; td.appendChild(small); }
@@ -49,9 +50,19 @@
     });
     if (!batches.children.length) empty(batches, 5, "No batches in this reporting window.");
     const stops = node("dashboard-stops-body"); stops.replaceChildren();
-    (data.recent_downtime || []).forEach(function (item) {
+    stopEvents = data.recent_downtime || [];
+    stopEvents.forEach(function (item) {
       const row = document.createElement("tr"); cell(row, String(item.ends_at || "—").slice(0, 16), item.line_code); cell(row, item.reason_label || item.reason_code || "Not yet classified"); cell(row, item.source);
-      badge(cell(row, ""), item.status, ["approved", "confirmed"].includes(item.status) ? "ok" : item.status === "rejected" ? "rejected" : "proposed"); stops.appendChild(row);
+      const statusCell = cell(row, "");
+      badge(statusCell, item.status, ["approved", "confirmed"].includes(item.status) ? "ok" : item.status === "rejected" ? "rejected" : "proposed");
+      if (item.id && window.PortalAccess.can("downtime", "update")) {
+        const button = document.createElement("button"); button.type = "button"; button.className = "link pns-tag-action";
+        button.textContent = item.status === "proposed" ? "Tag reason" : "Edit reason"; button.dataset.dashboardTag = String(item.id);
+        button.dataset.permissionPage = "downtime"; button.dataset.permissionAction = "update";
+        button.setAttribute("aria-label", button.textContent + " for " + item.line_code + " ending " + item.ends_at);
+        statusCell.appendChild(button);
+      }
+      stops.appendChild(row);
     });
     if (!stops.children.length) empty(stops, 4, "No downtime events in this reporting window.");
     node("dashboard-detail-message").hidden = window.PortalAccess.can("oee-report") || window.PortalAccess.can("downtime");
@@ -68,6 +79,55 @@
     text("dashboard-reasons", "Downtime reasons unavailable."); text("oee-sync-list", "Synchronization data unavailable."); empty(node("oee-imports-body"), 5, "Import history unavailable.");
     text("dashboard-window", "Reporting window could not be loaded.");
   }
+  function tagError(message) {
+    text("dashboard-tag-error", message); node("dashboard-tag-error").hidden = !message;
+  }
+  async function openTag(id) {
+    if (!window.PortalAccess.can("downtime", "update")) return;
+    const item = stopEvents.find(stop => String(stop.id) === id); if (!item) return;
+    editingStop = item; const requestId = ++tagRequest, dialog = node("dashboard-tag-dialog");
+    node("dashboard-tag-form").reset(); tagError("");
+    text("dashboard-tag-context", item.line_code + " · " + item.starts_at + " → " + item.ends_at + " · " + item.source + " · " + item.status);
+    node("dashboard-tag-type").value = item.event_type;
+    node("dashboard-tag-notes").value = item.notes || "";
+    node("dashboard-tag-reason").replaceChildren(new Option("Loading reasons…", ""));
+    node("dashboard-tag-reason").disabled = true; node("dashboard-tag-save").disabled = true;
+    dialog.showModal();
+    try {
+      const data = await window.PortalRequest("oee", "masters", {});
+      if (requestId !== tagRequest || !dialog.open) return;
+      const select = node("dashboard-tag-reason"); select.replaceChildren(new Option("Select a reason", ""));
+      (data.reasons || []).filter(reason => Number(reason.is_active) === 1).forEach(reason => select.appendChild(new Option(reason.label, reason.code)));
+      select.value = item.reason_code; if (select.selectedIndex < 0) select.value = "";
+      select.disabled = false; node("dashboard-tag-save").disabled = select.options.length <= 1;
+      if (select.options.length <= 1) tagError("No active reasons are registered. Ask an administrator to add one in OEE master data.");
+      select.focus();
+    } catch (error) { if (requestId === tagRequest && dialog.open) tagError(error.message); }
+  }
+  const tagDialog = node("dashboard-tag-dialog");
+  tagDialog.addEventListener("close", function () { editingStop = null; ++tagRequest; });
+  tagDialog.addEventListener("cancel", function (event) { if (savingTag) event.preventDefault(); });
+  node("dashboard-tag-cancel").addEventListener("click", function () { if (!savingTag) tagDialog.close(); });
+  node("dashboard-tag-form").addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (!editingStop || savingTag || node("dashboard-tag-save").disabled) return;
+    if (!window.PortalAccess.can("downtime", "update")) { tagError("You no longer have permission to tag downtime."); return; }
+    savingTag = true; tagError("");
+    node("dashboard-tag-form").setAttribute("aria-busy", "true");
+    node("dashboard-tag-save").disabled = true; node("dashboard-tag-cancel").disabled = true;
+    try {
+      await window.PortalRequest("oee", "downtime-tag", { method: "POST", body: { event_id: Number(editingStop.id), machine: editingStop.line_code, event_type: node("dashboard-tag-type").value, reason_code: node("dashboard-tag-reason").value, notes: node("dashboard-tag-notes").value } });
+      tagDialog.close(); window.AppToast?.show("Downtime reason saved", "ok");
+      window.dispatchEvent(new Event("pns-downtime-tagged"));
+    } catch (error) { tagError(error.message); }
+    finally { savingTag = false; node("dashboard-tag-form").setAttribute("aria-busy", "false"); node("dashboard-tag-save").disabled = false; node("dashboard-tag-cancel").disabled = false; }
+  });
+  window.addEventListener("portal-access-ready", function () {
+    if (tagDialog.open && !window.PortalAccess.can("downtime", "update")) tagDialog.close();
+  });
+  document.addEventListener("click", function (event) {
+    const button = event.target.closest("[data-dashboard-tag]"); if (button) openTag(button.dataset.dashboardTag);
+  });
   document.addEventListener("click", function (event) {
     const link = event.target.closest("[data-dashboard-link]"); if (!link) return;
     const target = link.dataset.dashboardLink, date = node("dashboard-date").value;

@@ -60,6 +60,17 @@
 .pns-dashboard-footer { margin: 1.25rem 0 0; color: var(--mut); font-size: 0.7rem; }
 .pns-empty { color: var(--mut); margin: 0; padding: 1rem; font-size: 0.8rem; }
 .pns-loading { margin: 0.5rem 0; color: var(--accent-deep); font-size: 0.8rem; }
+.pns-dashboard .pns-tag-action { display: block; margin-top: 0.5rem; padding: 0.25rem 0; white-space: nowrap; }
+.pns-tag-dialog { width: min(36rem,calc(100% - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: auto; padding: 1.25rem; box-sizing: border-box; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--card); color: var(--ink); }
+.pns-tag-dialog::backdrop { background: rgb(15 30 50 / 55%); }
+.pns-tag-dialog h2 { margin: 0 0 0.75rem; color: var(--accent-deep); font-size: 1.2rem; }
+.pns-tag-context { font-size: 0.85rem; overflow-wrap: anywhere; }
+.pns-tag-help { font-size: 0.8rem; color: var(--mut); line-height: 1.5; }
+.pns-tag-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap: 1rem; margin-top: 1rem; }
+.pns-tag-fields label { margin: 0; min-width: 0; }
+.pns-tag-fields select,.pns-tag-fields textarea { display: block; width: 100%; margin-top: 0.4rem; }
+.pns-tag-notes { grid-column: 1 / -1; }
+.pns-tag-actions { display: flex; justify-content: end; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
 @media(max-width:1200px) { .pns-dashboard .oee-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-grid-main { grid-template-columns: 1fr; } }
 @media(max-width:750px) { .pns-dashboard .oee-kpis { grid-template-columns: 1fr; } .pns-dashboard .page-heading h1 { font-size: 1.45rem; } .pns-dashboard .page-heading-actions { width: 100%; } .pns-dashboard .date-control { flex: 1 1 9rem; } .pns-dashboard .date-control input, .pns-dashboard .date-control select { width: 100%; min-width: 0; } .pns-dashboard .oee-production-grid, .pns-reasons { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-status-strip { align-items: start; flex-wrap: wrap; } .pns-dashboard .oee-status-meta { margin-left: 1rem; width: 100%; } }
 @media(max-width:420px) { .pns-reasons { grid-template-columns: 1fr; } .pns-dashboard .dash-card-head { flex-wrap: wrap; } }

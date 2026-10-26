@@ -43,4 +43,18 @@
   <p class="pns-review-note">Automatic gap and empty-rack stops are estimates until reviewed. KPI values use the current calculation rules and the selected reporting window.</p>
   <details class="pns-sync-details"><summary>Synchronization details & recent imports</summary><div class="oee-grid oee-grid-bottom"><section class="dash-card oee-card"><div class="dash-card-head"><h3>Recent imports</h3></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Batch</th><th>Date</th><th>Rows</th><th>Status</th><th>Received</th></tr></thead><tbody id="oee-imports-body"></tbody></table></div></section><section class="dash-card oee-card"><div class="dash-card-head"><h3>Sync health</h3></div><div id="oee-sync-list" class="oee-sync-list"></div></section></div></details>
   <p class="pns-dashboard-footer">PNS Anodizing · SCADA reporting data · Refresh to load the latest reporting window</p>
+  <dialog id="dashboard-tag-dialog" class="pns-tag-dialog" aria-labelledby="dashboard-tag-title" aria-describedby="dashboard-tag-context dashboard-tag-help">
+    <form id="dashboard-tag-form">
+      <h2 id="dashboard-tag-title">Tag downtime reason</h2>
+      <p id="dashboard-tag-context" class="pns-tag-context"></p>
+      <p id="dashboard-tag-help" class="pns-tag-help">The original interval and SCADA source are preserved. Saving confirms a proposed stop; other review statuses remain unchanged.</p>
+      <p id="dashboard-tag-error" class="oee-alert" role="alert" hidden></p>
+      <div class="pns-tag-fields">
+        <label class="form-label" for="dashboard-tag-type">Type<select class="form-select" id="dashboard-tag-type" required><option value="unplanned">Unplanned</option><option value="planned">Planned</option></select></label>
+        <label class="form-label" for="dashboard-tag-reason">Reason<select class="form-select" id="dashboard-tag-reason" required autofocus></select></label>
+        <label class="form-label pns-tag-notes" for="dashboard-tag-notes">Notes<textarea class="form-textarea" id="dashboard-tag-notes" maxlength="500" rows="3"></textarea></label>
+      </div>
+      <div class="pns-tag-actions"><button type="button" class="btn ghost" id="dashboard-tag-cancel">Cancel</button><button type="submit" class="btn" id="dashboard-tag-save" disabled>Save reason</button></div>
+    </form>
+  </dialog>
 </section>

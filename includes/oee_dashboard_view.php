@@ -47,7 +47,7 @@ function oee_dashboard_view(PDO $pdo,array $dashboard,array $permissions): array
         $q->execute([...$lines,$window['window_start'],$window['window_end']]);$dashboard['recent_batches']=$q->fetchAll();
     }
     if($downtime){
-        $q=$pdo->prepare("SELECT e.id,e.line_code,e.starts_at,e.ends_at,e.event_type,e.source,e.status,e.reason_code,COALESCE(r.label,e.reason_code) AS reason_label FROM oee_downtime_events e LEFT JOIN oee_reason_codes r ON r.code=e.reason_code WHERE e.line_code IN (".$in.') AND e.starts_at<? AND e.ends_at>? ORDER BY e.ends_at DESC,e.id DESC');
+        $q=$pdo->prepare("SELECT e.id,e.line_code,e.starts_at,e.ends_at,e.event_type,e.source,e.status,e.reason_code,e.notes,COALESCE(r.label,e.reason_code) AS reason_label FROM oee_downtime_events e LEFT JOIN oee_reason_codes r ON r.code=e.reason_code WHERE e.line_code IN (".$in.') AND e.starts_at<? AND e.ends_at>? ORDER BY e.ends_at DESC,e.id DESC');
         $q->execute([...$lines,$window['window_end'],$window['window_start']]);$events=$q->fetchAll();
         $dashboard['downtime_breakdown']=oee_dashboard_breakdown($window,$events);$dashboard['recent_downtime']=array_slice($events,0,6);
     }

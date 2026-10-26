@@ -47,3 +47,42 @@ Preserve the source reference unchanged (it is user-owned and currently untracke
 Implement the read-only detail projection first, then the scoped UI and rendering,
 then browser/regression verification and normal cloud deployment. No blocking
 questions. Rollback redeploys the prior revision; database schema is unchanged.
+
+## Dashboard downtime tagging (2026-10-26)
+
+Operators currently have to leave the dashboard to classify a stop. The dashboard
+MUST offer Tag reason / Edit reason on recent downtime events to users with
+Downtime/View and Update. View-only roles MUST remain read-only; no role grants
+are added automatically. The dialog MUST show the actual line and full original
+interval, including seconds and overnight dates, and edit only type, registered
+active reason, and notes (500 characters). Cancel MUST NOT write anything.
+
+Saving MUST confirm a proposed event, preserve confirmed/approved/rejected status
+otherwise, and leave timestamps, source, evidence and report date unchanged.
+The dashboard MUST refresh its selected window, KPIs and reason breakdown after
+success; failed saves MUST retain the form and display the server error. Dialog
+focus, Escape/Cancel and 320px layout MUST work. No formula/schema/sender changes.
+
+Internal contract: POST `api.php?resource=oee&action=downtime-tag`, authenticated
+with the existing session and X-CSRF-Token. Body:
+`{event_id: 123, machine: "APP-06", event_type: "unplanned", reason_code: "HOIST", notes: "Reviewed"}`.
+Success: `{ok: true, event_id: 123, updated: true}`. Errors use the existing
+`{error: message}` envelope: 401 session, 403 permission, 419 CSRF, 422 invalid
+input/inactive reason, 404 event not found for the supplied machine.
+
+Implementation and acceptance sequence:
+
+1. Add failing permission/storage tests for update-only access, active custom
+   reasons, ID/line validation, exact interval preservation, status preservation,
+   invalid inputs and repeated saves; implement a tag-only mutation (no insert).
+2. Add failing browser coverage for opening/prefill, cancel without POST, saving
+   correct event/line, post-save refresh, errors, read-only hiding and mobile
+   layout; implement the dialog using the existing request/CSRF mechanism.
+3. Run permission, OEE and dashboard regressions, inspect screenshots, commit and
+   deploy through the existing cloud workflow. Verify live UI without retagging
+   production stops. Rollback is a code revert; no migration is needed.
+
+Trust boundary: HTTP/body and reason labels/notes are untrusted. The server MUST
+check Update, bind SQL parameters, validate active registered reasons and match
+the event's actual machine. Render labels/notes as text, never HTML. Existing
+CSRF checks cover the new action. Only synthetic fixtures may be mutated in tests.

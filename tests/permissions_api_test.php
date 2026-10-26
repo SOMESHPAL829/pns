@@ -6,7 +6,7 @@ ob_start();
 require_once dirname(__DIR__).'/includes/db.php';
 require_once dirname(__DIR__).'/includes/security.php';
 require_once dirname(__DIR__).'/includes/permissions.php';
-$pdo=db();$users=[];$roles=[];$files=[];
+$pdo=db();$users=[];$roles=[];$files=[];$tagEvents=[];$tagReasons=[];
 $suffix=bin2hex(random_bytes(6));
 $check=static function(bool $ok,string $message):void{if(!$ok)throw new RuntimeException($message);};
 $session=static function(int $id)use($pdo,&$files):array{
@@ -72,6 +72,32 @@ try{
         $check(abs((float)$stops['oee']['unplanned_minutes']-(float)$stops['downtime_breakdown']['unplanned_minutes'])<0.01,'Reason breakdown disagrees with OEE unplanned duration');
         $check(abs((float)$stops['oee']['planned_stop_minutes']-(float)$stops['downtime_breakdown']['planned_minutes'])<0.01,'Reason breakdown disagrees with OEE planned duration');
     }
+    // Tag-only mutations use synthetic future events, never production stops.
+    $tagCode='TAG_TEST_'.strtoupper($suffix);
+    $pdo->prepare('INSERT INTO oee_reason_codes(code,label,is_active) VALUES (?,?,1)')->execute([$tagCode,'Temporary tag test']);$tagReasons[]=$tagCode;
+    $pdo->prepare("INSERT INTO oee_downtime_events(line_code,report_date,starts_at,ends_at,event_type,source,status,reason_code,notes) VALUES ('APP-07','2099-11-01','2099-11-01 23:55:17','2099-11-02 00:15:43','unplanned','manual','proposed','UNK',?)")->execute(['Temporary tag test '.$suffix]);$tagEvents[]=$tagId=(int)$pdo->lastInsertId();
+    $tag=['event_id'=>$tagId,'machine'=>'APP-07','event_type'=>'planned','reason_code'=>$tagCode,'notes'=>'Reviewed'];
+    $check($call('oee','downtime-tag',$viewer,$tag)[0]===403,'Downtime View improperly allows tagging');
+    $check($call('oee','downtime-tag',null,$tag)[0]===401,'Anonymous tagging allowed');
+    $dashboardGrants['downtime']['create']=true;
+    $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
+    $check($call('oee','downtime-tag',$viewer,$tag)[0]===403,'Downtime Create improperly allows tagging');
+    $dashboardGrants['downtime']=['view'=>true,'update'=>true];
+    $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
+    $check($call('oee','downtime-tag',$viewer,$tag,[],false)[0]===419,'Tagging bypassed CSRF');
+    $check($call('oee','downtime-tag',$viewer,array_replace($tag,['machine'=>'APP-06']))[0]===404,'Tagging accepted incorrect line');
+    $check($call('oee','downtime-tag',$viewer,array_replace($tag,['reason_code'=>'MISSING_'.$suffix]))[0]===422,'Unregistered tag reason allowed');
+    $check($call('records','downtime-tag',$viewer,$tag)[0]===404,'Forged tag resource bypassed policy');
+    $q=$pdo->prepare('SELECT * FROM oee_downtime_events WHERE id=?');$q->execute([$tagId]);$beforeTag=$q->fetch();
+    $check($beforeTag['status']==='proposed'&&$beforeTag['reason_code']==='UNK','Denied tags modified the stop');
+    $check($call('oee','downtime-tag',$viewer,$tag)[0]===200,'Update-only role cannot tag dashboard downtime');
+    $q->execute([$tagId]);$afterTag=$q->fetch();
+    foreach(['line_code','report_date','starts_at','ends_at','source','evidence_key','created_at'] as $field)$check($afterTag[$field]===$beforeTag[$field],'Tag API modified '.$field);
+    $check($afterTag['status']==='confirmed'&&$afterTag['reason_code']===$tagCode&&$afterTag['event_type']==='planned'&&$afterTag['notes']==='Reviewed','Tag fields not persisted');
+    $check($call('oee','downtime-tag',$viewer,$tag)[0]===200,'Repeated tag save should succeed');
+    $dashboardGrants['downtime']['update']=false;
+    $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
+    $check($call('oee','downtime-tag',$viewer,$tag)[0]===403,'Tagging allowed after permission revocation');
     $check($call('oee','user-create',$viewer,[])[0]===404,'Forged resource bypassed policy');
     $check($call('roles','role-save',$admin,['name'=>'bad'],[],false)[0]===419,'Missing CSRF allowed');
     $check($call('roles','role-save',$admin,['name'=>'bad','permissions'=>['records'=>['create'=>true]]])[0]===422,'Create without View allowed');
@@ -107,8 +133,10 @@ try{
     $check((int)$pdo->query('SELECT is_active FROM portal_users WHERE id='.$createdUser)->fetchColumn()===0,'Deactivation not persisted');
     [$status,$created]=$call('roles','role-save',$admin,['name'=>'RBAC unused '.$suffix,'permissions'=>[]]);$check($status===200,'Empty role create failed');$roles[]=$unused=(int)$created['id'];
     $check($call('roles','role-delete',$admin,['id'=>$unused])[0]===200,'Permitted role Delete failed');
-    echo "Permissions HTTP tests passed: all page/action denials, export, bootstrap privacy, role CRUD, revocation, session invalidation, CSRF and record ownership.\n";
+    echo "Permissions HTTP tests passed: page/action denials, dashboard tagging, export, bootstrap privacy, role CRUD, revocation, session invalidation, CSRF and record ownership.\n";
 }finally{
+    foreach($tagEvents as $id)$pdo->prepare('DELETE FROM oee_downtime_events WHERE id=?')->execute([$id]);
+    foreach($tagReasons as $code)$pdo->prepare('DELETE FROM oee_reason_codes WHERE code=?')->execute([$code]);
     foreach($users as $id){$pdo->prepare('DELETE FROM portal_records WHERE owner_id=?')->execute([$id]);$pdo->prepare('DELETE FROM portal_user_roles WHERE user_id=?')->execute([$id]);$pdo->prepare('DELETE FROM portal_users WHERE id=?')->execute([$id]);}
     foreach($roles as $id){$pdo->prepare('DELETE FROM portal_role_permissions WHERE role_id=?')->execute([$id]);$pdo->prepare('DELETE FROM portal_access_roles WHERE id=?')->execute([$id]);}
     foreach($files as $file)if(is_file($file))unlink($file);

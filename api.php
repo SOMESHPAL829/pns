@@ -9,6 +9,7 @@ require_once __DIR__ . '/includes/oee_window.php';
 require_once __DIR__ . '/includes/oee_export.php';
 require_once __DIR__ . '/includes/permissions.php';
 require_once __DIR__ . '/includes/oee_dashboard_view.php';
+require_once __DIR__ . '/includes/oee_downtime_tag.php';
 
 function api_user(PDO $pdo): array
 {
@@ -483,6 +484,9 @@ try {
         json_response(['error' => 'Resource not found.'], 404);
     }
 
+    if ($resource === 'oee' && $action === 'downtime-tag' && $method === 'POST') {
+        json_response(oee_tag_downtime($pdo, $data, $user['access']['permissions']));
+    }
     if ($resource === 'oee' && $action === 'downtime-save' && $method === 'POST') {
         oee_downtime_save($pdo, $data);
     }
