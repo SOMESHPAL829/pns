@@ -30,16 +30,16 @@
       <div class="pns-legend"><span><i class="pns-segment-running"></i>Running <b id="dashboard-running-share">—</b></span><span><i class="pns-segment-stopped"></i>Unplanned <b id="dashboard-stopped-share">—</b></span><span><i class="pns-segment-planned"></i>Planned <b id="dashboard-planned-share">—</b></span></div>
     </div></section>
   </div>
-  <section class="pns-breakdown-section" data-permission-page="downtime" hidden>
-    <div class="pns-section-heading"><h2>Downtime breakdown</h2><span>Share of stop minutes within the selected window</span></div>
-    <div class="dash-card oee-card"><div class="dash-card-head"><h3>Downtime by reason</h3><a href="#/downtime" data-goto="downtime" data-dashboard-link="downtime" class="link">Explore reasons →</a></div><div id="dashboard-reasons" class="pns-reasons"><p class="pns-empty">Loading downtime reasons…</p></div><p class="pns-card-foot">Overlapping stops count once per line. Unplanned takes precedence; confirmed/approved reasons take precedence over proposals.</p></div>
-  </section>
   <div class="pns-section-heading"><h2>Live operations</h2><span>Latest records in this reporting window</span></div>
   <div class="pns-operations">
     <section class="dash-card oee-card" data-permission-page="oee-report" hidden><div class="dash-card-head"><h3>Recent batches</h3><a href="#/oee-report" data-goto="oee-report" data-dashboard-link="report" class="link">All batches →</a></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line / part</th><th>Grade / colour</th><th>PCS</th><th>Total SA</th><th>State</th></tr></thead><tbody id="dashboard-batches-body"><tr><td colspan="5">Loading batches…</td></tr></tbody></table></div></section>
     <section class="dash-card oee-card" data-permission-page="downtime" hidden><div class="dash-card-head"><h3>Recent downtime events</h3><a href="#/downtime" data-goto="downtime" data-dashboard-link="downtime" class="link">Full log →</a></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line / end</th><th>Reason</th><th>Source</th><th>Status</th></tr></thead><tbody id="dashboard-stops-body"><tr><td colspan="4">Loading downtime…</td></tr></tbody></table></div></section>
     <p id="dashboard-detail-message" class="pns-empty" hidden>Detailed operations are restricted by your role. Aggregate production and time-loss KPIs remain available above.</p>
   </div>
+  <section class="pns-breakdown-section" data-permission-page="downtime" hidden>
+    <div class="pns-section-heading"><h2>Downtime breakdown</h2><span>Share of stop minutes within the selected window</span></div>
+    <div class="dash-card oee-card"><div class="dash-card-head"><h3>Downtime by reason</h3><a href="#/downtime" data-goto="downtime" data-dashboard-link="downtime" class="link">Explore reasons →</a></div><div id="dashboard-reasons" class="pns-reasons"><p class="pns-empty">Loading downtime reasons…</p></div><p class="pns-card-foot">Overlapping stops count once per line. Unplanned takes precedence; confirmed/approved reasons take precedence over proposals.</p></div>
+  </section>
   <p class="pns-review-note">Automatic gap and empty-rack stops are estimates until reviewed. KPI values use the current calculation rules and the selected reporting window.</p>
   <details class="pns-sync-details"><summary>Synchronization details & recent imports</summary><div class="oee-grid oee-grid-bottom"><section class="dash-card oee-card"><div class="dash-card-head"><h3>Recent imports</h3></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Batch</th><th>Date</th><th>Rows</th><th>Status</th><th>Received</th></tr></thead><tbody id="oee-imports-body"></tbody></table></div></section><section class="dash-card oee-card"><div class="dash-card-head"><h3>Sync health</h3></div><div id="oee-sync-list" class="oee-sync-list"></div></section></div></details>
   <p class="pns-dashboard-footer">PNS Anodizing · SCADA reporting data · Refresh to load the latest reporting window</p>
