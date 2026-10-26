@@ -128,7 +128,7 @@
     if (dateInput && data.date && !dateInput.value) dateInput.value = data.date;
     if (!data.available) {
       showOeeAlert("oee-dashboard-alert", data.message, true);
-      setText("oee-status-text", "OEE database is not connected");
+      window.PnsDashboard.error();
       return;
     }
     showOeeAlert("oee-dashboard-alert", "", false);
@@ -177,6 +177,7 @@
       });
       if (!data.imports || data.imports.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No imports received yet."); cell.colSpan = 5; importBody.appendChild(row); }
     }
+    window.PnsDashboard.render(data);
   }
 
   function renderReportRows(rows) {
@@ -284,9 +285,11 @@
     const machine = document.getElementById("dashboard-machine")?.value || "ALL";
     const query = oeeWindowQuery("dashboard");
     const requestId = ++app.dashboardRequest;
+    window.PnsDashboard.loading(true);
     setText("dashboard-window", "Calculating " + query.duration_minutes + " min window…");
     try { const data = await request("oee", "dashboard", { query: { machine: machine, ...query, ...(date ? { date: date } : {}) } }); if (requestId === app.dashboardRequest) renderDashboard(data); }
-    catch (error) { if (requestId === app.dashboardRequest) showOeeAlert("oee-dashboard-alert", error.message, true); }
+    catch (error) { if (requestId === app.dashboardRequest) { window.PnsDashboard.error(); showOeeAlert("oee-dashboard-alert", error.message, true); } }
+    finally { if (requestId === app.dashboardRequest) window.PnsDashboard.loading(false); }
   }
 
   async function loadOeeReport() {

@@ -1,0 +1,65 @@
+/* Scoped adaptation of deploy/PNS_Anodizing_Dashboard.html. */
+.pns-dashboard { --pns-blue: #2e679f; --pns-stop: #bc514a; --pns-planned: #a86d14; }
+.pns-dashboard.active { display: block; }
+.pns-dashboard .page-heading { gap: 1.25rem; margin-bottom: 0.75rem; align-items: center; }
+.pns-dashboard .page-heading h1 { font-size: 1.8rem; }
+.pns-dashboard .page-heading-actions { flex-wrap: wrap; align-items: end; gap: 0.6rem; }
+.pns-dashboard .date-control input, .pns-dashboard .date-control select, .pns-dashboard #dashboard-refresh { min-height: 2.5rem; }
+.pns-dashboard .date-control select { min-width: 8rem; }
+.pns-dashboard .oee-window-summary { margin-top: 0.75rem; font-size: 0.75rem; }
+.pns-dashboard .oee-status-strip { margin: 1.25rem 0; padding: 0.8rem 0.9rem; border-radius: 0.6rem; }
+.pns-dashboard .oee-status-meta { display: block; }
+.pns-dashboard .oee-kpis { gap: 0.9rem; }
+.pns-dashboard .oee-kpi { min-width: 0; padding: 1.2rem; border-radius: 0.75rem; }
+.pns-dashboard .oee-kpi-label { margin: 0; font-size: 0.75rem; }
+.pns-dashboard .oee-kpi-value { margin: 0.6rem 0 0.35rem; font-size: 2.05rem; }
+.pns-dashboard .oee-kpi-note { line-height: 1.5; }
+.pns-kpi-detail { margin-top: 0.8rem; color: var(--accent-deep); font-size: 0.75rem; line-height: 1.5; }
+.pns-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 1.7rem 0 0.75rem; }
+.pns-section-heading h2 { margin: 0; color: var(--accent-deep); font-size: 1.05rem; }
+.pns-section-heading > span { color: var(--mut); font-size: 0.75rem; }
+.pns-dashboard .oee-grid-main { margin-top: 0; grid-template-columns: minmax(0,1.45fr) minmax(0,1fr); gap: 0.9rem; }
+.pns-dashboard .dash-card { padding: 0; overflow: hidden; border-radius: 0.75rem; }
+.pns-dashboard .dash-card-head { padding: 0.95rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }
+.pns-dashboard .dash-card-head h3 { margin: 0; font-size: 0.95rem; color: var(--accent-deep); }
+.pns-dashboard .dash-card-head a { font-size: 0.8rem; text-align: right; }
+.pns-dashboard .oee-production-grid { padding: 1.15rem; gap: 1.25rem 1rem; }
+.pns-dashboard .oee-production-grid strong { font-size: 1.4rem; overflow-wrap: anywhere; }
+.pns-card-foot { padding: 0 1rem 0.9rem; margin: 0; color: var(--mut); font-size: 0.75rem; line-height: 1.5; }
+.pns-loss-body { padding: 0 1rem 1rem; }
+.pns-dashboard .oee-loss-list { padding-top: 0.5rem; gap: 0; }
+.pns-dashboard .oee-loss-list > div { padding: 0.65rem 0; align-items: center; }
+.pns-dashboard .oee-loss-list > div:last-child { border-bottom: 0; }
+.pns-time-bar { height: 0.65rem; display: flex; overflow: hidden; border-radius: 1rem; background: var(--accent-sft); margin-top: 0.5rem; }
+.pns-time-bar > span { width: 0; height: 100%; }
+.pns-segment-running { background: var(--pns-blue); }
+.pns-segment-stopped { background: var(--pns-stop); }
+.pns-segment-planned { background: var(--pns-planned); }
+.pns-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; color: var(--mut); font-size: 0.7rem; margin-top: 0.7rem; }
+.pns-legend i { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 0.1rem; margin-right: 0.25rem; }
+.pns-legend b { font-weight: 600; color: var(--ink); }
+.pns-reasons { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,22rem),1fr)); gap: 1.2rem 1.5rem; padding: 1.1rem; }
+.pns-reason { min-width: 0; }
+.pns-reason-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; margin-bottom: 0.5rem; }
+.pns-reason-head > span { overflow-wrap: anywhere; }
+.pns-reason-head strong { font-size: 0.75rem; }
+.pns-reason-track { height: 0.5rem; border-radius: 1rem; overflow: hidden; background: var(--accent-sft); }
+.pns-reason-track > span { display: block; height: 100%; background: var(--pns-stop); }
+.pns-operations { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,24rem),1fr)); gap: 0.9rem; }
+.pns-dashboard .data-table th { background: var(--bg); color: var(--mut); font-size: 0.65rem; }
+.pns-dashboard .data-table td { padding: 0.75rem 0.9rem; font-size: 0.8rem; }
+.pns-dashboard .data-table th { padding: 0.7rem 0.9rem; }
+.pns-cell-detail { display: block; color: var(--mut); font-size: 0.7rem; margin-top: 0.2rem; }
+.pns-dashboard .status-pill { border-radius: 0.3rem; white-space: nowrap; }
+.pns-dashboard .status-pill.proposed { background: var(--warn-sft); color: #795511; }
+.pns-dashboard .status-pill.rejected { background: var(--bg); color: var(--mut); }
+.pns-review-note { padding: 0.8rem 0.9rem; margin-top: 1.2rem; background: var(--warn-sft); border: 1px solid var(--line); color: #6f4b12; border-radius: 0.6rem; font-size: 0.75rem; }
+.pns-sync-details { margin-top: 1.2rem; }
+.pns-sync-details summary { cursor: pointer; color: var(--accent-deep); font-weight: 650; padding: 0.6rem 0; }
+.pns-dashboard .oee-sync-row { padding: 0.75rem 1rem; overflow-wrap: anywhere; }
+.pns-dashboard-footer { margin: 1.25rem 0 0; color: var(--mut); font-size: 0.7rem; }
+.pns-empty { color: var(--mut); margin: 0; padding: 1rem; font-size: 0.8rem; }
+.pns-loading { margin: 0.5rem 0; color: var(--accent-deep); font-size: 0.8rem; }
+@media(max-width:1200px) { .pns-dashboard .oee-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-grid-main { grid-template-columns: 1fr; } }
+@media(max-width:750px) { .pns-dashboard .oee-kpis { grid-template-columns: 1fr; } .pns-dashboard .page-heading h1 { font-size: 1.45rem; } .pns-dashboard .page-heading-actions { width: 100%; } .pns-dashboard .date-control { flex: 1 1 9rem; } .pns-dashboard .date-control input, .pns-dashboard .date-control select { width: 100%; min-width: 0; } .pns-dashboard .oee-production-grid, .pns-reasons { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-status-strip { align-items: start; flex-wrap: wrap; } .pns-dashboard .oee-status-meta { margin-left: 1rem; width: 100%; } }
+@media(max-width:420px) { .pns-reasons { grid-template-columns: 1fr; } .pns-dashboard .dash-card-head { flex-wrap: wrap; } }

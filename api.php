@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/oee_calculator.php';
 require_once __DIR__ . '/includes/oee_window.php';
 require_once __DIR__ . '/includes/oee_export.php';
 require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/includes/oee_dashboard_view.php';
 
 function api_user(PDO $pdo): array
 {
@@ -380,7 +381,7 @@ try {
                 exit;
             }
             if ($action === 'dashboard') {
-                json_response(oee_dashboard($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));
+                json_response(oee_dashboard_view($pdo,oee_dashboard($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime),$user['access']['permissions']));
             }
             if ($action === 'report') {
                 json_response(oee_report($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));

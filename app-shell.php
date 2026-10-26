@@ -10,6 +10,7 @@ $csrfToken = csrf_token();
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>App Portal</title>
   <link rel="stylesheet" href="css/portal.css?v=<?= filemtime(__DIR__ . '/css/portal.css') ?>">
+  <link rel="stylesheet" href="css/oee-dashboard.css?v=<?= filemtime(__DIR__ . '/css/oee-dashboard.css') ?>">
 </head>
 <body>
   <div id="app-shell" class="app-shell">
@@ -76,23 +77,7 @@ $csrfToken = csrf_token();
       <main class="app-content">
         <section class="view" data-view="access-loading"><h1>Loading permissions…</h1></section>
         <section class="view" data-view="access-denied"><h1>Access denied</h1><p>Your role does not allow this page or action. Choose an allowed page from the menu, or contact an administrator.</p></section>
-        <section class="view active" data-view="dashboard">
-          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Production intelligence</div><h1>PNS anodizing OEE</h1><p class="page-lead">Daily output, line losses, and synchronization health in one view.</p></div><div class="page-heading-actions"><label class="date-control">Machine <select id="dashboard-machine"><option value="ALL">All machines</option><option value="APP-06">APP-06</option><option value="APP-07">APP-07</option><option value="APP-10">APP-10</option></select></label><label class="date-control">Report date <input id="dashboard-date" type="date"></label><label class="date-control">Calculation duration <select id="dashboard-duration"><option value="1440">1440 min (24 hours)</option><option value="720">720 min (12 hours)</option></select></label><label class="date-control">Window start <input id="dashboard-start-time" type="time" value="00:00" step="60" disabled></label><button class="btn" id="dashboard-refresh" type="button">Refresh</button></div></div>
-          <div id="dashboard-window" class="oee-window-summary" role="status"></div>
-          <div id="oee-dashboard-alert" class="oee-alert" role="status" hidden></div>
-          <div class="oee-status-strip"><span class="status-dot" id="oee-status-dot"></span><span id="oee-status-text">Checking Unit 1 sync…</span><span class="oee-status-meta" id="oee-last-sync">—</span></div>
-          <div class="oee-kpis">
-            <article class="oee-kpi"><div class="oee-kpi-label">OEE</div><div class="oee-kpi-value" id="oee-value">—</div><div class="oee-kpi-note">Availability × Performance × Quality</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Availability</div><div class="oee-kpi-value" id="availability-value">—</div><div class="oee-kpi-note">Run time / planned time</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Performance</div><div class="oee-kpi-value" id="performance-value">—</div><div class="oee-kpi-note">Ideal output / run time</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Quality</div><div class="oee-kpi-value" id="quality-value">—</div><div class="oee-kpi-note">Good FB / productive FB</div></article>
-          </div>
-          <div class="oee-grid oee-grid-main">
-            <section class="dash-card oee-card"><div class="dash-card-head"><span>Production summary</span><a href="#/oee-report" data-goto="oee-report" class="link">Open report</a></div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="productive-fb">—</strong></div><div><span class="oee-stat-label">Empty racks</span><strong id="empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="total-pcs">—</strong></div><div><span class="oee-stat-label">Surface area</span><strong id="total-area">—</strong></div><div><span class="oee-stat-label">Report date</span><strong id="oee-report-date">—</strong></div></div></section>
-            <section class="dash-card oee-card"><div class="dash-card-head">Time losses</div><div class="oee-loss-list"><div><span>Planned stop</span><strong id="planned-minutes">—</strong></div><div><span>Unplanned downtime</span><strong id="unplanned-minutes">—</strong></div><div><span>Run time</span><strong id="run-minutes">—</strong></div><div><span id="utilization-label">24h utilization</span><strong id="utilization-value">—</strong></div></div></section>
-          </div>
-          <div class="oee-grid oee-grid-bottom"><section class="dash-card oee-card"><div class="dash-card-head">Recent imports</div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Batch</th><th>Date</th><th>Rows</th><th>Status</th><th>Received</th></tr></thead><tbody id="oee-imports-body"></tbody></table></div></section><section class="dash-card oee-card"><div class="dash-card-head">Sync health</div><div id="oee-sync-list" class="oee-sync-list"></div></section></div>
-        </section>
+        <?php require __DIR__ . '/includes/dashboard.php'; ?>
 
         <section class="view" data-view="oee-range">
           <div class="page-heading"><div><div class="dash-eyebrow">Period intelligence</div><h1>Date-range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and line.</p></div></div>
@@ -235,6 +220,7 @@ $csrfToken = csrf_token();
   <script src="js/icons.js"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
+  <script src="js/dashboard.js?v=<?= filemtime(__DIR__ . '/js/dashboard.js') ?>"></script>
   <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>"></script>
   <script src="js/roles.js?v=<?= filemtime(__DIR__ . '/js/roles.js') ?>"></script>
 </body>

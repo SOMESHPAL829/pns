@@ -83,6 +83,24 @@ tests/permissions_api_test.php`. This opt-in test creates uniquely named tempora
 accounts/roles/records and removes those fixtures in `finally`; do not run it on
 production without a backup. See [ROLE_PERMISSIONS.md](ROLE_PERMISSIONS.md).
 
+## OEE dashboard presentation
+
+The daily dashboard adapts the supplied `PNS_Anodizing_Dashboard.html` reference,
+without its hourly production chart or sample data. It shows live KPI cards,
+production totals, productive rack rate, a fleet-aware time allocation bar,
+downtime reason breakdown, recent batches and recent downtime events. Detailed
+rows require the corresponding Production report/View or Downtime/View permission;
+Dashboard/View alone still allows the aggregate KPIs. Synchronization/import
+details remain in an expandable section. Report links preserve the selected
+machine/date/duration. The separate date-range dashboard is unchanged.
+
+Presentation code is isolated in `includes/dashboard.php`, `css/oee-dashboard.css`
+and `js/dashboard.js`. The dashboard API adds permission-gated read-only detail
+fields; reason durations union overlapping events per line and clip to the selected
+window. No OEE formula or database migration changes. See [OEE_DASHBOARD_UI.md](OEE_DASHBOARD_UI.md).
+Verify with `php tests/oee_dashboard_view_test.php`, the existing HTTP permission
+test, and `node tests/oee_dashboard_browser_test.cjs` (Playwright overrides supported).
+
 ## Security notes
 
 - Passwords use PHP's password hashing API; reset tokens are stored as hashes.

@@ -53,6 +53,25 @@ try{
     $grants['oee-report']['export']=false;
     $check($call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$grants])[0]===200,'Export revocation failed');
     $check($call('oee','report',$viewer,null,$selection)[0]===200&&$call('oee','export',$viewer,null,$selection)[0]===403,'Export revocation must block active session without revoking View');
+    $dashboardGrants=['dashboard'=>['view'=>true]];
+    $check($call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants])[0]===200,'Dashboard-only role update failed');
+    foreach([1440,720] as $duration){
+        [$status,$basic]=$call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>$duration]));
+        $check($status===200,'Permitted dashboard failed');
+        foreach(['recent_batches','recent_downtime','downtime_breakdown'] as $key)$check(!array_key_exists($key,$basic),'Dashboard-only API leaked '.$key);
+    }
+    $dashboardGrants['oee-report']=['view'=>true];
+    $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
+    [$status,$batches]=$call('oee','dashboard',$viewer,null,$selection);
+    $check($status===200&&isset($batches['recent_batches'])&&count($batches['recent_batches'])<=6&&!isset($batches['recent_downtime']),'Batch dashboard projection is not permission scoped');
+    $dashboardGrants=['dashboard'=>['view'=>true],'downtime'=>['view'=>true]];
+    $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
+    foreach([1440,720] as $duration){
+        [$status,$stops]=$call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>$duration,'start_time'=>$duration===720?'18:00':'00:00']));
+        $check($status===200&&isset($stops['recent_downtime'],$stops['downtime_breakdown'])&&!isset($stops['recent_batches']),'Stop dashboard projection is not permission scoped');
+        $check(abs((float)$stops['oee']['unplanned_minutes']-(float)$stops['downtime_breakdown']['unplanned_minutes'])<0.01,'Reason breakdown disagrees with OEE unplanned duration');
+        $check(abs((float)$stops['oee']['planned_stop_minutes']-(float)$stops['downtime_breakdown']['planned_minutes'])<0.01,'Reason breakdown disagrees with OEE planned duration');
+    }
     $check($call('oee','user-create',$viewer,[])[0]===404,'Forged resource bypassed policy');
     $check($call('roles','role-save',$admin,['name'=>'bad'],[],false)[0]===419,'Missing CSRF allowed');
     $check($call('roles','role-save',$admin,['name'=>'bad','permissions'=>['records'=>['create'=>true]]])[0]===422,'Create without View allowed');
