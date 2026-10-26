@@ -6,6 +6,7 @@ const path = require('path');
 const assert = require('assert');
 const { execFileSync } = require('child_process');
 const root = path.resolve(__dirname, '..');
+const fullPermissions = JSON.parse(execFileSync('php', ['-r', 'require "includes/permissions.php"; echo json_encode(portal_permission_matrix(true));'], { cwd: root, encoding: 'utf8' }));
 const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_app_session(); $_SESSION["user_id"]=1; require "app-shell.php";'], { cwd: root, encoding: 'utf8' });
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}) });
@@ -18,7 +19,8 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
       if (url.pathname.endsWith('/app.php')) return route.fulfill({ contentType: 'text/html', body: html });
       if (url.pathname.endsWith('/api.php')) {
         requests.push(Object.fromEntries(q));
-        if (q.get('resource') === 'bootstrap') return route.fulfill({ json: { csrf_token: 'test', user: { full_name: 'Test Operator', username: 'operator' }, records: [], is_admin: false, user_count: 1 } });
+        if (q.get('resource') === 'bootstrap') return route.fulfill({ json: { csrf_token: 'test', access: { permissions: fullPermissions }, user: { full_name: 'Test Operator', username: 'operator' }, records: [], is_admin: false, user_count: 1 } });
+        if (q.get('resource') === 'users') return route.fulfill({ json: { users: [], assignable_roles: [] } });
         if (q.get('action') === 'range-export') return route.fulfill({ contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: Buffer.from([80, 75, 3, 4]) });
         const days = (Date.parse(q.get('to_date')) - Date.parse(q.get('from_date'))) / 86400000 + 1 || 1;
         const minutes = Number(q.get('duration_minutes') || 1440);

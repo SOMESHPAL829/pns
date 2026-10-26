@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/security.php';
+require_once __DIR__ . '/includes/permissions.php';
 require_authentication();
 $csrfToken = csrf_token();
 ?><!doctype html>
@@ -32,6 +33,7 @@ $csrfToken = csrf_token();
         <div class="app-sidebar-section-label">Workspace</div>
         <a class="app-sidebar-link" href="#/requests" data-nav="requests" title="Records"><span class="app-sidebar-icon" data-icon="requests"></span><span class="app-sidebar-label">Records</span></a>
         <div class="app-sidebar-section-label">Administration</div>
+        <a class="app-sidebar-link" href="#/roles" data-nav="roles" title="Roles & permissions"><span class="app-sidebar-icon" data-icon="users"></span><span class="app-sidebar-label">Roles & permissions</span></a>
         <a class="app-sidebar-link" href="#/users" data-nav="users" title="Users"><span class="app-sidebar-icon" data-icon="users"></span><span class="app-sidebar-label">Users</span></a>
         <a class="app-sidebar-link" href="#/oee-masters" data-nav="oee-masters" title="OEE master data"><span class="app-sidebar-icon" data-icon="master"></span><span class="app-sidebar-label">OEE master data</span></a>
         <a class="app-sidebar-link" href="#/profile" data-nav="profile" title="Profile"><span class="app-sidebar-icon" data-icon="profile"></span><span class="app-sidebar-label">My Profile</span></a>
@@ -72,6 +74,8 @@ $csrfToken = csrf_token();
       </header>
 
       <main class="app-content">
+        <section class="view" data-view="access-loading"><h1>Loading permissions…</h1></section>
+        <section class="view" data-view="access-denied"><h1>Access denied</h1><p>Your role does not allow this page or action. Choose an allowed page from the menu, or contact an administrator.</p></section>
         <section class="view active" data-view="dashboard">
           <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Production intelligence</div><h1>PNS anodizing OEE</h1><p class="page-lead">Daily output, line losses, and synchronization health in one view.</p></div><div class="page-heading-actions"><label class="date-control">Machine <select id="dashboard-machine"><option value="ALL">All machines</option><option value="APP-06">APP-06</option><option value="APP-07">APP-07</option><option value="APP-10">APP-10</option></select></label><label class="date-control">Report date <input id="dashboard-date" type="date"></label><label class="date-control">Calculation duration <select id="dashboard-duration"><option value="1440">1440 min (24 hours)</option><option value="720">720 min (12 hours)</option></select></label><label class="date-control">Window start <input id="dashboard-start-time" type="time" value="00:00" step="60" disabled></label><button class="btn" id="dashboard-refresh" type="button">Refresh</button></div></div>
           <div id="dashboard-window" class="oee-window-summary" role="status"></div>
@@ -170,7 +174,7 @@ $csrfToken = csrf_token();
         </section>
 
         <section class="view" data-view="detail">
-          <div class="page-heading"><nav class="page-breadcrumb"><a href="#/requests" data-goto="requests">Records</a> / <span id="detail-number">Record</span></nav><div class="page-heading-actions"><button class="btn ghost" id="record-edit-toggle" type="button">Edit</button></div></div>
+          <div class="page-heading"><nav class="page-breadcrumb"><a href="#/requests" data-goto="requests">Records</a> / <span id="detail-number">Record</span></nav><div class="page-heading-actions"><button class="btn ghost" id="record-edit-toggle" data-permission-page="records" data-permission-action="update" type="button">Edit</button></div></div>
           <div class="detail-layout"><div class="form-section"><div class="form-section-head">Record details</div><dl class="detail-dl">
             <div><dt>Type</dt><dd id="detail-type">—</dd></div><div><dt>Organization</dt><dd id="detail-organization">—</dd></div><div><dt>Category</dt><dd id="detail-category">—</dd></div><div><dt>Owner</dt><dd id="detail-owner">—</dd></div><div><dt>Status</dt><dd id="detail-status">—</dd></div><div class="form-span"><dt>Title</dt><dd id="detail-title">—</dd></div><div class="form-span"><dt>Description</dt><dd id="detail-description">—</dd></div>
           </dl><form id="record-edit-form" class="form-stack" hidden method="post" action="app.php"><div><label class="form-label" for="edit-record-title">Title</label><input class="form-input" id="edit-record-title" name="title" maxlength="200" required></div><div><label class="form-label" for="edit-record-description">Description</label><textarea class="form-textarea" id="edit-record-description" name="description" maxlength="10000"></textarea></div><button class="btn" type="submit">Save changes</button></form></div></div>
@@ -187,7 +191,15 @@ $csrfToken = csrf_token();
           <div class="form-card"><div class="form-card-title">Add User</div><form id="user-create-form" class="form-stack" method="post" action="app.php">
             <div class="form-grid-2"><div><label class="form-label" for="new-user-email">Email <span class="req">*</span></label><input class="form-input" id="new-user-email" name="email" type="email" required></div><div><label class="form-label" for="new-user-username">Username <span class="req">*</span></label><input class="form-input" id="new-user-username" name="username" minlength="3" maxlength="80" required></div></div>
             <div><label class="form-label" for="new-user-name">Full Name <span class="req">*</span></label><input class="form-input" id="new-user-name" name="full_name" maxlength="160" required></div><div><label class="form-label" for="new-user-password">Temporary Password <span class="req">*</span></label><input class="form-input" id="new-user-password" name="password" type="password" minlength="12" required></div><p class="form-note">The user can change this password in their profile.</p>
+            <div><label class="form-label" for="new-user-role">Access role</label><select class="form-select" id="new-user-role" name="role_id" required></select></div>
           </form></div>
+        </section>
+
+        <section class="view" data-view="roles">
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Roles & permissions</h1><p class="page-lead">Choose which pages and actions each role can use. Assign roles on the Users page.</p></div><button class="btn ghost" id="roles-refresh" type="button">Refresh</button></div>
+          <div id="roles-alert" class="oee-alert" role="status" hidden></div>
+          <section class="data-card"><div class="dash-card-head">Registered roles</div><div class="data-scroll"><table class="data-table"><thead><tr><th>Role</th><th>Type</th><th>Assigned users</th><th>Actions</th></tr></thead><tbody id="roles-body"><tr><td colspan="4">Loading roles…</td></tr></tbody></table></div></section>
+          <form id="role-form" class="data-card role-editor"><div class="dash-card-head"><h2>Role permission editor</h2><button id="role-new" type="button" class="btn ghost sm">New role</button></div><input id="role-id" type="hidden"><div class="master-form"><label for="role-name">Role name<input id="role-name" maxlength="80" required placeholder="Example: OEE viewer"></label><button class="btn" id="role-save" type="submit">Create role</button></div><p class="form-note role-help">View is required for other actions. Dashes mean the page has no such operation. Role administration is reserved for protected administrators. Existing record ownership restrictions still apply.</p><div class="data-scroll"><table class="data-table permission-table"><thead><tr><th>Page</th><th>View</th><th>Create</th><th>Update</th><th>Delete</th></tr></thead><tbody id="role-permissions-body"></tbody></table></div></form>
         </section>
 
         <section class="view" data-view="profile">
@@ -219,8 +231,11 @@ $csrfToken = csrf_token();
     </div>
   </div>
   <div id="toast-stack" class="app-toast-stack" aria-live="polite"></div>
+  <script id="permission-catalog" type="application/json"><?= json_encode(portal_permission_catalog(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script src="js/icons.js"></script>
+  <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
   <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>"></script>
+  <script src="js/roles.js?v=<?= filemtime(__DIR__ . '/js/roles.js') ?>"></script>
 </body>
 </html>

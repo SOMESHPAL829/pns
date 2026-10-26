@@ -19,6 +19,8 @@
     roles: "Roles",
     "role-edit": "Edit Role",
     profile: "My Profile",
+    "access-loading": "Loading permissions",
+    "access-denied": "Access denied",
     orgs: "Organizations",
     library: "Library",
   };
@@ -48,7 +50,8 @@
   function setView(name) {
     const routeParts = name.split("/");
     const routeName = routeParts[0].split("?")[0];
-    const key = titles[routeName] ? routeName : "dashboard";
+    const requestedKey = titles[routeName] ? routeName : "dashboard";
+    const key = !window.PortalAccess?.ready ? "access-loading" : window.PortalAccess.routeAllowed(requestedKey) ? requestedKey : "access-denied";
     views.forEach(function (view) {
       view.classList.toggle("active", view.getAttribute("data-view") === key);
     });
@@ -58,18 +61,20 @@
       link.classList.toggle("is-active", on);
     });
     if (pageTitle) pageTitle.textContent = titles[key];
-    const routeHash = key === "detail" && routeParts[1]
+    const routeHash = requestedKey === "detail" && routeParts[1]
       ? "#/detail/" + encodeURIComponent(routeParts[1])
-      : "#/" + key;
+      : "#/" + requestedKey;
     if (location.hash !== routeHash)
       history.replaceState(null, "", routeHash);
     if (shell) shell.classList.remove("sidebar-open");
     closeHeaderMenus();
+    window.dispatchEvent(new CustomEvent("portal-view-changed", { detail: { route: key } }));
   }
 
   window.addEventListener("hashchange", function () {
     setView((location.hash || "#/dashboard").replace("#/", ""));
   });
+  window.addEventListener("portal-access-ready", function () { setView((location.hash || "#/dashboard").replace("#/", "")); });
 
   document.querySelectorAll("[data-nav], [data-goto]").forEach(function (el) {
     el.addEventListener("click", function (event) {

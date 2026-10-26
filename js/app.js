@@ -1,6 +1,7 @@
 (function () {
-  const app = { csrf: "", user: null, users: [], records: [], isAdmin: false, currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null, durationMinutes: "1440", windowStart: "00:00", dashboardRequest: 0, reportRequest: 0 };
+  const app = { csrf: "", user: null, users: [], records: [], currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null, durationMinutes: "1440", windowStart: "00:00", dashboardRequest: 0, reportRequest: 0 };
   const apiUrl = "api.php";
+  const can = (page, action = "view") => window.PortalAccess.can(page, action);
 
   function toast(message, kind) {
     if (window.AppToast) window.AppToast.show(message, kind || "");
@@ -21,9 +22,13 @@
     });
     let payload = {};
     try { payload = await response.json(); } catch (error) { payload = {}; }
-    if (!response.ok) throw new Error(payload.error || "The request could not be completed.");
+    if (!response.ok) {
+      if (response.status === 403) window.dispatchEvent(new Event("portal-access-reload"));
+      throw new Error(payload.error || "The request could not be completed.");
+    }
     return payload;
   }
+  window.PortalRequest = request;
 
   function makeCell(row, value, className) {
     const cell = document.createElement("td");
@@ -273,6 +278,7 @@
   }
 
   async function loadOeeDashboard() {
+    if (!can("dashboard")) return;
     const date = document.getElementById("dashboard-date")?.value || "";
     const machine = document.getElementById("dashboard-machine")?.value || "ALL";
     const query = oeeWindowQuery("dashboard");
@@ -283,6 +289,7 @@
   }
 
   async function loadOeeReport() {
+    if (!can("oee-report")) return;
     const date = document.getElementById("report-date")?.value || document.getElementById("dashboard-date")?.value || "";
     const machine = document.getElementById("report-machine-filter")?.value || "APP-06";
     const query = oeeWindowQuery("report");
@@ -338,6 +345,7 @@
   }
 
   async function loadRangeDashboard() {
+    if (!can("oee-range")) return;
     const requestId = ++rangeRequest;
     try {
       const fallback = app.oee?.date || new Date().toLocaleDateString("en-CA");
@@ -387,7 +395,7 @@
       if (item.status === "proposed" || item.status === "confirmed") {
         const tag = document.createElement("button");
         tag.type = "button"; tag.className = "link"; tag.textContent = item.status === "proposed" ? "Tag" : "Edit"; tag.dataset.tagDowntime = String(item.id); tag.dataset.startsAt = item.starts_at || ""; tag.dataset.endsAt = item.ends_at || ""; tag.dataset.eventType = item.event_type || "unplanned"; tag.dataset.reasonCode = item.reason_code || "UNK"; tag.dataset.notes = item.notes || "";
-        actionCell.appendChild(tag);
+        if (can("downtime", "update")) actionCell.appendChild(tag);
       }
       body.appendChild(row);
     });
@@ -395,6 +403,7 @@
   }
 
   async function loadDowntime() {
+    if (!can("downtime")) return;
     const dateControl = document.getElementById("downtime-date");
     if (dateControl && !dateControl.value) dateControl.value = document.getElementById("dashboard-date")?.value || new Date().toISOString().slice(0, 10);
     const date = dateControl?.value || "";
@@ -411,9 +420,9 @@
     if (input) input.value = item ? String(Number(item.gap_threshold_minutes)) : "";
     ["threshold-line", "threshold-minutes", "threshold-save"].forEach(function (id) {
       const node = document.getElementById(id);
-      if (node) node.disabled = !app.isAdmin || !item;
+      if (node) node.disabled = !can("oee-masters", "update") || !item;
     });
-    document.querySelectorAll("[data-edit-threshold]").forEach(function (button) { button.disabled = !app.isAdmin; });
+    document.querySelectorAll("[data-edit-threshold]").forEach(function (button) { button.disabled = !can("oee-masters", "update"); });
   }
 
   function renderMasters(data) {
@@ -445,14 +454,18 @@
       cyclesBody.replaceChildren();
       (data.cycles || []).forEach(function (item) { const row = document.createElement("tr"); makeCell(row, item.line_code); makeCell(row, item.colour); makeCell(row, Number(item.minutes_per_fb).toFixed(3)); makeCell(row, item.effective_from); makeCell(row, item.effective_to || "—"); const cell = makeCell(row, ""); const button = document.createElement("button"); button.type = "button"; button.className = "link"; button.textContent = "Edit"; button.dataset.editCycle = JSON.stringify(item); cell.appendChild(button); cyclesBody.appendChild(row); });
     }
+    document.querySelectorAll("[data-edit-reason], [data-edit-cycle]").forEach(function (button) { button.hidden = !can("oee-masters", "update"); });
+    window.PortalAccess.applyControls();
   }
 
   async function loadMasters() {
+    if (!can("oee-masters")) return;
     try { renderMasters(await request("oee", "masters", {})); showOeeAlert("masters-alert", "", false); }
     catch (error) { showOeeAlert("masters-alert", error.message, true); }
   }
 
   async function loadScadaLogs() {
+    if (!can("scada-logs")) return;
     try { renderLogs(await request("oee", "logs", {})); }
     catch (error) { showOeeAlert("oee-logs-alert", error.message, true); }
   }
@@ -488,7 +501,7 @@
       remove.className = "link";
       remove.textContent = "Delete";
       remove.dataset.deleteRecord = String(record.id);
-      group.appendChild(remove);
+      if (can("records", "delete")) group.appendChild(remove);
       actions.appendChild(group);
       body.appendChild(row);
     });
@@ -534,7 +547,7 @@
       makeCell(row, user.username);
       makeCell(row, user.full_name);
       makeCell(row, user.email);
-      makeCell(row, user.role);
+      makeCell(row, user.access_role_name || user.role);
       makeCell(row, Number(user.is_active) === 1 ? "Active" : "Inactive");
       makeCell(row, readableDate(user.created_at), "muted");
       const actions = makeCell(row, "", "r");
@@ -543,7 +556,16 @@
       toggle.className = "link";
       toggle.textContent = Number(user.is_active) === 1 ? "Deactivate" : "Activate";
       toggle.dataset.toggleUser = String(user.id);
-      actions.appendChild(toggle);
+      if (can("users", "update") && user.role !== "admin" && Number(user.id) !== Number(app.user.id)) {
+        actions.appendChild(toggle);
+        const controls = document.createElement("div"); controls.className = "role-controls";
+        const select = document.createElement("select"); select.setAttribute("aria-label", "Role for " + user.username); select.dataset.userRole = String(user.id);
+        (app.assignableRoles || []).forEach(function (role) { select.add(new Option(role.name, role.id)); });
+        const assigned = user.access_role_id || (app.assignableRoles || []).find(role => Number(role.is_builtin) === 1)?.id;
+        select.value = String(assigned || "");
+        const save = document.createElement("button"); save.type = "button"; save.className = "link"; save.textContent = "Save role"; save.dataset.saveUserRole = String(user.id);
+        controls.append(select, save); actions.appendChild(controls);
+      }
       body.appendChild(row);
     });
     if (visibleUsers.length === 0) {
@@ -596,7 +618,7 @@
     app.csrf = data.csrf_token;
     app.user = data.user;
     app.records = data.records;
-    app.isAdmin = data.is_admin;
+    window.PortalAccess.set(data.access);
     updateThresholdForm();
     updateIdentity(app.user);
     renderRecords();
@@ -607,21 +629,14 @@
     }
     const userCount = document.getElementById("user-count");
     if (userCount && data.user_count !== null) userCount.textContent = String(data.user_count);
-    document.querySelectorAll('[data-nav="users"], [data-nav="roles"]').forEach(function (link) {
-      link.hidden = !app.isAdmin;
-    });
-    const addUser = document.querySelector('[data-goto="user-create"]');
-    if (addUser) addUser.hidden = !app.isAdmin;
-    if (app.isAdmin) {
+    if (can("users")) {
       const users = await request("users", "", {});
       app.users = users.users;
+      app.assignableRoles = users.assignable_roles || [];
+      const roleSelect = document.getElementById("new-user-role");
+      if (roleSelect) { roleSelect.replaceChildren(); app.assignableRoles.forEach(function (role) { roleSelect.add(new Option(role.name, role.id)); }); }
       renderUsers(users.users);
-    } else {
-      const usersCard = document.querySelector('[data-goto="users"]');
-      if (usersCard) usersCard.hidden = true;
-      if (location.hash === "#/users" || location.hash === "#/user-create") location.hash = "#/dashboard";
     }
-    await loadOeeDashboard();
   }
 
   async function submitForm(form, action, fields, success, resource) {
@@ -666,7 +681,7 @@
   const userForm = document.getElementById("user-create-form");
   if (userForm) userForm.addEventListener("submit", function (event) {
     event.preventDefault();
-    submitForm(userForm, "user-create", ["username", "email", "full_name", "password"], "User created", "users");
+    submitForm(userForm, "user-create", ["username", "email", "full_name", "password", "role_id"], "User created", "users");
   });
 
   const recordFilter = document.getElementById("record-filter-form");
@@ -740,7 +755,7 @@
     event.preventDefault();
     try {
       await request("oee", "downtime-save", { method: "POST", body: { event_id: app.downtimeEditId, machine: document.getElementById("downtime-machine").value, report_date: document.getElementById("downtime-date").value, starts_at: document.getElementById("downtime-start").value, ends_at: document.getElementById("downtime-end").value, event_type: document.getElementById("downtime-type").value, reason_code: document.getElementById("downtime-reason").value, notes: document.getElementById("downtime-notes").value } });
-      toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok"); app.downtimeEditId = null; downtimeForm.reset(); await loadDowntime();
+      toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok"); app.downtimeEditId = null; downtimeForm.reset(); downtimeForm.querySelector('button[type=submit]').dataset.editing = "false"; window.PortalAccess.applyControls(); await loadDowntime();
     } catch (error) { showOeeAlert("downtime-alert", error.message, true); }
   });
   const mastersRefresh = document.getElementById("masters-refresh");
@@ -749,7 +764,7 @@
   const thresholdForm = document.getElementById("threshold-form");
   if (thresholdForm) thresholdForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-    if (!app.isAdmin || !thresholdForm.reportValidity()) return;
+    if (!can("oee-masters", "update") || !thresholdForm.reportValidity()) return;
     const button = document.getElementById("threshold-save");
     const line = document.getElementById("threshold-line").value;
     const minutes = document.getElementById("threshold-minutes").value;
@@ -759,7 +774,7 @@
       renderMasters(await request("oee", "masters", {}));
       showOeeAlert("masters-alert", line + " threshold saved: " + minutes + " min. Refresh the dashboard/report to recalculate automatic proposals.", true);
     } catch (error) { showOeeAlert("masters-alert", error.message, true); }
-    finally { button.disabled = !app.isAdmin; button.textContent = "Save threshold"; }
+    finally { button.disabled = !can("oee-masters", "update"); button.textContent = "Save threshold"; }
   });
   const reasonForm = document.getElementById("reason-form");
   if (reasonForm) reasonForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "reason", id: Number(document.getElementById("reason-id").value) || null, code: document.getElementById("reason-code").value, label: document.getElementById("reason-label").value } }); toast("Reason saved", "ok"); reasonForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
@@ -767,16 +782,19 @@
   if (cycleForm) cycleForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "cycle", id: Number(document.getElementById("cycle-id").value) || null, line_code: document.getElementById("cycle-line").value, colour: document.getElementById("cycle-colour").value, minutes_per_fb: document.getElementById("cycle-minutes").value, effective_from: document.getElementById("cycle-from").value, effective_to: document.getElementById("cycle-to").value } }); toast("Cycle time saved", "ok"); cycleForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
   document.addEventListener("click", function (event) {
     const threshold = event.target.closest("[data-edit-threshold]");
-    if (threshold && app.isAdmin) { document.getElementById("threshold-line").value = threshold.dataset.editThreshold; updateThresholdForm(); document.getElementById("threshold-minutes").focus(); }
+    if (threshold && can("oee-masters", "update")) { document.getElementById("threshold-line").value = threshold.dataset.editThreshold; updateThresholdForm(); document.getElementById("threshold-minutes").focus(); }
     const reason = event.target.closest("[data-edit-reason]");
     if (reason) { const item = JSON.parse(reason.dataset.editReason); document.getElementById("reason-id").value = item.id; document.getElementById("reason-code").value = item.code; document.getElementById("reason-label").value = item.label; }
     const cycle = event.target.closest("[data-edit-cycle]");
     if (cycle) { const item = JSON.parse(cycle.dataset.editCycle); document.getElementById("cycle-id").value = item.id; document.getElementById("cycle-line").value = item.line_code; document.getElementById("cycle-colour").value = item.colour; document.getElementById("cycle-minutes").value = item.minutes_per_fb; document.getElementById("cycle-from").value = item.effective_from; document.getElementById("cycle-to").value = item.effective_to || ""; }
+    if (reason || cycle) window.PortalAccess.applyControls();
   });
   document.addEventListener("click", function (event) {
     const tag = event.target.closest("[data-tag-downtime]");
-    if (!tag) return;
+    if (!tag || !can("downtime", "update")) return;
     app.downtimeEditId = Number(tag.dataset.tagDowntime);
+    downtimeForm.querySelector('button[type=submit]').dataset.editing = "true";
+    window.PortalAccess.applyControls();
     const toLocal = function (value) { return String(value || "").replace(" ", "T").slice(0, 16); };
     document.getElementById("downtime-start").value = toLocal(tag.dataset.startsAt);
     document.getElementById("downtime-end").value = toLocal(tag.dataset.endsAt);
@@ -787,8 +805,8 @@
   });
   const logsRefresh = document.getElementById("logs-refresh");
   if (logsRefresh) logsRefresh.addEventListener("click", loadScadaLogs);
-  window.addEventListener("hashchange", function () {
-    const route = (location.hash || "#/dashboard").replace("#/", "").split("/")[0];
+  window.addEventListener("portal-view-changed", function (event) {
+    const route = event.detail.route;
     if (route === "dashboard") loadOeeDashboard();
     if (route === "oee-range") loadRangeDashboard();
     if (route === "oee-report") loadOeeReport();
@@ -796,21 +814,21 @@
     if (route === "downtime") loadDowntime();
     if (route === "oee-masters") loadMasters();
   });
-  document.addEventListener("click", function (event) {
-    const navigation = event.target.closest("[data-nav], [data-goto]");
-    if (!navigation) return;
-    const route = navigation.getAttribute("data-nav") || navigation.getAttribute("data-goto");
-    setTimeout(function () {
-      if (route === "dashboard") loadOeeDashboard();
-      if (route === "oee-range") loadRangeDashboard();
-      if (route === "oee-report") loadOeeReport();
-      if (route === "scada-logs") loadScadaLogs();
-      if (route === "downtime") loadDowntime();
-      if (route === "oee-masters") loadMasters();
-    }, 0);
+  let accessReloading = false;
+  window.addEventListener("portal-access-reload", async function () {
+    if (accessReloading) return;
+    accessReloading = true;
+    try { await refresh(); } finally { accessReloading = false; }
   });
 
   document.addEventListener("click", async function (event) {
+    const assign = event.target.closest("[data-save-user-role]");
+    if (assign) {
+      const select = assign.parentElement.querySelector("select");
+      if (!select.value) return toast("Choose an assignable role", "crit");
+      try { assign.disabled = true; await request("users", "user-role", { method: "POST", body: { id: Number(assign.dataset.saveUserRole), role_id: Number(select.value) } }); toast("Role assigned; the user's existing sessions are invalidated", "ok"); await refresh(); }
+      catch (error) { toast(error.message, "crit"); } finally { assign.disabled = false; }
+    }
     const view = event.target.closest("[data-record-id]");
     if (view) {
       const record = app.records.find(function (item) { return String(item.id) === view.dataset.recordId; });
@@ -859,10 +877,4 @@
     if (/sign in/i.test(error.message)) location.href = "index.php";
     else toast(error.message, "crit");
   });
-  const initialRoute = (location.hash || "#/dashboard").replace("#/", "").split("/")[0];
-  if (initialRoute === "oee-report") loadOeeReport();
-  if (initialRoute === "oee-range") loadRangeDashboard();
-  if (initialRoute === "scada-logs") loadScadaLogs();
-  if (initialRoute === "downtime") loadDowntime();
-  if (initialRoute === "oee-masters") loadMasters();
 })();

@@ -3,6 +3,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const fs = require('fs'), path = require('path'), assert = require('assert');
 const { execFileSync } = require('child_process');
 const root = path.resolve(__dirname, '..');
+const grants = JSON.parse(execFileSync('php', ['-r', 'require "includes/permissions.php"; echo json_encode([portal_permission_matrix(true),portal_standard_permissions()]);'], { cwd: root, encoding: 'utf8' }));
 const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_app_session(); $_SESSION["user_id"]=1; require "app-shell.php";'], { cwd: root, encoding: 'utf8' });
 (async () => {
   const browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}) });
@@ -15,7 +16,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
       const url = new URL(route.request().url()), action = url.searchParams.get('action');
       if (url.pathname.endsWith('/app.php')) return route.fulfill({ contentType: 'text/html', body: html });
       if (url.pathname.endsWith('/api.php')) {
-        if (url.searchParams.get('resource') === 'bootstrap') return route.fulfill({ json: { csrf_token: 'isolated-test', user: { full_name: 'Test Admin', username: 'admin' }, records: [], is_admin: admin } });
+        if (url.searchParams.get('resource') === 'bootstrap') return route.fulfill({ json: { csrf_token: 'isolated-test', access: { permissions: grants[admin ? 0 : 1] }, user: { full_name: 'Test Admin', username: 'admin' }, records: [], is_admin: admin } });
         if (url.searchParams.get('resource') === 'users') return route.fulfill({ json: { users: [] } });
         if (action === 'master-save') {
           const data = route.request().postDataJSON(); writes.push(data);

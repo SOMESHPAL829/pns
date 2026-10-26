@@ -15,6 +15,7 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 3. Set `APP_BASE_URL` to the public app URL and `APP_MAIL_FROM` to a sender address in the PHP environment.
 4. Ensure the database account can create and use the `portal_*` tables.
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
+6. Run `php migrate-permissions.php` to install page-level roles and permissions.
 
 The account recovery page returns the same confirmation for existing and unknown email addresses. Reset links expire after 30 minutes and can only be used once. PHP's `mail()` must be connected to a working mail transport for delivery.
 
@@ -33,10 +34,45 @@ Open `http://127.0.0.1:4173/`. Do not use `python -m http.server`; PHP routes ar
 - `#/dashboard` — current user's recent records and summary
 - `#/requests` — searchable, filterable record list
 - `#/create` and `#/detail` — create and update records
-- `#/users` and `#/user-create` — admin-only account management
+- `#/users` and `#/user-create` — permission-controlled account management
+- `#/roles` — protected administrator role/permission editor
 - `#/profile` — update profile and change password
 
-Administrators create accounts; there is no public sign-up route. Regular users can view and change only their own records. Administrators can manage users and view all records.
+Authorized account managers create accounts; there is no public sign-up route. Record ownership restrictions still apply in addition to role grants. Protected administrators retain full access and can view all records.
+
+## Roles and page permissions
+
+Open **Administration → Roles & permissions**, create a named role, and select
+View/Create/Update/Delete for each supported page action. Every existing page is
+listed. Read-only pages show dashes for unsupported actions; no new deletion of
+SCADA data or user accounts is introduced. Users activate/deactivate with Update.
+View is required for mutations; Excel exports use the corresponding report View.
+OEE threshold edits require master-data Update, not Create.
+
+Assign the role under **Users → Save role**, or choose it when creating an account.
+Reassignment invalidates the user's sessions. Permission edits apply on the next
+API request; users should refresh to update menus/buttons. Direct API requests
+are checked even if an old page is still open. New roles start with no access.
+
+Existing administrators are protected full-access accounts. Their role/status
+cannot be changed through these screens, and custom roles cannot administer the
+permission system. The immutable **Standard user** role preserves prior regular
+user access. Create a custom role instead of editing it. Users cannot change their
+own role, assign stronger roles than their own, or delete an assigned/built-in role.
+
+Run additive, idempotent `php migrate-permissions.php` **before deploying** this
+version. It creates migration 007 tables without changing existing users, login
+credentials, OEE settings or SCADA ingestion. Back up `portal_users`, access tables,
+and current deployed code privately. Rollback can leave the additive tables intact,
+but the old version reverts to the broad admin/user policy. Security-sensitive
+role creation/changes/deletion/assignment/status changes have database audit records.
+
+Tests: `php tests/permissions_test.php`; isolated browser test
+`node tests/permissions_browser_test.cjs` (Playwright/Chromium overrides supported).
+Full database/HTTP integration: `OEE_TEST_BASE_URL=http://127.0.0.1:4173 php
+tests/permissions_api_test.php`. This opt-in test creates uniquely named temporary
+accounts/roles/records and removes those fixtures in `finally`; do not run it on
+production without a backup. See [ROLE_PERMISSIONS.md](ROLE_PERMISSIONS.md).
 
 ## Security notes
 

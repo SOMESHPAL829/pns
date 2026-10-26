@@ -1181,6 +1181,15 @@ table.data tbody tr:hover {
 .oee-report-table { min-width: 980px; }
 .oee-master-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1rem; }
 .threshold-card { margin-bottom: 1rem; }
+[hidden] { display: none !important; }
+.role-editor { margin-top: 1rem; overflow: hidden; }
+.role-editor h2 { margin: 0; font: inherit; }
+.role-help { padding: 0.9rem; }
+.permission-table { min-width: 34rem; }
+.permission-table input { width: 1.1rem; height: 1.1rem; accent-color: var(--brand); }
+.role-controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.role-controls select { max-width: 12rem; min-height: 2rem; }
+#roles-body .link + .link { margin-left: 0.75rem; }
 .threshold-card h2 { margin: 0; font: inherit; }
 .threshold-help { padding: 0.9rem 0.9rem 0; margin: 0; }
 .threshold-card .master-form label { min-width: 0; }
