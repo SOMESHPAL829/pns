@@ -7,6 +7,7 @@ require_once __DIR__ . '/includes/oee_ingest.php';
 require_once __DIR__ . '/includes/oee_calculator.php';
 require_once __DIR__ . '/includes/oee_window.php';
 require_once __DIR__ . '/includes/oee_export.php';
+require_once __DIR__ . '/includes/permissions.php';
 
 function api_user(PDO $pdo): array
 {
@@ -23,15 +24,13 @@ function api_user(PDO $pdo): array
         session_destroy();
         json_response(['error' => 'Sign in is required.'], 401);
     }
-    unset($user['auth_version']);
+    $user['access'] = portal_user_access($pdo, $user);
     return $user;
 }
 
-function api_require_admin(array $user): void
+function api_require_page(array $user, string $page, string $action='view'): void
 {
-    if ($user['role'] !== 'admin') {
-        json_response(['error' => 'Administrator access is required.'], 403);
-    }
+    if(!portal_can($user['access']['permissions'],$page,$action))json_response(['error'=>'You do not have '.$action.' permission for this page.'],403);
 }
 
 function api_text(array $data, string $key, int $maxLength): string
@@ -264,7 +263,6 @@ function oee_masters(PDO $pdo): array
 
 function oee_master_save(PDO $pdo, array $data, array $user): void
 {
-    api_require_admin($user);
     $type = api_text($data, 'master_type', 20);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT);
     if ($type === 'threshold') {
@@ -346,6 +344,11 @@ try {
 
     $pdo = db();
     $user = api_user($pdo);
+    $required = portal_api_requirement($resource,$action,$method,$data);
+    // Downtime needs reason labels, not unrestricted access to cycle masters.
+    $reasonSelector = $resource==='oee' && $action==='masters' && $method==='GET'
+        && !portal_can($user['access']['permissions'],'oee-masters') && portal_can($user['access']['permissions'],'downtime');
+    if($required!==null && !$reasonSelector)api_require_page($user,...$required);
 
     if ($method === 'GET') {
         if ($resource === 'oee') {
@@ -416,6 +419,7 @@ try {
                 json_response(oee_downtime($pdo, $requestedDate ?: date('Y-m-d'), $requestedMachine));
             }
             if ($action === 'masters') {
+                if($reasonSelector)json_response(['available'=>true,'reasons'=>$pdo->query('SELECT id,code,label,is_active FROM oee_reason_codes ORDER BY label')->fetchAll(),'cycles'=>[],'thresholds'=>[]]);
                 json_response(oee_masters($pdo));
             }
             json_response(['error' => 'OEE action not found.'], 404);
@@ -429,19 +433,23 @@ try {
             if ($user['role'] !== 'admin') {
                 $records->bindValue(':owner_id', $user['id'], PDO::PARAM_INT);
             }
-            $records->execute();
-            $recordRows = $records->fetchAll();
+            $canRecords=portal_can($user['access']['permissions'],'records');
+            $recordRows=[];
+            if($canRecords){$records->execute();$recordRows=$records->fetchAll();}
 
             $countSql = 'SELECT COUNT(*) FROM portal_records' . ($user['role'] === 'admin' ? '' : ' WHERE owner_id = ?');
             $count = $pdo->prepare($countSql);
-            $count->execute($user['role'] === 'admin' ? [] : [$user['id']]);
-            $totalRecords = (int) $count->fetchColumn();
+            $totalRecords=0;
+            if($canRecords){$count->execute($user['role'] === 'admin' ? [] : [$user['id']]);$totalRecords=(int)$count->fetchColumn();}
 
-            $userCount = $user['role'] === 'admin'
+            $userCount = portal_can($user['access']['permissions'],'users')
                 ? (int) $pdo->query('SELECT COUNT(*) FROM portal_users WHERE is_active = 1')->fetchColumn()
                 : null;
+            $publicUser=$user;unset($publicUser['access'],$publicUser['auth_version']);
             json_response([
-                'user' => $user,
+                'user' => $publicUser,
+                'access' => $user['access'],
+                'permission_catalog' => portal_permission_catalog(),
                 'csrf_token' => csrf_token(),
                 'is_admin' => $user['role'] === 'admin',
                 'records' => $recordRows,
@@ -462,22 +470,41 @@ try {
         }
 
         if ($resource === 'users') {
-            api_require_admin($user);
             $query = $pdo->query(
-                'SELECT id, username, email, full_name, role, is_active, created_at FROM portal_users ORDER BY created_at DESC LIMIT 500'
+                "SELECT u.id,u.username,u.email,u.full_name,u.role,u.is_active,u.created_at,ur.role_id AS access_role_id,CASE WHEN u.role='admin' THEN 'Administrator' ELSE COALESCE(r.name,'Standard user') END AS access_role_name FROM portal_users u LEFT JOIN portal_user_roles ur ON ur.user_id=u.id LEFT JOIN portal_access_roles r ON r.id=ur.role_id ORDER BY u.created_at DESC LIMIT 500"
             );
-            json_response(['users' => $query->fetchAll()]);
+            $roles=array_values(array_filter(portal_list_roles($pdo),static fn(array $r):bool=>portal_grants_within($r['permissions'],$user['access']['permissions'])));
+            json_response(['users' => $query->fetchAll(),'assignable_roles'=>$roles]);
         }
+
+        if($resource==='roles')json_response(['roles'=>portal_list_roles($pdo),'catalog'=>portal_permission_catalog()]);
 
         json_response(['error' => 'Resource not found.'], 404);
     }
 
     if ($resource === 'oee' && $action === 'downtime-save' && $method === 'POST') {
-        api_require_admin($user);
         oee_downtime_save($pdo, $data);
     }
     if ($resource === 'oee' && $action === 'master-save' && $method === 'POST') {
         oee_master_save($pdo, $data, $user);
+    }
+
+    if($resource==='roles'&&$action==='role-save'){
+        $input=$data['permissions']??null;
+        if(!is_array($input))json_response(['error'=>'Permissions must be a page/action object.'],422);
+        $id=filter_var($data['id']??null,FILTER_VALIDATE_INT)?:null;
+        $id=portal_save_role($pdo,$user,$id,api_text($data,'name',80),$input);
+        json_response(['ok'=>true,'id'=>$id]);
+    }
+    if($resource==='roles'&&$action==='role-delete'){
+        $id=filter_var($data['id']??null,FILTER_VALIDATE_INT);
+        if(!$id)json_response(['error'=>'Choose a role.'],422);
+        portal_delete_role($pdo,$user,$id);json_response(['ok'=>true]);
+    }
+    if($resource==='users'&&$action==='user-role'){
+        $id=filter_var($data['id']??null,FILTER_VALIDATE_INT);$roleId=filter_var($data['role_id']??null,FILTER_VALIDATE_INT);
+        if(!$id||!$roleId)json_response(['error'=>'Choose a user and role.'],422);
+        portal_assign_role($pdo,$user,$id,$roleId);json_response(['ok'=>true]);
     }
 
     if ($action === 'profile' && $method === 'POST') {
@@ -572,7 +599,6 @@ try {
     }
 
     if ($action === 'user-create' && $method === 'POST') {
-        api_require_admin($user);
         $username = trim(api_text($data, 'username', 80));
         $email = normalize_email(api_text($data, 'email', 254));
         $name = api_text($data, 'full_name', 160);
@@ -581,11 +607,19 @@ try {
             json_response(['error' => 'Enter a valid username, email, name, and password of at least 12 characters.'], 422);
         }
         try {
+            if(isset($data['role'])||isset($data['permissions']))json_response(['error'=>'Assign an existing access role; administrator flags cannot be supplied.'],422);
+            $roleId=filter_var($data['role_id']??null,FILTER_VALIDATE_INT);
+            if(!$roleId)$roleId=(int)$pdo->query("SELECT id FROM portal_access_roles WHERE is_builtin=1 AND name='Standard user'")->fetchColumn();
+            if(!$roleId||!portal_grants_within(portal_role_permissions($pdo,$roleId),$user['access']['permissions']))json_response(['error'=>'Choose an assignable role within your own permissions.'],403);
+            $pdo->beginTransaction();
             $insert = $pdo->prepare(
                 'INSERT INTO portal_users (username, email, full_name, password_hash) VALUES (?, ?, ?, ?)'
             );
             $insert->execute([$username, $email, $name, password_hash($password, PASSWORD_DEFAULT)]);
+            portal_assign_role($pdo,$user,(int)$pdo->lastInsertId(),$roleId,'create');
+            $pdo->commit();
         } catch (PDOException $exception) {
+            if($pdo->inTransaction())$pdo->rollBack();
             if ($exception->getCode() === '23000') {
                 json_response(['error' => 'That username or email is already in use.'], 409);
             }
@@ -595,33 +629,20 @@ try {
     }
 
     if ($action === 'user-toggle' && $method === 'POST') {
-        api_require_admin($user);
         $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT);
-        if (!$id || (int) $id === (int) $user['id']) {
-            json_response(['error' => 'You cannot deactivate your own account.'], 422);
-        }
-        $targetQuery = $pdo->prepare('SELECT role, is_active FROM portal_users WHERE id = ?');
-        $targetQuery->execute([$id]);
-        $target = $targetQuery->fetch();
-        if (!$target) {
-            json_response(['error' => 'User not found.'], 404);
-        }
-        if ($target['role'] === 'admin' && (int) $target['is_active'] === 1) {
-            $adminCount = (int) $pdo->query("SELECT COUNT(*) FROM portal_users WHERE role = 'admin' AND is_active = 1")->fetchColumn();
-            if ($adminCount <= 1) {
-                json_response(['error' => 'The last active administrator cannot be deactivated.'], 422);
-            }
-        }
-        $update = $pdo->prepare('UPDATE portal_users SET is_active = IF(is_active = 1, 0, 1), auth_version = auth_version + 1 WHERE id = ?');
-        $update->execute([$id]);
-        if ($update->rowCount() !== 1) {
-            json_response(['error' => 'User not found.'], 404);
-        }
+        if(!$id)json_response(['error'=>'Choose a user.'],422);
+        portal_toggle_user($pdo,$user,$id);
         json_response(['ok' => true]);
     }
 
     json_response(['error' => 'Action not found.'], 404);
+} catch (InvalidArgumentException | DomainException $exception) {
+    if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();
+    $status=$exception instanceof InvalidArgumentException?422:(in_array($exception->getCode(),[403,404,409],true)?$exception->getCode():403);
+    json_response(['error'=>$exception->getMessage()],$status);
 } catch (Throwable $exception) {
+    if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();
+    if($exception instanceof PDOException && $exception->getCode()==='23000' && ($resource??'')==='roles')json_response(['error'=>'Role name is already used, or the role is still assigned to users.'],409);
     error_log('API request failed: ' . $exception->getMessage());
     json_response(['error' => 'The request could not be completed.'], 500);
 }
