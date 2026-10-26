@@ -97,3 +97,16 @@ and tagging behavior. Browser checks cover the new order at all four breakpoints
 and ensure the relocated batch section stays hidden without report access.
 The dashboard grid item has `min-width: 0` so the full-width table scrolls inside
 its card instead of forcing the page and filter controls beyond a mobile screen.
+
+## Production batches Excel export (2026-10-26)
+
+The Production batches heading offers Export Excel to roles with Production
+report/View + Export. It downloads the existing formula-driven workbook for all
+batches in the dashboard's selected machine/date/720-or-1440-minute/start-time
+window, not just the six recent preview rows. It MUST work without visiting the
+report page and MUST keep the dashboard open. Reuse the daily export handler and
+server permission check, validate workbook MIME/ZIP signature, disable duplicate
+downloads while busy, and show export failures beside the batches section without
+overwriting calculation warnings. Browser tests cover 12h/single-line and 24h/all
+lines, download filenames, error recovery, invalid workbooks, mobile layout and
+View-only hiding. No backend, formula, grant or schema changes are required.

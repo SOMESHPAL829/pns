@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const all=JSON.parse(execFileSync('php',['-r','require "includes/permissions.php";echo json_encode(portal_permission_matrix(true));'],{cwd:root,encoding:'utf8'}));
 const html=execFileSync('php',['-r','require "includes/security.php";start_app_session();$_SESSION["user_id"]=1;require "app-shell.php";'],{cwd:root,encoding:'utf8'});
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});try{
-  const page=await browser.newPage({viewport:{width:1440,height:1100}}),requests=[],errors=[],saves=[];let permissions=all,fail=false,empty=false,tagFailure=false,reasonFailure=false,tagged=false;
+  const page=await browser.newPage({viewport:{width:1440,height:1100}}),requests=[],errors=[],saves=[];let permissions=all,fail=false,empty=false,tagFailure=false,reasonFailure=false,tagged=false,exportMode='ok';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://127.0.0.1:4173/**',async route=>{
     const url=new URL(route.request().url()),q=url.searchParams;
@@ -13,6 +13,12 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
       requests.push(Object.fromEntries(q));
       if(q.get('resource')==='bootstrap')return route.fulfill({json:{user:{id:1,full_name:'Real Test Admin',username:'admin'},csrf_token:'test',access:{permissions},records:[],user_count:0}});
       if(q.get('resource')==='users')return route.fulfill({json:{users:[],assignable_roles:[]}});
+      if(q.get('action')==='report')return route.fulfill({json:{available:true,date:q.get('date'),machine:q.get('machine'),rows:[],line_metrics:[],oee:{},window:{}}});
+      if(q.get('action')==='export'){
+        if(exportMode==='error')return route.fulfill({status:422,json:{error:'Test export unavailable'}});
+        if(exportMode==='invalid')return route.fulfill({contentType:'text/html',body:'Not an Excel workbook'});
+        return route.fulfill({contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',body:Buffer.from([80,75,3,4,0,0])});
+      }
       if(q.get('action')==='masters')return route.fulfill(reasonFailure?{status:500,json:{error:'Reasons unavailable'}}:{json:{available:true,reasons:[{code:'HOIST',label:'Hoist / movement',is_active:1},{code:'CUSTOM_STOP',label:'Custom stop <reason>',is_active:1},{code:'INACTIVE',label:'Inactive',is_active:0}],cycles:[],thresholds:[]}});
       if(q.get('action')==='downtime-tag'){
         assert.equal(route.request().method(),'POST');assert.equal(route.request().headers()['x-csrf-token'],'test');saves.push(route.request().postDataJSON());
@@ -36,6 +42,8 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert((await page.locator('#dashboard-reasons').textContent()).includes('864.0 min'));
   assert(await page.locator('#dashboard-reasons').evaluate(el=>el.closest('.pns-operations')?.firstElementChild.contains(el)===true),'Downtime by reason must replace Recent batches as the first Live operations card');
   assert(await page.locator('#dashboard-batches-body').evaluate(el=>el.closest('.pns-batches-section')!==null),'Recent batches must move into the lower production section');
+  assert.equal(await page.locator('.pns-batches-section #dashboard-export').count(),1,'Production batches needs an Export Excel button');
+  assert(await page.locator('#dashboard-export').isVisible(),'Export grant must expose the dashboard export');
   assert.equal(await page.locator('#dashboard-run-bar').evaluate(el=>el.style.width),'80%');
   assert.equal(await page.locator('#dashboard-stopped-share').textContent(),'20.0%');
   assert(!(await page.locator('[data-view="dashboard"]').textContent()).includes('Hourly production'));
@@ -57,12 +65,21 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert(requests.filter(r=>r.action==='dashboard').length>priorRequests,'Successful tagging must refresh dashboard');assert((await page.locator('#dashboard-reasons').textContent()).includes('Custom stop <reason>'));assert.equal(await page.locator('#dashboard-reasons reason').count(),0);
   await page.locator('#dashboard-machine').selectOption('APP-07');await page.locator('#dashboard-date').fill('2026-10-21');await page.locator('#dashboard-duration').selectOption('720');await page.locator('#dashboard-start-time').fill('12:00');await page.locator('#dashboard-refresh').click();
   await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('APP-07'));
+  const firstDownload=page.waitForEvent('download');await page.locator('#dashboard-export').click();const downloaded=await firstDownload;
+  assert.equal(downloaded.suggestedFilename(),'pns-oee-2026-10-21-APP-07-720min-1200.xlsx');
+  assert.deepEqual(requests.filter(r=>r.action==='export').at(-1),{resource:'oee',action:'export',machine:'APP-07',date:'2026-10-21',duration_minutes:'720',start_time:'12:00'},'Dashboard export must use its own filters without requiring a report visit');
+  assert.equal(new URL(page.url()).hash,'#/dashboard','Export must keep the dashboard open');
+  exportMode='error';await page.locator('#dashboard-export').click();await page.waitForFunction(()=>document.getElementById('dashboard-export-alert').textContent.includes('Test export unavailable'));assert(!(await page.locator('#dashboard-export').isDisabled()));
+  exportMode='invalid';await page.locator('#dashboard-export').click();await page.waitForFunction(()=>document.getElementById('dashboard-export-alert').textContent.includes('valid Excel workbook'));exportMode='ok';
   await page.locator('[data-dashboard-link="report"]').first().click();
   assert.equal(await page.locator('#report-machine-filter').inputValue(),'APP-07');assert.equal(await page.locator('#report-date').inputValue(),'2026-10-21');assert.equal(await page.locator('#report-duration').inputValue(),'720');
+  await page.waitForFunction(()=>document.getElementById('report-summary').textContent.includes('2026-10-21'));
+  const reportDownload=page.waitForEvent('download');await page.locator('#report-export').click();assert.equal((await reportDownload).suggestedFilename(),'pns-oee-2026-10-21-APP-07-720min-1200.xlsx','Existing report export must still work');
   await page.locator('[data-nav="dashboard"]').click();
   await page.locator('#dashboard-machine').selectOption('ALL');await page.locator('#dashboard-date').fill('2026-10-22');await page.locator('#dashboard-duration').selectOption('1440');await page.locator('#dashboard-refresh').click();
   await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('All machines'));
-  for(const width of[1440,1024,768,320]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(250);for(const id of['dashboard-machine','dashboard-date','dashboard-duration','dashboard-start-time','dashboard-refresh']){const b=await page.locator('#'+id).boundingBox();assert(b&&b.x>=0&&b.x+b.width<=width+1,id+' overflows '+width+' '+JSON.stringify(b));}const operations=await page.locator('.pns-operations').boundingBox(),batches=await page.locator('.pns-batches-section').boundingBox();assert(operations&&batches&&batches.y>=operations.y+operations.height,'Recent batches must appear below Live operations at '+width);}
+  const allDownload=page.waitForEvent('download');await page.locator('#dashboard-export').click();assert.equal((await allDownload).suggestedFilename(),'pns-oee-2026-10-22-ALL-1440min-0000.xlsx');
+  for(const width of[1440,1024,768,320]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(250);for(const id of['dashboard-machine','dashboard-date','dashboard-duration','dashboard-start-time','dashboard-refresh','dashboard-export']){const b=await page.locator('#'+id).boundingBox();assert(b&&b.x>=0&&b.x+b.width<=width+1,id+' overflows '+width+' '+JSON.stringify(b));}const operations=await page.locator('.pns-operations').boundingBox(),batches=await page.locator('.pns-batches-section').boundingBox();assert(operations&&batches&&batches.y>=operations.y+operations.height,'Recent batches must appear below Live operations at '+width);}
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Mobile dashboard has page-wide overflow');
   await page.screenshot({path:'/tmp/pns-dashboard-updated-mobile.png'});
   await page.setViewportSize({width:1440,height:1100});await page.waitForTimeout(250);await page.screenshot({path:'/tmp/pns-dashboard-updated.png',fullPage:true});
@@ -74,5 +91,6 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert(!requests.slice(count).some(r=>['report','downtime','masters'].includes(r.action)),'Dashboard-only must not fetch restricted endpoints');
   permissions={dashboard:{view:true},downtime:{view:true,update:false}};await page.goto('http://127.0.0.1:4173/app.php?scope=view-only#/dashboard');await page.waitForFunction(()=>document.getElementById('oee-value').textContent==='60.0%');assert.equal(await page.locator('[data-dashboard-tag]').count(),0,'View-only roles must not tag');
   assert(await page.locator('.pns-reason-card').isVisible());assert(!(await page.locator('.pns-batches-section').isVisible()),'Downtime View must not expose the relocated batch section');
+  permissions={dashboard:{view:true},'oee-report':{view:true,export:false}};await page.goto('http://127.0.0.1:4173/app.php?scope=report-view-only#/dashboard');await page.waitForFunction(()=>document.getElementById('oee-value').textContent==='60.0%');assert(await page.locator('.pns-batches-section').isVisible());assert(!(await page.locator('#dashboard-export').isVisible()),'View without Export must hide the new export button');
   assert.deepEqual(errors,[]);console.log('Dashboard browser tests passed: inline downtime tagging, CSRF payload, cancel/errors, exact event/line, refresh, read-only hiding, safe text, filters and responsive layouts.');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

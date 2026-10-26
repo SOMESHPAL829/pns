@@ -244,15 +244,20 @@
     renderReportRows(app.reportRows);
   }
 
-  async function exportReportExcel() {
-    if (!can("oee-report", "export")) { showOeeAlert("oee-report-alert", "You do not have Export permission for this report.", true); return; }
-    if (!app.reportData) { showOeeAlert("oee-report-alert", "Load a report before exporting.", true); return; }
+  async function exportReportExcel(source = "report") {
+    const dashboard = source === "dashboard", alertId = dashboard ? "dashboard-export-alert" : "oee-report-alert";
+    const button = document.getElementById(dashboard ? "dashboard-export" : "report-export");
+    if (!can("oee-report", "export")) { showOeeAlert(alertId, "You do not have Export permission for this report.", true); return; }
+    if (dashboard ? !app.oee?.available : !app.reportData) { showOeeAlert(alertId, "Load " + (dashboard ? "the dashboard" : "a report") + " before exporting.", true); return; }
+    if (button?.disabled) return;
+    if (dashboard) showOeeAlert(alertId, "", false);
+    if (button) { button.disabled = true; button.textContent = "Exporting…"; }
     try {
-    const date = document.getElementById("report-date")?.value || app.reportDate || "";
-    const machine = document.getElementById("report-machine-filter")?.value || "ALL";
-    const selection = oeeWindowQuery("report");
+    const date = document.getElementById(source + "-date")?.value || (dashboard ? app.oee.date : app.reportDate) || "";
+    const machine = document.getElementById(dashboard ? "dashboard-machine" : "report-machine-filter")?.value || "ALL";
+    const selection = oeeWindowQuery(source);
     const response = await fetch(apiUrl + "?resource=oee&action=export&machine=" + encodeURIComponent(machine) + "&date=" + encodeURIComponent(date) + "&duration_minutes=" + selection.duration_minutes + "&start_time=" + encodeURIComponent(selection.start_time), { credentials: "same-origin", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
-    if (!response.ok) { let message = "Excel export failed."; try { const payload = await response.json(); message = payload.error || message; } catch (error) {} showOeeAlert("oee-report-alert", message, true); return; }
+    if (!response.ok) { let message = "Excel export failed."; try { const payload = await response.json(); message = payload.error || message; } catch (error) {} if (response.status === 403) window.dispatchEvent(new Event("portal-access-reload")); throw new Error(message); }
     const blob = await response.blob();
     const signature = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
     if (!response.headers.get("Content-Type")?.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") || signature.length !== 4 || signature[0] !== 80 || signature[1] !== 75 || signature[2] !== 3 || signature[3] !== 4) {
@@ -260,8 +265,8 @@
     }
     const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "pns-oee-" + date + "-" + machine + "-" + selection.duration_minutes + "min-" + selection.start_time.replace(":", "") + ".xlsx"; link.click(); setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
     } catch (error) {
-      showOeeAlert("oee-report-alert", error.message || "Excel export failed. Please try again.", true);
-    }
+      showOeeAlert(alertId, error.message || "Excel export failed. Please try again.", true);
+    } finally { if (button) { button.disabled = false; button.textContent = "Export Excel"; } }
   }
 
   function renderLogs(data) {
@@ -745,7 +750,8 @@
   const reportDateControl = document.getElementById("report-date");
   if (reportDateControl) reportDateControl.addEventListener("change", loadOeeReport);
   const reportExport = document.getElementById("report-export");
-  if (reportExport) reportExport.addEventListener("click", exportReportExcel);
+  if (reportExport) reportExport.addEventListener("click", function () { exportReportExcel("report"); });
+  document.getElementById("dashboard-export")?.addEventListener("click", function () { exportReportExcel("dashboard"); });
   const reportMachine = document.getElementById("report-machine-filter");
   if (reportMachine) reportMachine.addEventListener("change", loadOeeReport);
   ["report-search", "report-grade-filter", "report-colour-filter", "report-state-filter"].forEach(function (id) {

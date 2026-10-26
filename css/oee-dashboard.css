@@ -18,6 +18,8 @@
 .pns-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 1.7rem 0 0.75rem; }
 .pns-section-heading h2 { margin: 0; color: var(--accent-deep); font-size: 1.05rem; }
 .pns-section-heading > span { color: var(--mut); font-size: 0.75rem; }
+.pns-batches-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+.pns-batches-actions > span { color: var(--mut); font-size: 0.75rem; }
 .pns-dashboard .oee-grid-main { margin-top: 0; grid-template-columns: minmax(0,1.45fr) minmax(0,1fr); gap: 0.9rem; }
 .pns-dashboard .dash-card { padding: 0; overflow: hidden; border-radius: 0.75rem; }
 .pns-dashboard .dash-card-head { padding: 0.95rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }

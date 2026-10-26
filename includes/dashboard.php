@@ -37,7 +37,8 @@
     <p id="dashboard-detail-message" class="pns-empty" hidden>Detailed operations are restricted by your role. Aggregate production and time-loss KPIs remain available above.</p>
   </div>
   <section class="pns-batches-section" data-permission-page="oee-report" hidden>
-    <div class="pns-section-heading"><h2>Production batches</h2><span>Latest flight bars in this reporting window</span></div>
+    <div class="pns-section-heading"><h2>Production batches</h2><div class="pns-batches-actions"><span>Latest flight bars in this reporting window</span><button class="btn ghost" id="dashboard-export" type="button" data-permission-page="oee-report" data-permission-action="export" title="Export all batches and OEE calculations for the selected reporting window" hidden>Export Excel</button></div></div>
+    <p id="dashboard-export-alert" class="oee-alert" role="alert" hidden></p>
     <div class="dash-card oee-card"><div class="dash-card-head"><h3>Recent batches</h3><a href="#/oee-report" data-goto="oee-report" data-dashboard-link="report" class="link">All batches →</a></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line / part</th><th>Grade / colour</th><th>PCS</th><th>Total SA</th><th>State</th></tr></thead><tbody id="dashboard-batches-body"><tr><td colspan="5">Loading batches…</td></tr></tbody></table></div></div>
   </section>
   <p class="pns-review-note">Automatic gap and empty-rack stops are estimates until reviewed. KPI values use the current calculation rules and the selected reporting window.</p>
