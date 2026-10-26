@@ -33,6 +33,7 @@ gap_check(oee_gap_candidates($same)[0]['evidence_key'] === $events[0]['evidence_
 
 // Real persistence checks use an isolated in-memory database, never production.
 $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+$pdo->exec('CREATE TABLE oee_line_settings (line_code TEXT PRIMARY KEY, gap_threshold_minutes REAL, updated_by INTEGER, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
 $pdo->exec('CREATE TABLE oee_fb_runs (id INTEGER PRIMARY KEY, line_code TEXT, report_date TEXT, si_no INTEGER, seq TEXT, loading_at TEXT, used_colour TEXT, report_colour TEXT, pcs INTEGER, is_productive INTEGER, cycle_minutes REAL, flags TEXT)');
 $pdo->exec('CREATE TABLE oee_cycle_time_standards (line_code TEXT, colour TEXT, minutes_per_fb REAL, effective_from TEXT, effective_to TEXT)');
 $pdo->exec("INSERT INTO oee_cycle_time_standards VALUES ('APP-06','BLACK-1',10,'2026-01-01',NULL), ('APP-06','CLEAR',7,'2026-01-01',NULL), ('APP-06','BLACK-1',8,'2026-10-24',NULL)");

@@ -403,7 +403,36 @@
     catch (error) { showOeeAlert("downtime-alert", error.message, true); }
   }
 
+  let plantThresholds = [];
+  function updateThresholdForm() {
+    const line = document.getElementById("threshold-line");
+    const input = document.getElementById("threshold-minutes");
+    const item = plantThresholds.find(function (entry) { return entry.line_code === line?.value; });
+    if (input) input.value = item ? String(Number(item.gap_threshold_minutes)) : "";
+    ["threshold-line", "threshold-minutes", "threshold-save"].forEach(function (id) {
+      const node = document.getElementById(id);
+      if (node) node.disabled = !app.isAdmin || !item;
+    });
+    document.querySelectorAll("[data-edit-threshold]").forEach(function (button) { button.disabled = !app.isAdmin; });
+  }
+
   function renderMasters(data) {
+    plantThresholds = data.thresholds || [];
+    const thresholdsBody = document.getElementById("thresholds-body");
+    if (thresholdsBody) {
+      thresholdsBody.replaceChildren();
+      plantThresholds.forEach(function (item) {
+        const row = document.createElement("tr");
+        makeCell(row, item.line_code); makeCell(row, Number(item.gap_threshold_minutes).toFixed(3));
+        const cell = makeCell(row, "");
+        const button = document.createElement("button");
+        button.type = "button"; button.className = "link"; button.textContent = "Edit";
+        button.setAttribute("aria-label", "Edit threshold for " + item.line_code);
+        button.dataset.editThreshold = item.line_code; cell.appendChild(button); thresholdsBody.appendChild(row);
+      });
+      if (!plantThresholds.length) { const row = document.createElement("tr"); const cell = makeCell(row, "Plant thresholds unavailable. Refresh after installing the settings migration."); cell.colSpan = 3; thresholdsBody.appendChild(row); }
+    }
+    updateThresholdForm();
     const reasonsBody = document.getElementById("reasons-body");
     const cyclesBody = document.getElementById("cycles-body");
     if (reasonsBody) {
@@ -568,6 +597,7 @@
     app.user = data.user;
     app.records = data.records;
     app.isAdmin = data.is_admin;
+    updateThresholdForm();
     updateIdentity(app.user);
     renderRecords();
     const detailMatch = location.hash.match(/^#\/detail\/(\d+)$/);
@@ -715,11 +745,29 @@
   });
   const mastersRefresh = document.getElementById("masters-refresh");
   if (mastersRefresh) mastersRefresh.addEventListener("click", loadMasters);
+  document.getElementById("threshold-line")?.addEventListener("change", updateThresholdForm);
+  const thresholdForm = document.getElementById("threshold-form");
+  if (thresholdForm) thresholdForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (!app.isAdmin || !thresholdForm.reportValidity()) return;
+    const button = document.getElementById("threshold-save");
+    const line = document.getElementById("threshold-line").value;
+    const minutes = document.getElementById("threshold-minutes").value;
+    button.disabled = true; button.textContent = "Saving…";
+    try {
+      await request("oee", "master-save", { method: "POST", body: { master_type: "threshold", line_code: line, gap_threshold_minutes: minutes } });
+      renderMasters(await request("oee", "masters", {}));
+      showOeeAlert("masters-alert", line + " threshold saved: " + minutes + " min. Refresh the dashboard/report to recalculate automatic proposals.", true);
+    } catch (error) { showOeeAlert("masters-alert", error.message, true); }
+    finally { button.disabled = !app.isAdmin; button.textContent = "Save threshold"; }
+  });
   const reasonForm = document.getElementById("reason-form");
   if (reasonForm) reasonForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "reason", id: Number(document.getElementById("reason-id").value) || null, code: document.getElementById("reason-code").value, label: document.getElementById("reason-label").value } }); toast("Reason saved", "ok"); reasonForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
   const cycleForm = document.getElementById("cycle-form");
   if (cycleForm) cycleForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "cycle", id: Number(document.getElementById("cycle-id").value) || null, line_code: document.getElementById("cycle-line").value, colour: document.getElementById("cycle-colour").value, minutes_per_fb: document.getElementById("cycle-minutes").value, effective_from: document.getElementById("cycle-from").value, effective_to: document.getElementById("cycle-to").value } }); toast("Cycle time saved", "ok"); cycleForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
   document.addEventListener("click", function (event) {
+    const threshold = event.target.closest("[data-edit-threshold]");
+    if (threshold && app.isAdmin) { document.getElementById("threshold-line").value = threshold.dataset.editThreshold; updateThresholdForm(); document.getElementById("threshold-minutes").focus(); }
     const reason = event.target.closest("[data-edit-reason]");
     if (reason) { const item = JSON.parse(reason.dataset.editReason); document.getElementById("reason-id").value = item.id; document.getElementById("reason-code").value = item.code; document.getElementById("reason-label").value = item.label; }
     const cycle = event.target.closest("[data-edit-cycle]");

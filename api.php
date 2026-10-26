@@ -255,7 +255,11 @@ function oee_masters(PDO $pdo): array
 {
     $reasons = $pdo->query('SELECT id, code, label, is_active FROM oee_reason_codes ORDER BY label')->fetchAll();
     $cycles = $pdo->query('SELECT id, line_code, colour, minutes_per_fb, effective_from, effective_to FROM oee_cycle_time_standards ORDER BY line_code, colour, effective_from DESC')->fetchAll();
-    return ['available' => true, 'reasons' => $reasons, 'cycles' => $cycles];
+    $thresholds = [];
+    foreach (oee_gap_thresholds($pdo) as $line => $minutes) {
+        $thresholds[] = ['line_code' => $line, 'gap_threshold_minutes' => $minutes];
+    }
+    return ['available' => true, 'reasons' => $reasons, 'cycles' => $cycles, 'thresholds' => $thresholds];
 }
 
 function oee_master_save(PDO $pdo, array $data, array $user): void
@@ -263,6 +267,15 @@ function oee_master_save(PDO $pdo, array $data, array $user): void
     api_require_admin($user);
     $type = api_text($data, 'master_type', 20);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT);
+    if ($type === 'threshold') {
+        $line = strtoupper(api_text($data, 'line_code', 40));
+        try {
+            $minutes = oee_save_gap_threshold($pdo, $line, $data['gap_threshold_minutes'] ?? null, (int) $user['id']);
+        } catch (InvalidArgumentException $exception) {
+            json_response(['error' => $exception->getMessage()], 422);
+        }
+        json_response(['ok' => true, 'line_code' => $line, 'gap_threshold_minutes' => $minutes]);
+    }
     if ($type === 'reason') {
         $code = strtoupper(api_text($data, 'code', 40));
         $label = api_text($data, 'label', 120);

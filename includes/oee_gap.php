@@ -1,14 +1,16 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/oee_settings.php';
 
 /** Pure detection. Each input row has a resolved, effective cycle time. */
-function oee_gap_candidates(array $rows): array
+function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
 {
+    $thresholdMinutes = oee_validate_gap_threshold($thresholdMinutes);
     $rows = array_values(array_filter($rows, static fn (array $row): bool => !empty($row['loading_at'])));
     usort($rows, static fn (array $a, array $b): int => [$a['loading_at'], $a['si_no']] <=> [$b['loading_at'], $b['si_no']]);
     $events = [];
     $identity = static fn (array $row): array => [substr($row['loading_at'], 0, 10), trim((string) ($row['seq'] ?? '')) ?: 'SI:' . $row['si_no']];
-    $add = static function (string $source, array $before, array $after, array $cycleRow, ?array $firstEmpty = null) use (&$events, $identity): void {
+    $add = static function (string $source, array $before, array $after, array $cycleRow, ?array $firstEmpty = null) use (&$events, $identity, $thresholdMinutes): void {
         $cycle = (float) ($cycleRow['cycle_minutes'] ?? 0);
         if ($cycle <= 0 || !is_finite($cycle)) throw new InvalidArgumentException('Gap detection requires a resolved positive cycle time.');
         $start = date('Y-m-d H:i:s', strtotime($before['loading_at']) + (int) round($cycle * 60));
@@ -19,9 +21,11 @@ function oee_gap_candidates(array $rows): array
         $events[] = ['report_date' => substr($start, 0, 10), 'starts_at' => $start, 'ends_at' => $after['loading_at'],
             'raw_start' => $before['loading_at'], 'raw_end' => $after['loading_at'], 'source' => $source,
             'evidence_key' => hash('sha256', json_encode([$source, $identity($before), $identity($firstEmpty ?? $after)])),
-            'notes' => sprintf('SCADA %s: %s -> %s; raw gap %.3f min; cycle %.3f min (%s); stop threshold >20 min.%s',
+            'notes' => sprintf('SCADA %s: %s -> %s; raw gap %.3f min; cycle %.3f min (%s); %s.%s',
                 $source, $before['seq'] ?? $before['si_no'], $after['seq'] ?? $after['si_no'], $gap, $cycle,
-                $cycleRow['cycle_colour'] ?? $cycleRow['used_colour'] ?? '', !empty($flags['colour_no_standard']) ? ' Missing standard: default 12 min applied.' : '')];
+                $cycleRow['cycle_colour'] ?? $cycleRow['used_colour'] ?? '',
+                $source === 'gap' ? sprintf('plant stop threshold >%.3f min', $thresholdMinutes) : 'separate empty-rack rule (no gap threshold)',
+                !empty($flags['colour_no_standard']) ? ' Missing standard: default 12 min applied.' : '')];
     };
     $previous = $anchor = $firstEmpty = $lastEmpty = null;
     foreach ($rows as $row) {
@@ -30,7 +34,7 @@ function oee_gap_candidates(array $rows): array
             $previous = $anchor = $firstEmpty = $lastEmpty = null;
         }
         if ((int) $row['is_productive'] === 1) {
-            if ($previous && (strtotime($row['loading_at']) - strtotime($previous['loading_at'])) > 1200) $add('gap', $previous, $row, $row);
+            if ($previous && (strtotime($row['loading_at']) - strtotime($previous['loading_at'])) > $thresholdMinutes * 60) $add('gap', $previous, $row, $row);
             if ($anchor && $lastEmpty) $add('empty_rack', $anchor, $lastEmpty, $anchor, $firstEmpty);
             $anchor = $row;
             $firstEmpty = $lastEmpty = null;
@@ -70,7 +74,8 @@ function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate
         $row['flags'] = $missing ? ['colour_no_standard' => true] : [];
     }
     unset($row);
-    $candidates = array_filter(oee_gap_candidates($rows), static fn (array $event): bool => $event['starts_at'] < $end && $event['ends_at'] > $start);
+    $thresholds = oee_gap_thresholds($pdo);
+    $candidates = array_filter(oee_gap_candidates($rows, $thresholds[$lineCode] ?? 20.0), static fn (array $event): bool => $event['starts_at'] < $end && $event['ends_at'] > $start);
     $ownsTransaction = !$pdo->inTransaction();
     if ($ownsTransaction) $pdo->beginTransaction();
     try {

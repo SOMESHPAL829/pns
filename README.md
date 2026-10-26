@@ -150,7 +150,8 @@ For isolated browser checks, install Playwright and run
 
 ## Cycle-based gap detection
 
-Since 26 October 2026, a loading gap strictly greater than 20 minutes proposes
+Since 26 October 2026, a loading gap strictly greater than the plant threshold
+(default 20 minutes) proposes
 `gap - arriving FB's registered cycle time` as downtime, not `gap - 14.6`.
 Smaller excess gaps remain performance losses. Adjacent-day loads reveal
 midnight stops, which are stored once and clipped to each reporting window.
@@ -168,6 +169,23 @@ Rules/examples: [OEE_GAP_RULES.md](OEE_GAP_RULES.md). Run
 `php tests/oee_gap_test.php` plus the existing calculator, window, ingest and
 Excel tests. Dashboard/report/export recalculate selected dates on demand;
 no broad historical recalculation or Unit 1 sender change is required.
+
+### Plant gap thresholds
+
+OEE master data → **Plant gap threshold** lists APP-06, APP-07 and APP-10.
+An administrator can select a plant and save 0.001–1440 minutes (three decimal
+places maximum). Equal-to-limit gaps do not qualify. This is the detection
+limit, not the cycle time deducted from the gap; empty-rack rules are unchanged.
+Refresh the dashboard/report after saving. Historical reports use the current
+setting on recalculation, while tagged/approved/rejected downtime is preserved.
+
+Run `php migrate-oee-settings.php` **before deploying** this feature. Migration
+006 only creates a settings table; no source imports or operator events change.
+The migration is idempotent and defaults missing plant rows to 20 minutes.
+Rollback: deploy the preceding code revision; leave the additive table intact.
+Keep a private backup of downtime/snapshots before deployment. For tests run
+`php tests/oee_threshold_test.php` and `node tests/oee_threshold_browser_test.cjs`
+(same Playwright/Chromium overrides as the date-range browser test).
 
 ## Theme assets
 

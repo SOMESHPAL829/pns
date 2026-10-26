@@ -112,7 +112,7 @@ Utilization = sum(run_time) / (1440 * count_of_days)
 
 | Source | How it is created | Minutes |
 |---|---|---|
-| Gap stop | Gap between consecutive loads strictly above 20 min, ending in productive FB | gap - arriving FB's effective registered cycle (minimum zero) |
+| Gap stop | Gap between consecutive loads strictly above the plant's registered threshold (default 20 min), ending in productive FB | gap - arriving FB's effective registered cycle (minimum zero) |
 | Empty-rack run | One or more EMPTY racks loaded in a row (section 6) | preceding productive load + its registered cycle through last empty load |
 | Manual stop | Operator adds start / end / reason | end - start |
 | Planned stop | Reason with `planned = true` (PM, PBRK) | end - start, reduces planned time |
@@ -571,7 +571,7 @@ Cases the data suggests need a person to look at (software should surface them a
 | # | Scenario | Expected |
 |---|---|---|
 | T1 | Import the 17-10-2026 report | 82 rows, 78 productive, 4 empty, 16 no-unload, 3 short-transit, 1 seq jump |
-| T2 | Detect with threshold >20 and effective colour cycles | Event start = previous load + arriving CT; empty runs use preceding productive CT; midnight intervals split once; see `tests/oee_gap_test.php` |
+| T2 | Detect above per-plant threshold (default 20 min) with effective colour cycles | Event start = previous load + arriving CT; empty runs use preceding productive CT; midnight intervals split once; see `tests/oee_gap_test.php` and `tests/oee_threshold_test.php` |
 | T3 | Day totals with default 12-min pitch | A 91.5%, P 88.2%, Q 100%, OEE 80.8%, Util 73.7% (tolerance 0.1 percentage point) |
 | T4 | Enter colour cycle times 14 / 15 / 12 for BLACK-1 / BLACK-2 / CLEAR | Ideal output = 61x14 + 10x15 + 7x12 = 1,088 min; Performance = 102.6% and the "Performance above 100%" check fires |
 | T5 | Set one event to FALSE_ALARM | Event minutes removed from downtime; run time rises by the same amount |
@@ -631,7 +631,7 @@ Cases the data suggests need a person to look at (software should surface them a
 
 1. Cycle time by colour = **line pitch in minutes per flight bar** (not total bath time).
 2. Default pitch 12 min until the colour table is filled.
-3. Normal pitch 14.6 min and stop threshold 20 min are taken from one day of data; review with more days.
+3. Plant gap thresholds are editable in OEE master data (default 20 min). The old 14.6-minute deduction is no longer used; use effective registered colour pitch. See `OEE_GAP_RULES.md`.
 4. Shift timings (A / B / C) and whether night shift data arrives in the same file.
 5. Whether rejects are counted per flight bar or per piece.
 6. Whether empty racks should always be treated as a loss (current rule) or only when no material is available.
