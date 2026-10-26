@@ -201,10 +201,13 @@ function oee_logs(PDO $pdo): array
 function oee_downtime(PDO $pdo, string $date, string $machine): array
 {
     $lineCode = oee_machine_line($machine);
+    oee_calculate_daily($pdo, $lineCode, $date);
+    $dayStart = $date . ' 00:00:00';
+    $dayEnd = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
     $query = $pdo->prepare(
-        'SELECT id, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes, created_at, updated_at FROM oee_downtime_events WHERE line_code = ? AND report_date = ? ORDER BY starts_at ASC'
+        'SELECT id, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes, created_at, updated_at FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at ASC'
     );
-    $query->execute([$lineCode, $date]);
+    $query->execute([$lineCode, $dayEnd, $dayStart]);
     return ['available' => true, 'date' => $date, 'machine' => $machine, 'events' => $query->fetchAll()];
 }
 
@@ -231,9 +234,10 @@ function oee_downtime_save(PDO $pdo, array $data): void
     $eventId = filter_var($data['event_id'] ?? null, FILTER_VALIDATE_INT);
     if ($eventId) {
         $update = $pdo->prepare(
-            "UPDATE oee_downtime_events SET event_type = ?, status = 'confirmed', reason_code = ?, notes = ?, starts_at = ?, ends_at = ? WHERE id = ? AND line_code = ? AND report_date = ?"
+            "UPDATE oee_downtime_events SET event_type = ?, status = 'confirmed', reason_code = ?, notes = ?, starts_at = ?, ends_at = ? WHERE id = ? AND line_code = ? AND starts_at < ? AND ends_at > ?"
         );
-        $update->execute([$eventType, $reason, $notes, $startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s'), $eventId, oee_machine_line($machine), $date]);
+        $dayEnd = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
+        $update->execute([$eventType, $reason, $notes, $startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s'), $eventId, oee_machine_line($machine), $dayEnd, $date . ' 00:00:00']);
         if ($update->rowCount() < 1) {
             json_response(['error' => 'Downtime event not found for this machine and date.'], 404);
         }

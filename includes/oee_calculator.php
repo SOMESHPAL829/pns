@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/oee_gap.php';
+
 function oee_metrics(float $windowMinutes, float $plannedStop, float $unplannedStop, float $idealOutput, int $productiveFb, int $rejectedFb = 0, int $reworkedFb = 0, int $calendarMinutes = 1440): array
 {
     $plannedTime = max(0.0, $windowMinutes - $plannedStop);
@@ -23,68 +25,6 @@ function oee_metrics(float $windowMinutes, float $plannedStop, float $unplannedS
     ];
 }
 
-function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate, array $rows): int
-{
-    $thresholdMinutes = 20.0;
-    $normalPitchMinutes = 14.6;
-    // Gap events are derived data. Rebuild only still-proposed automatic
-    // events so corrected timestamps cannot leave stale or overlapping gaps.
-    $clear = $pdo->prepare("DELETE FROM oee_downtime_events WHERE line_code = ? AND report_date = ? AND source = 'gap' AND status = 'proposed'");
-    $clear->execute([$lineCode, $reportDate]);
-    $previous = null;
-    $insert = $pdo->prepare(
-        "INSERT INTO oee_downtime_events (line_code, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes) VALUES (?, ?, ?, ?, 'unplanned', 'gap', 'proposed', 'UNK', 'Automatically proposed from a SCADA loading gap.')"
-    );
-    $created = 0;
-    foreach ($rows as $row) {
-        $loading = $row['loading_at'] ?: null;
-        if ($loading === null) continue;
-        if ($previous !== null && (int) $row['is_productive'] === 1) {
-            $start = $previous['loading_at'];
-            $gapMinutes = (strtotime((string) $loading) - strtotime((string) $start)) / 60;
-            if ($gapMinutes > $thresholdMinutes) {
-                $startAt = date('Y-m-d H:i:s', strtotime((string) $start) + (int) round($normalPitchMinutes * 60));
-                $endAt = date('Y-m-d H:i:s', strtotime((string) $loading));
-                if ($endAt > $startAt) {
-                    $insert->execute([$lineCode, $reportDate, $startAt, $endAt]);
-                    $created++;
-                }
-            }
-        }
-        $previous = $row;
-    }
-
-    $runStart = null;
-    $lastEmpty = null;
-    foreach ($rows as $row) {
-        if ((int) $row['is_productive'] === 1) {
-            if ($runStart !== null && $lastEmpty !== null) {
-                // Do not charge the normal pitch twice. The empty-rack loss
-                // starts after the expected next productive load.
-                $startAt = date('Y-m-d H:i:s', strtotime((string) $runStart) + (int) round($normalPitchMinutes * 60));
-                $endAt = date('Y-m-d H:i:s', strtotime((string) $lastEmpty));
-                if ($endAt > $startAt) {
-                    $insert->execute([$lineCode, $reportDate, $startAt, $endAt]);
-                    $created++;
-                }
-            }
-            $runStart = $row['loading_at'] ?: null;
-            $lastEmpty = null;
-        } elseif ($runStart !== null && $row['loading_at'] !== null) {
-            $lastEmpty = $row['loading_at'];
-        }
-    }
-    if ($runStart !== null && $lastEmpty !== null) {
-        $startAt = date('Y-m-d H:i:s', strtotime((string) $runStart) + (int) round($normalPitchMinutes * 60));
-        $endAt = date('Y-m-d H:i:s', strtotime((string) $lastEmpty));
-        if ($endAt > $startAt) {
-            $insert->execute([$lineCode, $reportDate, $startAt, $endAt]);
-            $created++;
-        }
-    }
-    return $created;
-}
-
 function oee_calculate_daily(PDO $pdo, string $lineCode, string $reportDate): array
 {
     $rowsQuery = $pdo->prepare(
@@ -92,7 +32,7 @@ function oee_calculate_daily(PDO $pdo, string $lineCode, string $reportDate): ar
     );
     $rowsQuery->execute([$lineCode, $reportDate]);
     $rows = $rowsQuery->fetchAll();
-    $proposedGaps = oee_propose_gap_downtime($pdo, $lineCode, $reportDate, $rows);
+    $proposedGaps = oee_propose_gap_downtime($pdo, $lineCode, $reportDate);
     $dayStart = $reportDate . ' 00:00:00';
     $dayEnd = date('Y-m-d H:i:s', strtotime($reportDate . ' +1 day'));
     $flags = [];

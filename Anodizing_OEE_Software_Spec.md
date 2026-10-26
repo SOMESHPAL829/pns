@@ -1,6 +1,6 @@
 # Anodizing Plant (APP-06) - OEE, Utilization & Downtime Software Specification
 
-Version 1.1 - corrected daily-window, gap-stop, and overlapping-downtime rules. Based on the daily production report `17-10-2026.xls` and the working Excel tracker `Anodizing_OEE_Downtime_Tracker.xlsx`.
+Version 1.2 - cycle-based gap stops and cross-midnight detection, approved 26 October 2026. See `OEE_GAP_RULES.md` for current implementation rules. The original prototype is based on `17-10-2026.xls` and `Anodizing_OEE_Downtime_Tracker.xlsx`.
 Counting unit is the **flight bar (FB)** - one rack loaded onto the line.
 
 ---
@@ -112,8 +112,8 @@ Utilization = sum(run_time) / (1440 * count_of_days)
 
 | Source | How it is created | Minutes |
 |---|---|---|
-| Gap stop | Gap between two loads above the stop threshold (section 6) | gap - normal pitch |
-| Empty-rack run | One or more EMPTY racks loaded in a row (section 6) | from the expected next load after the preceding productive FB to the last empty load |
+| Gap stop | Gap between consecutive loads strictly above 20 min, ending in productive FB | gap - arriving FB's effective registered cycle (minimum zero) |
+| Empty-rack run | One or more EMPTY racks loaded in a row (section 6) | preceding productive load + its registered cycle through last empty load |
 | Manual stop | Operator adds start / end / reason | end - start |
 | Planned stop | Reason with `planned = true` (PM, PBRK) | end - start, reduces planned time |
 
@@ -283,7 +283,7 @@ CREATE TABLE audit_log (
 | Key | Default | Meaning |
 |---|---|---|
 | `default_ideal_pitch_min` | 12.0 | Used when a colour has no cycle time. **Assumption - confirm.** |
-| `normal_pitch_min` | 14.6 | Normal gap between loads; used to size stops. Median of normal-flow gaps (gaps between 8 and 20 min). Optionally recompute daily. |
+| `normal_pitch_min` | 14.6 (historical) | Legacy prototype statistic only. No longer used to deduct stop time; use the registered colour cycle. |
 | `stop_threshold_min` | 20.0 | Gap above this is a suspected stop. |
 | `catchup_gap_min` | 5.0 | Loads closer than this are flagged CATCH_UP. |
 | `short_transit_min` | 60.0 | Load-to-unload below this is flagged SHORT_TRANSIT. |
@@ -344,12 +344,13 @@ data_check (list, can have several):
 
 Flag precedence: EMPTY_RACK, then SUSPECTED_STOP, then CATCH_UP, then OK. Check order matters: a gap flag is set only for productive FB.
 
-### 6.2 Normal pitch (optional automatic mode)
+### 6.2 Observed pitch (diagnostic only)
 
 ```
 normal_pitch = median( gap_prev_min for all FB where 8 <= gap_prev_min <= 20 )
 ```
-On 17-10-2026 this gives 14.6 (70 gaps). Store the value used with the snapshot.
+On 17-10-2026 this gives 14.6 (70 gaps). This describes observed flow; it must
+not replace the registered ideal cycle in the current stop calculation.
 
 ### 6.3 Colour fill-forward and cycle time
 
@@ -369,9 +370,9 @@ Create events with `source = AUTO_*`, `status = PROPOSED`, `reason_code = 'UNK'`
 
 ```
 for each productive FB i with flag == SUSPECTED_STOP:
-    start = load_ts[i-1] + normal_pitch_min        # when the next load was expected
+    start = load_ts[i-1] + ideal_cycle_min[i]     # arriving FB colour/date standard
     end   = load_ts[i]
-    minutes = (end - start)                         # = gap - normal_pitch
+    minutes = max(0, end - start)                # gap minus registered cycle
     evidence = f"#{si[i-1]} -> #{si[i]} (gap {gap:.1f} min)"
 ```
 
@@ -379,13 +380,18 @@ for each productive FB i with flag == SUSPECTED_STOP:
 
 ```
 for each maximal run of consecutive EMPTY_RACK FB (j..k) preceded by a productive FB p:
-    start = load_ts[p] + normal_pitch_min
+    start = load_ts[p] + ideal_cycle_min[p]
     end   = load_ts[k]
     evidence = f"After #{si[p]}: bars #{si[j]}-{si[k]} loaded EMPTY"
     remark   = "Suggested reason: NM - confirm"
 ```
 
-Automatic proposed gap events are rebuilt for the line/date when the report is recalculated. Only still-proposed events with `source = gap` are replaced; confirmed, approved, manual, and false-alarm records are preserved. This prevents stale automatic gaps and prevents an empty-rack event from being counted twice.
+Read adjacent calendar dates so midnight gaps and empty runs are not lost.
+Store a crossing event once and clip it when calculating each reporting window.
+Do not infer stops across a missing calendar-day report. Rebuild only proposed
+automatic `gap`/`empty_rack` events. Stable evidence keys retain confirmed,
+approved and rejected operator decisions across recalculation and re-import;
+manual records are untouched. Overlapping intervals still count only once.
 
 **Hold hint** (informational, attach to the event that precedes it): when a CATCH_UP group (3+ bars loaded within `catchup_gap_min` of each other) follows a gap stop, or consecutive FB have no unload time, add the remark "Possible longer hold - extend End if the line was stopped longer".
 
@@ -513,7 +519,12 @@ Roles: **Operator** (assign reasons, enter quality), **Supervisor** (approve, ed
 
 ---
 
-## 11. Worked example - report 17-10-2026
+## 11. Archived prototype example - report 17-10-2026
+
+The following figures document the legacy 14.6-minute pitch/observed-window
+prototype, not the current 1,440/720-minute cycle-based implementation. Do not
+use them as current acceptance values. Current examples and formulas are in
+`OEE_GAP_RULES.md` and `OEE_DURATION_SELECTION.md`.
 
 Inputs: report-date window 00:00-next day 00:00 (1,440 min); default pitch 12 min for every colour (colour cycle times not yet entered); no planned stops; no rejections entered.
 
@@ -560,7 +571,7 @@ Cases the data suggests need a person to look at (software should surface them a
 | # | Scenario | Expected |
 |---|---|---|
 | T1 | Import the 17-10-2026 report | 82 rows, 78 productive, 4 empty, 16 no-unload, 3 short-transit, 1 seq jump |
-| T2 | Run detection with threshold 20 / normal pitch 14.6 | Exactly 6 events (5 gap + 1 empty run) with minutes as in section 11 (tolerance 0.1) |
+| T2 | Detect with threshold >20 and effective colour cycles | Event start = previous load + arriving CT; empty runs use preceding productive CT; midnight intervals split once; see `tests/oee_gap_test.php` |
 | T3 | Day totals with default 12-min pitch | A 91.5%, P 88.2%, Q 100%, OEE 80.8%, Util 73.7% (tolerance 0.1 percentage point) |
 | T4 | Enter colour cycle times 14 / 15 / 12 for BLACK-1 / BLACK-2 / CLEAR | Ideal output = 61x14 + 10x15 + 7x12 = 1,088 min; Performance = 102.6% and the "Performance above 100%" check fires |
 | T5 | Set one event to FALSE_ALARM | Event minutes removed from downtime; run time rises by the same amount |

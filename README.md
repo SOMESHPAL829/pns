@@ -148,6 +148,27 @@ For isolated browser checks, install Playwright and run
 `node tests/oee_range_browser_test.cjs` (optional `PLAYWRIGHT_MODULE` and
 `CHROMIUM_EXECUTABLE` overrides). No database migration is required.
 
+## Cycle-based gap detection
+
+Since 26 October 2026, a loading gap strictly greater than 20 minutes proposes
+`gap - arriving FB's registered cycle time` as downtime, not `gap - 14.6`.
+Smaller excess gaps remain performance losses. Adjacent-day loads reveal
+midnight stops, which are stored once and clipped to each reporting window.
+Operator-confirmed/approved/rejected events retain their decisions through
+stable evidence keys. Missing cycle standards keep the flagged 12-minute fallback.
+
+Apply additive migration **before deploying this calculator**:
+`php migrate-oee-gaps.php` (idempotent, CLI only). It adds nullable evidence keys
+and a unique index, without changing human-entered records. Backup downtime and
+snapshot tables before deployment. Rollback: revert the code commits and restore
+the backed-up derived proposals/snapshots if required; the additive column can
+remain. Keep user records and source imports intact.
+
+Rules/examples: [OEE_GAP_RULES.md](OEE_GAP_RULES.md). Run
+`php tests/oee_gap_test.php` plus the existing calculator, window, ingest and
+Excel tests. Dashboard/report/export recalculate selected dates on demand;
+no broad historical recalculation or Unit 1 sender change is required.
+
 ## Theme assets
 
 `css/theme.css` contains design tokens. `css/portal.css` contains the shared layout and components. `js/icons.js` contains Heroicons Outline icons (MIT), and `js/portal.js` handles navigation and toasts. Add icons with `<span class="app-sidebar-icon" data-icon="users"></span>`.
