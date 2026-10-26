@@ -200,6 +200,7 @@ function oee_logs(PDO $pdo): array
 
 function oee_downtime(PDO $pdo, string $date, string $machine): array
 {
+    if ($machine === 'ALL') json_response(['error' => 'Select one machine to review downtime.'], 422);
     $lineCode = oee_machine_line($machine);
     oee_calculate_daily($pdo, $lineCode, $date);
     $dayStart = $date . ' 00:00:00';
