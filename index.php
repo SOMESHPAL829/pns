@@ -118,11 +118,11 @@ $csrf = csrf_token();
         <?php endif; ?>
         <div>
           <label class="form-label" for="login">Email or Username</label>
-          <input class="form-input" id="login" name="login" autocomplete="username" required autofocus>
+          <input class="form-input" id="login" name="login" autocomplete="username" placeholder="Enter your email or username" required autofocus>
         </div>
         <div>
           <label class="form-label" for="password">Password</label>
-          <input class="form-input" id="password" name="password" type="password" autocomplete="current-password" required>
+          <input class="form-input" id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
         </div>
         <button type="submit" class="login-submit">Sign In</button>
         <a class="auth-link" href="password.php">Forgot Your Password?</a>
