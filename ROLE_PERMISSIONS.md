@@ -13,8 +13,8 @@ both the UI and API. Hidden buttons alone are not authorization.
   may manage roles/permission grants. The built-in Standard user role MUST retain
   today's non-admin access; create a custom role to change it.
 - Every current page MUST appear in the permission matrix. Read-only pages
-  support View, plus Export on the two reports; Records and Roles support CRUD; Downtime, Users and OEE masters
-  support View/Create/Update; Profile supports View/Update. Unsupported operations
+  support View, plus Export on the two OEE reports; Records and Roles support CRUD; Downtime, Users, OEE masters,
+  Chemical Registration, and Chemical Consumption support View/Create/Update; Profile supports View/Update. Unsupported operations
   MUST be shown as not applicable, not as misleading active permissions.
 - Mutations require View plus their specific action. Excel downloads require
   View **and Export**, separately for Production report and Date-range OEE.

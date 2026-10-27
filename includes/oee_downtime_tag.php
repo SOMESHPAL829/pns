@@ -17,7 +17,7 @@ function oee_tag_downtime(PDO $pdo,array $data,array $permissions): array
     $machine=strtoupper($fields['machine']);$reason=strtoupper($fields['reason_code']);
     if(!in_array($machine,['APP-06','APP-07','APP-10'],true))throw new InvalidArgumentException('Choose one valid machine.');
     if(!in_array($fields['event_type'],['planned','unplanned'],true))throw new InvalidArgumentException('Choose planned or unplanned downtime.');
-    $q=$pdo->prepare('SELECT code FROM oee_reason_codes WHERE code=? AND is_active=1');$q->execute([$reason]);
+    $q=$pdo->prepare('SELECT code FROM oee_reason_codes WHERE code=? AND loss_type=? AND is_active=1');$q->execute([$reason,$fields['event_type']]);
     if($q->fetchColumn()===false)throw new InvalidArgumentException('Choose an active registered downtime reason.');
     $own=!$pdo->inTransaction();if($own)$pdo->beginTransaction();
     try{

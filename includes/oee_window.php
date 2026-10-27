@@ -1,16 +1,21 @@
 <?php
 declare(strict_types=1);
 
+function oee_supported_window_hours(): array
+{
+    return [8, 10, 12, 16, 24];
+}
+
 function oee_window_definition(string $date, int $hours = 24, string $startTime = '00:00'): array
 {
     $day = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
-    if (!$day || $day->format('Y-m-d') !== $date || !in_array($hours, [12, 24], true) || !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/D', $startTime) || ($hours === 24 && $startTime !== '00:00')) {
-        throw new InvalidArgumentException('Choose 1440 or 720 minutes and a valid start time (24h starts at 00:00).');
+    if (!$day || $day->format('Y-m-d') !== $date || !in_array($hours, oee_supported_window_hours(), true) || !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/D', $startTime) || ($hours === 24 && $startTime !== '00:00')) {
+        throw new InvalidArgumentException('Choose a supported duration (480, 600, 720, 960, or 1440 minutes) and a valid start time (24h starts at 00:00).');
     }
     $start = new DateTimeImmutable($date . ' ' . $startTime . ':00');
     return ['duration_hours' => $hours, 'duration_minutes' => $hours * 60, 'start_time' => $startTime, 'date' => $date,
         'window_start' => $start->format('Y-m-d H:i:s'), 'window_end' => $start->modify('+' . $hours . ' hours')->format('Y-m-d H:i:s'),
-        'calendar_minutes' => $hours * 60, 'shift_code' => $hours === 24 ? 'DAY' : 'H12_' . str_replace(':', '', $startTime)];
+        'calendar_minutes' => $hours * 60, 'shift_code' => $hours === 24 ? 'DAY' : 'H' . $hours . '_' . str_replace(':', '', $startTime)];
 }
 
 /** Both reporting dates are inclusive; each day has its own selected window. */
@@ -73,14 +78,14 @@ function oee_window_metrics(array $window, array $rows, array $events, array $qu
     $rejected = $reworked = $qualityCount = 0;
     foreach ($quality as $entry) {
         if (($entry['report_date'] ?? $window['date']) !== $window['date']) continue;
-        if ($window['duration_hours'] === 12 && ($entry['shift_code'] ?? '') !== $window['shift_code']) continue;
+        if ($window['duration_hours'] !== 24 && ($entry['shift_code'] ?? '') !== $window['shift_code']) continue;
         $qualityCount++;
         $rejected += (int) $entry['rejected_fb'];
         $reworked += (int) $entry['reworked_fb'];
     }
     if (!$qualityCount) {
         $flags['quality_not_entered_assumed_100'] = true;
-        if ($window['duration_hours'] === 12) $flags['shift_quality_not_entered'] = true;
+        if ($window['duration_hours'] !== 24) $flags['shift_quality_not_entered'] = true;
     }
     if (!$productive) $flags['no_data'] = true;
     $metrics = oee_metrics($window['calendar_minutes'], round($planned, 3), round($unplanned, 3), round($ideal, 3), $productive, $rejected, $reworked);
@@ -121,7 +126,7 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         'metrics' => ['total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0.0]];
     $rowsQuery = $pdo->prepare('SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code = ? AND loading_at >= ? AND loading_at < ? ORDER BY loading_at, si_no');
     $eventQuery = $pdo->prepare('SELECT line_code, starts_at, ends_at, event_type, status, source, reason_code, notes FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at, id');
-    $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ?' . ($window['duration_hours'] === 12 ? ' AND shift_code = ?' : ''));
+    $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ?' . ($window['duration_hours'] !== 24 ? ' AND shift_code = ?' : ''));
     foreach ($lines as $line) {
         // Refresh colour-cycle snapshots and inferred events for every day the
         // selected window touches. Only DAY snapshots are persisted.
@@ -132,7 +137,7 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         $rows = $rowsQuery->fetchAll();
         $eventQuery->execute([$line, $window['window_end'], $window['window_start']]);
         $events = $eventQuery->fetchAll();
-        $qualityQuery->execute($window['duration_hours'] === 12 ? [$line, $date, $window['shift_code']] : [$line, $date]);
+        $qualityQuery->execute($window['duration_hours'] !== 24 ? [$line, $date, $window['shift_code']] : [$line, $date]);
         $quality = $qualityQuery->fetchAll();
         $result['line_metrics'][] = array_merge(['line_code' => $line], oee_window_metrics($window, $rows, $events, $quality));
         array_push($result['rows'], ...$rows);

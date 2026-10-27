@@ -13,13 +13,18 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
       requests.push(Object.fromEntries(q));
       if(q.get('resource')==='bootstrap')return route.fulfill({json:{user:{id:1,full_name:'Real Test Admin',username:'admin'},csrf_token:'test',access:{permissions},records:[],user_count:0}});
       if(q.get('resource')==='users')return route.fulfill({json:{users:[],assignable_roles:[]}});
+      if(q.get('resource')==='breakdowns'&&q.get('action')==='by-type'){
+        if(reasonFailure)return route.fulfill({status:500,json:{error:'Reasons unavailable'}});
+        const reasons=q.get('loss_type')==='planned'?[{code:'CUSTOM_STOP',label:'Custom stop <reason>'}]:[{code:'HOIST',label:'Hoist / movement'}];
+        return route.fulfill({json:{available:true,breakdowns:reasons}});
+      }
       if(q.get('action')==='report')return route.fulfill({json:{available:true,date:q.get('date'),machine:q.get('machine'),rows:[],line_metrics:[],oee:{},window:{}}});
       if(q.get('action')==='export'){
         if(exportMode==='error')return route.fulfill({status:422,json:{error:'Test export unavailable'}});
         if(exportMode==='invalid')return route.fulfill({contentType:'text/html',body:'Not an Excel workbook'});
         return route.fulfill({contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',body:Buffer.from([80,75,3,4,0,0])});
       }
-      if(q.get('action')==='masters')return route.fulfill(reasonFailure?{status:500,json:{error:'Reasons unavailable'}}:{json:{available:true,reasons:[{code:'HOIST',label:'Hoist / movement',is_active:1},{code:'CUSTOM_STOP',label:'Custom stop <reason>',is_active:1},{code:'INACTIVE',label:'Inactive',is_active:0}],cycles:[],thresholds:[]}});
+      if(q.get('action')==='masters')return route.fulfill({json:{available:true,reasons:[],cycles:[],thresholds:[]}});
       if(q.get('action')==='downtime-tag'){
         assert.equal(route.request().method(),'POST');assert.equal(route.request().headers()['x-csrf-token'],'test');saves.push(route.request().postDataJSON());
         if(tagFailure)return route.fulfill({status:422,json:{error:'Choose an active registered downtime reason.'}});
@@ -38,7 +43,7 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   await page.waitForFunction(()=>document.getElementById('dashboard-rack-rate').textContent==='88.7%',{},{timeout:3000});
   assert((await page.locator('#dashboard-batches-body').textContent()).includes('Actual part <test>'));
   assert.equal(await page.locator('#dashboard-batches-body test').count(),0,'Batch strings must not become markup');
-  assert((await page.locator('#dashboard-stops-body').textContent()).includes('proposed'));
+  assert((await page.locator('#dashboard-stops-body').textContent()).includes('Proposed'));
   assert((await page.locator('#dashboard-reasons').textContent()).includes('864.0 min'));
   assert(await page.locator('#dashboard-reasons').evaluate(el=>el.closest('.pns-operations')?.firstElementChild.contains(el)===true),'Downtime by reason must replace Recent batches as the first Live operations card');
   assert(await page.locator('#dashboard-batches-body').evaluate(el=>el.closest('.pns-batches-section')!==null),'Recent batches must move into the lower production section');
@@ -46,23 +51,33 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert(await page.locator('#dashboard-export').isVisible(),'Export grant must expose the dashboard export');
   assert.equal(await page.locator('#dashboard-run-bar').evaluate(el=>el.style.width),'80%');
   assert.equal(await page.locator('#dashboard-stopped-share').textContent(),'20.0%');
+  for(const duration of ['960','600','480']){
+    await page.locator('#dashboard-duration').selectOption(duration);
+    await page.waitForFunction(value=>document.getElementById('dashboard-oee-detail').textContent.includes(value+' Min per Line'),duration);
+    assert.equal(requests.filter(r=>r.action==='dashboard').at(-1).duration_minutes,duration,'Dashboard must request the selected calculation duration');
+    assert(!(await page.locator('#oee-dashboard-alert').isVisible()),duration+' minutes must not be rejected');
+  }
+  await page.locator('#dashboard-duration').selectOption('1440');
+  await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('1440 Min per Line'));
   assert(!(await page.locator('[data-view="dashboard"]').textContent()).includes('Hourly production'));
   assert.equal(await page.locator('[data-view="dashboard"] canvas').count(),0);
   assert.equal(await page.locator('[data-dashboard-tag]').count(),1,'Editors need a dashboard Tag reason action');
-  await page.locator('[data-dashboard-tag]').click();await page.locator('#dashboard-tag-reason').selectOption('CUSTOM_STOP');
+  await page.locator('[data-dashboard-tag]').click();
+  await page.locator('#dashboard-tag-reason option[value="HOIST"]').waitFor();
+  assert.equal(await page.locator('#dashboard-tag-reason option[value="CUSTOM_STOP"]').count(),0,'Unplanned tagging must not show planned loss names');
   assert((await page.locator('#dashboard-tag-context').textContent()).includes('APP-07'));
   assert((await page.locator('#dashboard-tag-context').textContent()).includes('23:55:17'),'Keep exact overnight interval visible');
   assert.equal(await page.locator('#dashboard-tag-notes').inputValue(),'Original notes');
   assert.equal(await page.locator('#dashboard-tag-reason option[value="INACTIVE"]').count(),0);
   await page.locator('#dashboard-tag-cancel').click();assert.equal(saves.length,0,'Cancel must never write');assert(await page.locator('[data-dashboard-tag]').evaluate(el=>el===document.activeElement),'Cancel should restore focus to the tag action');
   reasonFailure=true;await page.locator('[data-dashboard-tag]').click();await page.waitForFunction(()=>document.getElementById('dashboard-tag-error').textContent.includes('Reasons unavailable'));assert(await page.locator('#dashboard-tag-save').isDisabled());await page.keyboard.press('Escape');reasonFailure=false;
-  await page.locator('[data-dashboard-tag]').click();await page.locator('#dashboard-tag-reason').selectOption('CUSTOM_STOP');await page.locator('#dashboard-tag-type').selectOption('planned');await page.locator('#dashboard-tag-notes').fill('Reviewed <notes>');
+  await page.locator('[data-dashboard-tag]').click();await page.locator('#dashboard-tag-type').selectOption('planned');await page.locator('#dashboard-tag-reason option[value="CUSTOM_STOP"]').waitFor();assert.equal(await page.locator('#dashboard-tag-reason option[value="HOIST"]').count(),0,'Planned tagging must not show unplanned loss names');await page.locator('#dashboard-tag-reason').selectOption('CUSTOM_STOP');await page.locator('#dashboard-tag-notes').fill('Reviewed <notes>');
   await page.screenshot({path:'/tmp/pns-dashboard-tag-desktop.png'});
   await page.setViewportSize({width:320,height:800});const dialogBox=await page.locator('#dashboard-tag-dialog').boundingBox();assert(dialogBox&&dialogBox.x>=0&&dialogBox.x+dialogBox.width<=321,'Tag dialog overflows mobile');await page.screenshot({path:'/tmp/pns-dashboard-tag-mobile.png'});await page.setViewportSize({width:1440,height:1100});
   tagFailure=true;await page.locator('#dashboard-tag-save').click();await page.waitForFunction(()=>document.getElementById('dashboard-tag-error').textContent.includes('active registered'));assert(await page.locator('#dashboard-tag-dialog').isVisible());assert.equal(await page.locator('#dashboard-tag-notes').inputValue(),'Reviewed <notes>');
-  tagFailure=false;const priorRequests=requests.filter(r=>r.action==='dashboard').length;await page.locator('#dashboard-tag-save').click();await page.locator('#dashboard-tag-dialog').waitFor({state:'hidden'});await page.waitForFunction(()=>document.getElementById('dashboard-stops-body').textContent.includes('Custom stop <reason>'));
+  tagFailure=false;const priorRequests=requests.filter(r=>r.action==='dashboard').length;await page.locator('#dashboard-tag-save').click();await page.locator('#dashboard-tag-dialog').waitFor({state:'hidden'});await page.waitForFunction(()=>document.getElementById('dashboard-stops-body').textContent.includes('Custom Stop <Reason>'));
   assert.deepEqual(saves.at(-1),{event_id:41,machine:'APP-07',event_type:'planned',reason_code:'CUSTOM_STOP',notes:'Reviewed <notes>'},'Save actual event machine, never ALL or rewritten timestamps');
-  assert(requests.filter(r=>r.action==='dashboard').length>priorRequests,'Successful tagging must refresh dashboard');assert((await page.locator('#dashboard-reasons').textContent()).includes('Custom stop <reason>'));assert.equal(await page.locator('#dashboard-reasons reason').count(),0);
+  assert(requests.filter(r=>r.action==='dashboard').length>priorRequests,'Successful tagging must refresh dashboard');assert((await page.locator('#dashboard-reasons').textContent()).includes('Custom Stop <Reason>'));assert.equal(await page.locator('#dashboard-reasons reason').count(),0);
   await page.locator('#dashboard-machine').selectOption('APP-07');await page.locator('#dashboard-date').fill('2026-10-21');await page.locator('#dashboard-duration').selectOption('720');await page.locator('#dashboard-start-time').fill('12:00');await page.locator('#dashboard-refresh').click();
   await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('APP-07'));
   const firstDownload=page.waitForEvent('download');await page.locator('#dashboard-export').click();const downloaded=await firstDownload;
@@ -77,7 +92,7 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   const reportDownload=page.waitForEvent('download');await page.locator('#report-export').click();assert.equal((await reportDownload).suggestedFilename(),'pns-oee-2026-10-21-APP-07-720min-1200.xlsx','Existing report export must still work');
   await page.locator('[data-nav="dashboard"]').click();
   await page.locator('#dashboard-machine').selectOption('ALL');await page.locator('#dashboard-date').fill('2026-10-22');await page.locator('#dashboard-duration').selectOption('1440');await page.locator('#dashboard-refresh').click();
-  await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('All machines'));
+  await page.waitForFunction(()=>document.getElementById('dashboard-oee-detail').textContent.includes('All Machines'));
   const allDownload=page.waitForEvent('download');await page.locator('#dashboard-export').click();assert.equal((await allDownload).suggestedFilename(),'pns-oee-2026-10-22-ALL-1440min-0000.xlsx');
   for(const width of[1440,1024,768,320]){await page.setViewportSize({width,height:1100});await page.waitForTimeout(250);for(const id of['dashboard-machine','dashboard-date','dashboard-duration','dashboard-start-time','dashboard-refresh','dashboard-export']){const b=await page.locator('#'+id).boundingBox();assert(b&&b.x>=0&&b.x+b.width<=width+1,id+' overflows '+width+' '+JSON.stringify(b));}const operations=await page.locator('.pns-operations').boundingBox(),batches=await page.locator('.pns-batches-section').boundingBox();assert(operations&&batches&&batches.y>=operations.y+operations.height,'Recent batches must appear below Live operations at '+width);}
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Mobile dashboard has page-wide overflow');

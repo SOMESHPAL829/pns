@@ -37,7 +37,7 @@ function oee_export_sources(array $report): array
         $rejected = $reworked = 0;
         foreach ($report['quality_entries'] ?? [] as $entry) {
             if ($entry['line_code'] !== $code) continue;
-            if (isset($report['from_date']) && (($entry['report_date'] ?? '') !== $line['report_date'] || (($line['duration_hours'] ?? 24) === 12 && ($entry['shift_code'] ?? '') !== $line['shift_code']))) continue;
+            if (isset($report['from_date']) && (($entry['report_date'] ?? '') !== $line['report_date'] || (($line['duration_hours'] ?? 24) !== 24 && ($entry['shift_code'] ?? '') !== $line['shift_code']))) continue;
             $r = count($qualityRows) + 1;
             $reject = (int) $entry['rejected_fb'];
             $rework = (int) $entry['reworked_fb'];

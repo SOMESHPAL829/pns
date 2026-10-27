@@ -4,16 +4,21 @@ declare(strict_types=1);
 function portal_permission_catalog(): array
 {
     return [
-        'dashboard' => ['label'=>'OEE dashboard','actions'=>['view']],
-        'oee-range' => ['label'=>'Date-range OEE','actions'=>['view','export']],
-        'oee-report' => ['label'=>'Production report / Excel export','actions'=>['view','export']],
-        'scada-logs' => ['label'=>'SCADA logs','actions'=>['view']],
-        'downtime' => ['label'=>'Downtime review','actions'=>['view','create','update']],
+        'dashboard' => ['label'=>'OEE Dashboard','actions'=>['view']],
+        'oee-range' => ['label'=>'Date-Range OEE','actions'=>['view','export']],
+        'oee-report' => ['label'=>'Production Report / Excel Export','actions'=>['view','export']],
+        'scada-logs' => ['label'=>'SCADA Logs','actions'=>['view']],
+        'downtime' => ['label'=>'Downtime Review','actions'=>['view','create','update']],
         'records' => ['label'=>'Records','actions'=>['view','create','update','delete']],
-        'users' => ['label'=>'Users (deactivate = Update)','actions'=>['view','create','update']],
-        'oee-masters' => ['label'=>'OEE master data','actions'=>['view','create','update']],
-        'profile' => ['label'=>'My profile / password','actions'=>['view','update']],
-        'roles' => ['label'=>'Roles & permissions (administrators only)','actions'=>['view','create','update','delete']],
+        'chemical-consumption' => ['label'=>'Chemical Consumption','actions'=>['view','create','update']],
+        'chemical-consumption-report' => ['label'=>'Chemical Consumption Report','actions'=>['view']],
+        'chemical-cost-report' => ['label'=>'Chemical Cost Report','actions'=>['view']],
+        'users' => ['label'=>'Users (Deactivate = Update)','actions'=>['view','create','update']],
+        'oee-masters' => ['label'=>'OEE Master Data','actions'=>['view','create','update']],
+        'chemical-registration' => ['label'=>'Chemical Registration','actions'=>['view','create','update']],
+        'breakdown-registration' => ['label'=>'Breakdown Registration','actions'=>['view','create','update','delete']],
+        'profile' => ['label'=>'My Profile / Password','actions'=>['view','update']],
+        'roles' => ['label'=>'Roles & Permissions (Administrators Only)','actions'=>['view','create','update','delete']],
     ];
 }
 
@@ -68,6 +73,12 @@ function portal_api_requirement(string $resource, string $action, string $method
     if($method==='GET'){
         if($resource==='bootstrap' && $action==='')return null;
         if(in_array($resource,['records','users','roles'],true)&&$action==='')return [$resource,'view'];
+        if($resource==='chemicals'&&$action==='list')return ['chemical-registration','view'];
+        if($resource==='chemical-consumption'&&$action==='list')return ['chemical-consumption','view'];
+        if($resource==='chemical-consumption'&&$action==='report')return ['chemical-consumption-report','view'];
+        if($resource==='chemical-consumption'&&$action==='cost-report')return ['chemical-cost-report','view'];
+        if($resource==='breakdowns'&&$action==='list')return ['breakdown-registration','view'];
+        if($resource==='breakdowns'&&$action==='by-type')return ['downtime','view'];
         if($resource==='oee'){
             $pages=['dashboard'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'];
             if(isset($pages[$action]))return [$pages[$action],in_array($action,['export','range-export'],true)?'export':'view'];
@@ -77,6 +88,10 @@ function portal_api_requirement(string $resource, string $action, string $method
         if($resource==='oee'&&$action==='downtime-tag')return ['downtime','update'];
         if($resource==='oee'&&$action==='downtime-save')return ['downtime',filter_var($data['event_id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='oee'&&$action==='master-save')return ['oee-masters',($data['master_type']??null)==='threshold'||filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
+        if($resource==='chemicals'&&in_array($action,['item-save','rate-save'],true))return ['chemical-registration',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
+        if($resource==='chemical-consumption'&&$action==='save')return ['chemical-consumption',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
+        if($resource==='breakdowns'&&$action==='save')return ['breakdown-registration',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
+        if($resource==='breakdowns'&&$action==='delete')return ['breakdown-registration','delete'];
         if($resource==='roles'&&$action==='role-save')return ['roles',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='roles'&&$action==='role-delete')return ['roles','delete'];
         if($resource==='users'&&in_array($action,['user-create','user-toggle','user-role'],true))return ['users',$action==='user-create'?'create':'update'];

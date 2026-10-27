@@ -38,7 +38,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.waitForFunction(() => document.getElementById('dashboard-date').value === '2026-10-22');
     await page.locator('[data-nav="oee-range"]').click();
     await page.waitForFunction(() => document.getElementById('range-oee').textContent === '50.0%');
-    assert.equal(await page.locator('#page-title').textContent(), 'Date-range OEE');
+    assert.equal(await page.locator('#page-title').textContent(), 'Date-Range OEE');
     assert.equal(await page.locator('#dashboard-date').inputValue(), '2026-10-22');
     await page.locator('#range-from-date').fill('2026-10-21');
     await page.locator('#range-to-date').fill('2026-10-22');
@@ -47,7 +47,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.locator('#range-start-time').fill('18:00');
     await page.locator('#range-load').click();
     await page.waitForFunction(() => document.getElementById('range-days').textContent === '2');
-    assert((await page.locator('#range-window').textContent()).includes('2 day(s) × 720 min'));
+    assert((await page.locator('#range-window').textContent()).includes('2 Day(s) × 720 Min'));
     assert.equal(await page.locator('#range-total-fb').textContent(), '20');
     assert.equal(await page.locator('#range-calendar').textContent(), '1440.0 min');
     assert.equal(await page.locator('#dashboard-duration').inputValue(), '1440', 'daily controls must stay independent');

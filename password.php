@@ -82,7 +82,7 @@ $csrf = csrf_token();
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= $isReset ? 'Set a new password' : 'Reset your password' ?> — App Portal</title>
+  <title><?= $isReset ? 'Set a New Password' : 'Reset Your Password' ?> — App Portal</title>
   <link rel="stylesheet" href="css/portal.css">
 </head>
 <body>
@@ -91,8 +91,8 @@ $csrf = csrf_token();
       <header class="login-card-head">
         <div class="app-sidebar-logo" aria-hidden="true">K</div>
         <div>
-          <div class="app-topbar-title" id="password-title"><?= $isReset ? 'Choose a new password' : 'Forgot password' ?></div>
-          <div class="app-topbar-sub">App Portal account recovery</div>
+          <div class="app-topbar-title" id="password-title"><?= $isReset ? 'Choose a New Password' : 'Forgot Password' ?></div>
+          <div class="app-topbar-sub">App Portal Account Recovery</div>
         </div>
       </header>
       <form class="login-card-body" method="post" action="password.php<?= $isReset ? '?token=' . rawurlencode($token) : '' ?>">
@@ -102,16 +102,16 @@ $csrf = csrf_token();
         <?php if ($isReset): ?>
           <input type="hidden" name="action" value="reset">
           <input type="hidden" name="token" value="<?= escape_html($token) ?>">
-          <div><label class="form-label" for="password">New password</label><input class="form-input" id="password" name="password" type="password" minlength="12" autocomplete="new-password" required></div>
-          <div><label class="form-label" for="password-confirmation">Confirm new password</label><input class="form-input" id="password-confirmation" name="password_confirmation" type="password" minlength="12" autocomplete="new-password" required></div>
-          <button type="submit" class="login-submit">Update password</button>
+          <div><label class="form-label" for="password">New Password</label><input class="form-input" id="password" name="password" type="password" minlength="12" autocomplete="new-password" required></div>
+          <div><label class="form-label" for="password-confirmation">Confirm New Password</label><input class="form-input" id="password-confirmation" name="password_confirmation" type="password" minlength="12" autocomplete="new-password" required></div>
+          <button type="submit" class="login-submit">Update Password</button>
         <?php else: ?>
           <input type="hidden" name="action" value="request">
           <p class="form-note">Enter the email address on your account. If it matches an active account, we’ll send a one-time link.</p>
           <div><label class="form-label" for="email">Email</label><input class="form-input" id="email" name="email" type="email" autocomplete="email" required></div>
-          <button type="submit" class="login-submit">Send reset link</button>
+          <button type="submit" class="login-submit">Send Reset Link</button>
         <?php endif; ?>
-        <a class="auth-link" href="index.php">Back to sign in</a>
+        <a class="auth-link" href="index.php">Back to Sign In</a>
       </form>
     </section>
   </main>

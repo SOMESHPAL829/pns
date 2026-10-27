@@ -26,6 +26,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
         if(r==='roles'&&a==='role-delete'){roles=roles.filter(x=>Number(x.id)!==data.id);return route.fulfill({json:{ok:true}});}
         if(r==='users'&&a==='user-role'){userRole=data.role_id;return route.fulfill({json:{ok:true}});}
         if(r==='users')return route.fulfill({json:{users:[{id:77,username:'worker',full_name:'Worker',email:'worker@example.invalid',role:'user',is_active:1,access_role_id:userRole,access_role_name:'Viewer'}],assignable_roles:roles}});
+        if(r==='breakdowns'&&a==='by-type')return route.fulfill({json:{available:true,breakdowns:[{code:'UNPLANNED_TEST',label:'Unplanned test reason'}]}});
         if(a==='masters')return route.fulfill({json:{reasons:[{id:1,code:'UNK',label:'Not classified',is_active:1}],cycles:[{id:1,line_code:'APP-06',colour:'BLACK-1',minutes_per_fb:10,effective_from:'2026-01-01'}],thresholds:[{line_code:'APP-06',gap_threshold_minutes:20}]}});
         if(a==='downtime')return route.fulfill({json:{events:[{id:111,starts_at:'2026-10-22 10:00:00',ends_at:'2026-10-22 10:30:00',event_type:'unplanned',reason_code:'UNK',status:'proposed',source:'gap'}]}});
         return route.fulfill({json:{available:false,message:'No test data'}});

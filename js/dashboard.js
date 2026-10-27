@@ -1,10 +1,11 @@
 (function () {
   const node = id => document.getElementById(id);
   const text = (id, value) => { if (node(id)) node(id).textContent = value; };
+  const titleLabel = value => String(value ?? "").replace(/_/g, " ").replace(/\b[a-z]/g, letter => letter.toUpperCase());
   const number = value => value == null || value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
   const pct = value => value === null ? "—" : (value * 100).toFixed(1) + "%";
   const minutes = value => value === null ? "—" : value.toFixed(1) + " min";
-  let stopEvents = [], editingStop = null, tagRequest = 0, savingTag = false;
+  let stopEvents = [], editingStop = null, tagRequest = 0, tagReasonRequest = 0, savingTag = false;
   function cell(row, value, detail) {
     const td = document.createElement("td"); td.textContent = value ?? "—";
     if (detail) { const small = document.createElement("span"); small.className = "pns-cell-detail"; small.textContent = detail; td.appendChild(small); }
@@ -21,10 +22,10 @@
     const run = number(oee.run_minutes), planned = number(oee.planned_stop_minutes), stopped = number(oee.unplanned_minutes);
     const budget = number(oee.planned_minutes) !== null && planned !== null ? number(oee.planned_minutes) + planned : null;
     text("dashboard-rack-rate", Number(metrics.total_fb) > 0 ? pct(Number(metrics.productive_fb || 0) / Number(metrics.total_fb)) : "—");
-    text("dashboard-oee-detail", (data.machine === "ALL" ? "All machines" : data.machine || "Selected machine") + " · " + (data.window?.duration_minutes || 1440) + " min per line");
-    text("dashboard-availability-detail", run === null ? "No run-time total" : minutes(run) + " across " + (data.machine === "ALL" ? "3 lines" : "1 line"));
-    text("dashboard-performance-detail", "Ideal output: " + minutes(number(oee.ideal_output_minutes)));
-    text("dashboard-quality-detail", number(oee.good_fb) === null ? "No good-FB total" : Number(oee.good_fb).toLocaleString() + " good / " + Number(oee.productive_fb || 0).toLocaleString() + " productive FB");
+    text("dashboard-oee-detail", (data.machine === "ALL" ? "All Machines" : data.machine || "Selected Machine") + " · " + (data.window?.duration_minutes || 1440) + " Min per Line");
+    text("dashboard-availability-detail", run === null ? "No Run-Time Total" : minutes(run) + " Across " + (data.machine === "ALL" ? "3 Lines" : "1 Line"));
+    text("dashboard-performance-detail", "Ideal Output: " + minutes(number(oee.ideal_output_minutes)));
+    text("dashboard-quality-detail", number(oee.good_fb) === null ? "No Good-FB Total" : Number(oee.good_fb).toLocaleString() + " Good / " + Number(oee.productive_fb || 0).toLocaleString() + " Productive FB");
     const descriptions = [];
     [["run", "running", run], ["unplanned", "stopped", stopped], ["planned", "planned", planned]].forEach(function ([id, label, value]) {
       const share = budget > 0 && value !== null ? value / budget : null;
@@ -36,7 +37,7 @@
     (data.downtime_breakdown?.items || []).forEach(function (item) {
       const root = document.createElement("div"); root.className = "pns-reason";
       const head = document.createElement("div"); head.className = "pns-reason-head";
-      const label = document.createElement("span"); label.textContent = item.label + " · " + item.event_type;
+      const label = document.createElement("span"); label.textContent = titleLabel(item.label) + " · " + titleLabel(item.event_type);
       const value = document.createElement("strong"); value.textContent = Number(item.minutes).toFixed(1) + " min · " + Number(item.percentage).toFixed(1) + "%"; head.append(label, value);
       const track = document.createElement("div"); track.className = "pns-reason-track"; const bar = document.createElement("span"); bar.style.width = Math.max(0, Math.min(100, Number(item.percentage))) + "%"; track.appendChild(bar);
       root.append(head, track); reasons.appendChild(root);
@@ -52,12 +53,12 @@
     const stops = node("dashboard-stops-body"); stops.replaceChildren();
     stopEvents = data.recent_downtime || [];
     stopEvents.forEach(function (item) {
-      const row = document.createElement("tr"); cell(row, String(item.ends_at || "—").slice(0, 16), item.line_code); cell(row, item.reason_label || item.reason_code || "Not yet classified"); cell(row, item.source);
+      const row = document.createElement("tr"); cell(row, String(item.ends_at || "—").slice(0, 16), item.line_code); cell(row, titleLabel(item.reason_label || item.reason_code || "Not Yet Classified")); cell(row, titleLabel(item.source));
       const statusCell = cell(row, "");
-      badge(statusCell, item.status, ["approved", "confirmed"].includes(item.status) ? "ok" : item.status === "rejected" ? "rejected" : "proposed");
+      badge(statusCell, titleLabel(item.status), ["approved", "confirmed"].includes(item.status) ? "ok" : item.status === "rejected" ? "rejected" : "proposed");
       if (item.id && window.PortalAccess.can("downtime", "update")) {
         const button = document.createElement("button"); button.type = "button"; button.className = "link pns-tag-action";
-        button.textContent = item.status === "proposed" ? "Tag reason" : "Edit reason"; button.dataset.dashboardTag = String(item.id);
+        button.textContent = item.status === "proposed" ? "Tag Reason" : "Edit Reason"; button.dataset.dashboardTag = String(item.id);
         button.dataset.permissionPage = "downtime"; button.dataset.permissionAction = "update";
         button.setAttribute("aria-label", button.textContent + " for " + item.line_code + " ending " + item.ends_at);
         statusCell.appendChild(button);
@@ -82,6 +83,27 @@
   function tagError(message) {
     text("dashboard-tag-error", message); node("dashboard-tag-error").hidden = !message;
   }
+  async function loadTagReasons(type, selectedReason, requestId) {
+    const reasonRequest = ++tagReasonRequest;
+    const select = node("dashboard-tag-reason");
+    select.replaceChildren(new Option("Loading reasons…", ""));
+    select.disabled = true; node("dashboard-tag-save").disabled = true;
+    try {
+      const data = await window.PortalRequest("breakdowns", "by-type", { query: { loss_type: type } });
+      if (requestId !== tagRequest || reasonRequest !== tagReasonRequest || !node("dashboard-tag-dialog").open || node("dashboard-tag-type").value !== type) return;
+      if (!data.available) throw new Error(data.message || "Breakdown reasons are unavailable.");
+      select.replaceChildren(new Option("Select a reason", ""));
+      (data.breakdowns || []).forEach(reason => select.appendChild(new Option(reason.label, reason.code)));
+      select.value = (data.breakdowns || []).some(reason => reason.code === selectedReason) ? selectedReason : "";
+      select.disabled = false; node("dashboard-tag-save").disabled = select.options.length <= 1;
+      if (select.options.length <= 1) tagError("No active " + type + " breakdown reasons are registered.");
+      else tagError("");
+    } catch (error) {
+      if (requestId === tagRequest && reasonRequest === tagReasonRequest && node("dashboard-tag-dialog").open) tagError(error.message);
+    } finally {
+      if (requestId === tagRequest && reasonRequest === tagReasonRequest) select.disabled = false;
+    }
+  }
   async function openTag(id) {
     if (!window.PortalAccess.can("downtime", "update")) return;
     const item = stopEvents.find(stop => String(stop.id) === id); if (!item) return;
@@ -90,19 +112,9 @@
     text("dashboard-tag-context", item.line_code + " · " + item.starts_at + " → " + item.ends_at + " · " + item.source + " · " + item.status);
     node("dashboard-tag-type").value = item.event_type;
     node("dashboard-tag-notes").value = item.notes || "";
-    node("dashboard-tag-reason").replaceChildren(new Option("Loading reasons…", ""));
-    node("dashboard-tag-reason").disabled = true; node("dashboard-tag-save").disabled = true;
     dialog.showModal();
-    try {
-      const data = await window.PortalRequest("oee", "masters", {});
-      if (requestId !== tagRequest || !dialog.open) return;
-      const select = node("dashboard-tag-reason"); select.replaceChildren(new Option("Select a reason", ""));
-      (data.reasons || []).filter(reason => Number(reason.is_active) === 1).forEach(reason => select.appendChild(new Option(reason.label, reason.code)));
-      select.value = item.reason_code; if (select.selectedIndex < 0) select.value = "";
-      select.disabled = false; node("dashboard-tag-save").disabled = select.options.length <= 1;
-      if (select.options.length <= 1) tagError("No active reasons are registered. Ask an administrator to add one in OEE master data.");
-      select.focus();
-    } catch (error) { if (requestId === tagRequest && dialog.open) tagError(error.message); }
+    await loadTagReasons(item.event_type, item.reason_code, requestId);
+    if (requestId === tagRequest && dialog.open) node("dashboard-tag-reason").focus();
   }
   const tagDialog = node("dashboard-tag-dialog");
   tagDialog.addEventListener("close", function () { editingStop = null; ++tagRequest; });
@@ -121,6 +133,9 @@
       window.dispatchEvent(new Event("pns-downtime-tagged"));
     } catch (error) { tagError(error.message); }
     finally { savingTag = false; node("dashboard-tag-form").setAttribute("aria-busy", "false"); node("dashboard-tag-save").disabled = false; node("dashboard-tag-cancel").disabled = false; }
+  });
+  node("dashboard-tag-type").addEventListener("change", function () {
+    if (editingStop && tagDialog.open) loadTagReasons(this.value, "", tagRequest);
   });
   window.addEventListener("portal-access-ready", function () {
     if (tagDialog.open && !window.PortalAccess.can("downtime", "update")) tagDialog.close();

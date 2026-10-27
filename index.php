@@ -91,7 +91,7 @@ $csrf = csrf_token();
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>KARAM Portal — Sign in</title>
+  <title>KARAM Portal — Sign In</title>
   <link rel="stylesheet" href="css/portal.css">
 </head>
 <body>
@@ -101,7 +101,7 @@ $csrf = csrf_token();
         <div class="app-sidebar-logo" aria-hidden="true">K</div>
         <div>
           <div class="app-topbar-title" id="login-title">App Portal</div>
-          <div class="app-topbar-sub">Sign in to continue</div>
+          <div class="app-topbar-sub">Sign In to Continue</div>
         </div>
       </header>
       <form class="login-card-body" method="post" action="index.php">
@@ -113,15 +113,15 @@ $csrf = csrf_token();
           <p class="auth-message error" role="alert"><?= escape_html($error) ?></p>
         <?php endif; ?>
         <div>
-          <label class="form-label" for="login">Email or username</label>
+          <label class="form-label" for="login">Email or Username</label>
           <input class="form-input" id="login" name="login" autocomplete="username" required autofocus>
         </div>
         <div>
           <label class="form-label" for="password">Password</label>
           <input class="form-input" id="password" name="password" type="password" autocomplete="current-password" required>
         </div>
-        <button type="submit" class="login-submit">Sign in</button>
-        <a class="auth-link" href="password.php">Forgot your password?</a>
+        <button type="submit" class="login-submit">Sign In</button>
+        <a class="auth-link" href="password.php">Forgot Your Password?</a>
       </form>
     </section>
   </main>

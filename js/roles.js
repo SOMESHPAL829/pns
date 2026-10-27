@@ -12,7 +12,7 @@
     const readonly = Number(role?.is_builtin) === 1;
     document.getElementById("role-name").disabled = readonly;
     const save = document.getElementById("role-save");
-    save.textContent = role ? "Save permissions" : "Create role";
+    save.textContent = role ? "Save Permissions" : "Create Role";
     save.disabled = readonly || !access.can("roles", role ? "update" : "create");
     const body = document.getElementById("role-permissions-body"); body.replaceChildren();
     Object.entries(catalog).forEach(function ([page, item]) {
@@ -35,7 +35,7 @@
     const admin = document.createElement("tr"); cell(admin, "Administrator"); cell(admin, "Protected full access"); cell(admin, "Existing administrator accounts"); cell(admin, "Cannot be modified here"); body.appendChild(admin);
     roles.forEach(function (role) {
       const row = document.createElement("tr");
-      cell(row, role.name); cell(row, Number(role.is_builtin) === 1 ? "Built-in" : "Custom"); cell(row, role.assigned_users);
+      cell(row, role.name === "Standard user" ? "Standard User" : role.name); cell(row, Number(role.is_builtin) === 1 ? "Built-In" : "Custom"); cell(row, role.assigned_users);
       const actions = cell(row, "");
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "link";
       edit.textContent = Number(role.is_builtin) === 1 ? "Inspect" : "Edit";

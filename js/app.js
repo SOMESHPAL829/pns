@@ -62,6 +62,17 @@
     return (Number(value) * 100).toFixed(1) + "%";
   }
 
+  function titleLabel(value) {
+    const acronyms = new Set(["OEE", "KARAM", "SCADA", "PNS", "FB", "PCS", "SA", "ID", "IT", "HR", "HQ"]);
+    return String(value ?? "")
+      .replace(/_/g, " ")
+      .replace(/\b[a-z0-9-]+\b/gi, function (word) {
+        const upper = word.toUpperCase();
+        if (acronyms.has(upper) || /^APP-\d+$/i.test(word)) return upper;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      });
+  }
+
   function setText(id, value) {
     const node = document.getElementById(id);
     if (node) node.textContent = value == null || value === "" ? "—" : String(value);
@@ -94,7 +105,7 @@
   function oeeQualityWarning(snapshot) {
     let flags = snapshot.calculation_flags || {};
     if (typeof flags === "string") { try { flags = JSON.parse(flags); } catch (error) { flags = {}; } }
-    return flags.shift_quality_not_entered ? "12h quality is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to this window." : "";
+    return flags.shift_quality_not_entered ? "Window-specific quality is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to partial windows." : "";
   }
 
   function renderSyncList(targetId, sync) {
@@ -112,7 +123,7 @@
       const source = document.createElement("strong");
       source.textContent = item.source || "Unknown source";
       const detail = document.createElement("span");
-      detail.textContent = (item.last_batch_id || "No batch") + " · " + (item.last_report_date || "No report date");
+      detail.textContent = (item.last_batch_id || "No Batch") + " · " + (item.last_report_date || "No Report Date");
       left.append(source, detail);
       const state = document.createElement("span");
       state.className = "status-pill " + (item.last_status === "ok" ? "ok" : "crit");
@@ -159,11 +170,11 @@
     setText("unplanned-minutes", snapshot.unplanned_minutes == null ? "—" : Number(snapshot.unplanned_minutes).toFixed(1) + " min");
     setText("run-minutes", snapshot.run_minutes == null ? "—" : Number(snapshot.run_minutes).toFixed(1) + " min");
     setText("utilization-value", percent(snapshot.utilization_window ?? snapshot.utilization_24h));
-    setText("utilization-label", (data.window?.duration_hours || 24) + "h utilization");
+    setText("utilization-label", (data.window?.duration_hours || 24) + "h Utilization");
     const sync = data.sync || [];
     const latest = sync[0];
-    setText("oee-status-text", latest && latest.last_status === "ok" ? "Unit 1 sync is healthy" : "Waiting for Unit 1 sync");
-    setText("oee-last-sync", latest && latest.last_received_at ? "Last received " + readableDateTime(latest.last_received_at) : "No sync received");
+    setText("oee-status-text", latest && latest.last_status === "ok" ? "Unit 1 Sync is Healthy" : "Waiting for Unit 1 Sync");
+    setText("oee-last-sync", latest && latest.last_received_at ? "Last Received " + readableDateTime(latest.last_received_at) : "No Sync Received");
     const dot = document.getElementById("oee-status-dot");
     if (dot) dot.className = "status-dot " + (latest && latest.last_status === "ok" ? "ok" : "warn");
     renderSyncList("oee-sync-list", sync);
@@ -172,7 +183,7 @@
       importBody.replaceChildren();
       (data.imports || []).forEach(function (item) {
         const row = document.createElement("tr");
-        makeCell(row, item.batch_id, "mono"); makeCell(row, item.report_date); makeCell(row, item.row_count); makeCell(row, item.status); makeCell(row, readableDateTime(item.received_at));
+        makeCell(row, item.batch_id, "mono"); makeCell(row, item.report_date); makeCell(row, item.row_count); makeCell(row, titleLabel(item.status)); makeCell(row, readableDateTime(item.received_at));
         importBody.appendChild(row);
       });
       if (!data.imports || data.imports.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No imports received yet."); cell.colSpan = 5; importBody.appendChild(row); }
@@ -202,7 +213,7 @@
     const data = app.reportData || {};
     const snapshot = data.oee || {};
     const kpis = snapshot.oee == null ? "" : " · OEE " + percent(snapshot.oee) + " · Availability " + percent(snapshot.availability) + " · Performance " + percent(snapshot.performance) + " · Quality " + percent(snapshot.quality);
-    setText("report-summary", (app.reportDate || document.getElementById("report-date")?.value || "") + " · " + (data.machine === "ALL" ? "All lines" : (data.machine || "")) + " · " + filtered.length + " of " + (rows || []).length + " flight bars shown" + kpis);
+    setText("report-summary", (app.reportDate || document.getElementById("report-date")?.value || "") + " · " + (data.machine === "ALL" ? "All Lines" : (data.machine || "")) + " · " + filtered.length + " of " + (rows || []).length + " Flight Bars Shown" + kpis);
   }
 
   function populateReportFilters(rows) {
@@ -211,7 +222,7 @@
       if (!select) return;
       const current = select.value;
       const values = Array.from(new Set((rows || []).map(function (item) { return id.includes("grade") ? item.grade : (item.used_colour || item.report_colour); }).filter(Boolean))).sort();
-      select.replaceChildren(new Option(id.includes("grade") ? "All grades" : "All colours", ""));
+      select.replaceChildren(new Option(id.includes("grade") ? "All Grades" : "All Colours", ""));
       values.forEach(function (value) { select.appendChild(new Option(value, value)); });
       select.value = values.includes(current) ? current : "";
     });
@@ -278,7 +289,7 @@
     body.replaceChildren();
     (data.imports || []).forEach(function (item) {
       const row = document.createElement("tr");
-      makeCell(row, readableDateTime(item.received_at)); makeCell(row, item.source); makeCell(row, item.batch_id, "mono"); makeCell(row, item.report_date); makeCell(row, item.row_count); makeCell(row, item.status); makeCell(row, item.error_message || "—");
+      makeCell(row, readableDateTime(item.received_at)); makeCell(row, item.source); makeCell(row, item.batch_id, "mono"); makeCell(row, item.report_date); makeCell(row, item.row_count); makeCell(row, titleLabel(item.status)); makeCell(row, item.error_message || "—");
       body.appendChild(row);
     });
     if (!data.imports || data.imports.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No SCADA import events yet."); cell.colSpan = 7; body.appendChild(row); }
@@ -330,7 +341,7 @@
     setText("range-days", window.day_count);
     [["calendar", "calendar_minutes"], ["planned-stop", "planned_stop_minutes"], ["planned", "planned_minutes"], ["unplanned", "unplanned_minutes"], ["run", "run_minutes"]].forEach(function (pair) { setText("range-" + pair[0], Number(oee[pair[1]] || 0).toFixed(1) + " min"); });
     setText("range-utilization", percent(oee.utilization_window));
-    setText("range-window", data.from_date + " → " + data.to_date + " (inclusive) · " + window.day_count + " day(s) × " + window.duration_minutes + " min per line · Daily start " + window.start_time + " · " + (data.machine === "ALL" ? "All machines" : data.machine));
+    setText("range-window", data.from_date + " → " + data.to_date + " (Inclusive) · " + window.day_count + " Day(s) × " + window.duration_minutes + " Min per Line · Daily Start " + window.start_time + " · " + (data.machine === "ALL" ? "All Machines" : data.machine));
     const flags = oee.calculation_flags || {}, warnings = [];
     if (flags.missing_cycle_time) warnings.push("Missing cycle standards: fallback 12 min/FB applied. " + (flags.missing_cycle_colours || []).join(", "));
     if (flags.performance_above_100) warnings.push("Performance exceeds 100% in one or more windows; verify cycle time and downtime.");
@@ -400,7 +411,7 @@
     body.replaceChildren();
     (data.events || []).forEach(function (item) {
       const row = document.createElement("tr");
-      makeCell(row, readableDateTime(item.starts_at)); makeCell(row, readableDateTime(item.ends_at)); makeCell(row, item.event_type); makeCell(row, item.reason_code); makeCell(row, item.source); makeCell(row, item.status); makeCell(row, item.notes || "—");
+      makeCell(row, readableDateTime(item.starts_at)); makeCell(row, readableDateTime(item.ends_at)); makeCell(row, titleLabel(item.event_type)); makeCell(row, item.reason_label || item.reason_code); makeCell(row, titleLabel(item.source)); makeCell(row, titleLabel(item.status)); makeCell(row, item.notes || "—");
       const actionCell = makeCell(row, "");
       if (item.status === "proposed" || item.status === "confirmed") {
         const tag = document.createElement("button");
@@ -412,13 +423,44 @@
     if (!data.events || data.events.length === 0) { const row = document.createElement("tr"); const cell = makeCell(row, "No downtime tagged for this machine and date yet."); cell.colSpan = 8; body.appendChild(row); }
   }
 
+  let downtimeReasonRequest = 0;
+  async function loadDowntimeReasons(lossType, selectedReason = "") {
+    const requestId = ++downtimeReasonRequest;
+    const select = document.getElementById("downtime-reason");
+    if (!select) return;
+    select.replaceChildren(new Option("Loading reasons…", ""));
+    select.disabled = true;
+    try {
+      const data = await request("breakdowns", "by-type", { query: { loss_type: lossType } });
+      if (!data.available) throw new Error(data.message || "Breakdown reasons are unavailable.");
+      if (requestId !== downtimeReasonRequest || document.getElementById("downtime-type").value !== lossType) return;
+      select.replaceChildren(new Option("Select a reason", ""));
+      (data.breakdowns || []).forEach(function (item) {
+        select.appendChild(new Option(item.label, item.code));
+      });
+      select.value = (data.breakdowns || []).some(function (item) { return item.code === selectedReason; }) ? selectedReason : "";
+      if (!data.breakdowns?.length) showOeeAlert("downtime-alert", "No active " + titleLabel(lossType) + " breakdown reasons are registered.", true);
+      else showOeeAlert("downtime-alert", "", false);
+    } catch (error) {
+      if (requestId === downtimeReasonRequest) {
+        select.replaceChildren(new Option("Reasons unavailable", ""));
+        showOeeAlert("downtime-alert", error.message, true);
+      }
+    } finally {
+      if (requestId === downtimeReasonRequest) select.disabled = false;
+    }
+  }
+
   async function loadDowntime() {
     if (!can("downtime")) return;
     const dateControl = document.getElementById("downtime-date");
     if (dateControl && !dateControl.value) dateControl.value = document.getElementById("dashboard-date")?.value || new Date().toISOString().slice(0, 10);
     const date = dateControl?.value || "";
     const machine = document.getElementById("downtime-machine")?.value || "APP-06";
-    try { renderDowntime(await request("oee", "downtime", { query: { machine: machine, ...(date ? { date: date } : {}) } })); renderMasters(await request("oee", "masters", {})); }
+    try {
+      renderDowntime(await request("oee", "downtime", { query: { machine: machine, ...(date ? { date: date } : {}) } }));
+      await loadDowntimeReasons(document.getElementById("downtime-type").value, document.getElementById("downtime-reason").value);
+    }
     catch (error) { showOeeAlert("downtime-alert", error.message, true); }
   }
 
@@ -452,19 +494,12 @@
       if (!plantThresholds.length) { const row = document.createElement("tr"); const cell = makeCell(row, "Plant thresholds unavailable. Refresh after installing the settings migration."); cell.colSpan = 3; thresholdsBody.appendChild(row); }
     }
     updateThresholdForm();
-    const reasonsBody = document.getElementById("reasons-body");
     const cyclesBody = document.getElementById("cycles-body");
-    if (reasonsBody) {
-      reasonsBody.replaceChildren();
-      (data.reasons || []).forEach(function (item) { const row = document.createElement("tr"); makeCell(row, item.code, "mono"); makeCell(row, item.label); makeCell(row, Number(item.is_active) === 1 ? "Active" : "Inactive"); const cell = makeCell(row, ""); const button = document.createElement("button"); button.type = "button"; button.className = "link"; button.textContent = "Edit"; button.dataset.editReason = JSON.stringify(item); cell.appendChild(button); reasonsBody.appendChild(row); });
-      const downtimeReason = document.getElementById("downtime-reason");
-      if (downtimeReason && data.reasons) { const selected = downtimeReason.value; downtimeReason.replaceChildren(); data.reasons.filter(function (item) { return Number(item.is_active) === 1; }).forEach(function (item) { downtimeReason.appendChild(new Option(item.label, item.code)); }); downtimeReason.value = selected; }
-    }
     if (cyclesBody) {
       cyclesBody.replaceChildren();
       (data.cycles || []).forEach(function (item) { const row = document.createElement("tr"); makeCell(row, item.line_code); makeCell(row, item.colour); makeCell(row, Number(item.minutes_per_fb).toFixed(3)); makeCell(row, item.effective_from); makeCell(row, item.effective_to || "—"); const cell = makeCell(row, ""); const button = document.createElement("button"); button.type = "button"; button.className = "link"; button.textContent = "Edit"; button.dataset.editCycle = JSON.stringify(item); cell.appendChild(button); cyclesBody.appendChild(row); });
     }
-    document.querySelectorAll("[data-edit-reason], [data-edit-cycle]").forEach(function (button) { button.hidden = !can("oee-masters", "update"); });
+    document.querySelectorAll("[data-edit-cycle]").forEach(function (button) { button.hidden = !can("oee-masters", "update"); });
     window.PortalAccess.applyControls();
   }
 
@@ -497,7 +532,7 @@
       makeCell(row, record.title);
       makeCell(row, record.owner_name);
       makeCell(row, record.record_type);
-      makeCell(row, record.status);
+      makeCell(row, titleLabel(record.status));
       makeCell(row, readableDate(record.created_at));
       makeCell(row, record.status === "Closed" ? readableDate(record.updated_at) : "—");
       const actions = makeCell(row, "", "r");
@@ -536,7 +571,7 @@
         makeCell(row, record.record_number, "mono");
         makeCell(row, record.title);
         makeCell(row, record.record_type);
-        makeCell(row, record.status);
+        makeCell(row, titleLabel(record.status));
         makeCell(row, readableDate(record.created_at));
         dashboardBody.appendChild(row);
       });
@@ -557,7 +592,7 @@
       makeCell(row, user.username);
       makeCell(row, user.full_name);
       makeCell(row, user.email);
-      makeCell(row, user.access_role_name || user.role);
+      makeCell(row, user.access_role_name === "Standard user" ? "Standard User" : (user.access_role_name || titleLabel(user.role)));
       makeCell(row, Number(user.is_active) === 1 ? "Active" : "Inactive");
       makeCell(row, readableDate(user.created_at), "muted");
       const actions = makeCell(row, "", "r");
@@ -570,10 +605,10 @@
         actions.appendChild(toggle);
         const controls = document.createElement("div"); controls.className = "role-controls";
         const select = document.createElement("select"); select.setAttribute("aria-label", "Role for " + user.username); select.dataset.userRole = String(user.id);
-        (app.assignableRoles || []).forEach(function (role) { select.add(new Option(role.name, role.id)); });
+        (app.assignableRoles || []).forEach(function (role) { select.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); });
         const assigned = user.access_role_id || (app.assignableRoles || []).find(role => Number(role.is_builtin) === 1)?.id;
         select.value = String(assigned || "");
-        const save = document.createElement("button"); save.type = "button"; save.className = "link"; save.textContent = "Save role"; save.dataset.saveUserRole = String(user.id);
+        const save = document.createElement("button"); save.type = "button"; save.className = "link"; save.textContent = "Save Role"; save.dataset.saveUserRole = String(user.id);
         controls.append(select, save); actions.appendChild(controls);
       }
       body.appendChild(row);
@@ -596,7 +631,7 @@
       "detail-owner": record.owner_name,
       "detail-title": record.title,
       "detail-description": record.description || "—",
-      "detail-status": record.status,
+      "detail-status": titleLabel(record.status),
     };
     Object.keys(values).forEach(function (id) {
       const target = document.getElementById(id);
@@ -644,7 +679,7 @@
       app.users = users.users;
       app.assignableRoles = users.assignable_roles || [];
       const roleSelect = document.getElementById("new-user-role");
-      if (roleSelect) { roleSelect.replaceChildren(); app.assignableRoles.forEach(function (role) { roleSelect.add(new Option(role.name, role.id)); }); }
+      if (roleSelect) { roleSelect.replaceChildren(); app.assignableRoles.forEach(function (role) { roleSelect.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); }); }
       renderUsers(users.users);
     }
   }
@@ -762,6 +797,7 @@
   const downtimeRefresh = document.getElementById("downtime-refresh");
   if (downtimeRefresh) downtimeRefresh.addEventListener("click", loadDowntime);
   ["downtime-date", "downtime-machine"].forEach(function (id) { const control = document.getElementById(id); if (control) control.addEventListener("change", loadDowntime); });
+  document.getElementById("downtime-type")?.addEventListener("change", function () { loadDowntimeReasons(this.value); });
   const downtimeForm = document.getElementById("downtime-form");
   if (downtimeForm) downtimeForm.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -786,22 +822,18 @@
       renderMasters(await request("oee", "masters", {}));
       showOeeAlert("masters-alert", line + " threshold saved: " + minutes + " min. Refresh the dashboard/report to recalculate automatic proposals.", true);
     } catch (error) { showOeeAlert("masters-alert", error.message, true); }
-    finally { button.disabled = !can("oee-masters", "update"); button.textContent = "Save threshold"; }
+    finally { button.disabled = !can("oee-masters", "update"); button.textContent = "Save Threshold"; }
   });
-  const reasonForm = document.getElementById("reason-form");
-  if (reasonForm) reasonForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "reason", id: Number(document.getElementById("reason-id").value) || null, code: document.getElementById("reason-code").value, label: document.getElementById("reason-label").value } }); toast("Reason saved", "ok"); reasonForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
   const cycleForm = document.getElementById("cycle-form");
   if (cycleForm) cycleForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "cycle", id: Number(document.getElementById("cycle-id").value) || null, line_code: document.getElementById("cycle-line").value, colour: document.getElementById("cycle-colour").value, minutes_per_fb: document.getElementById("cycle-minutes").value, effective_from: document.getElementById("cycle-from").value, effective_to: document.getElementById("cycle-to").value } }); toast("Cycle time saved", "ok"); cycleForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
   document.addEventListener("click", function (event) {
     const threshold = event.target.closest("[data-edit-threshold]");
     if (threshold && can("oee-masters", "update")) { document.getElementById("threshold-line").value = threshold.dataset.editThreshold; updateThresholdForm(); document.getElementById("threshold-minutes").focus(); }
-    const reason = event.target.closest("[data-edit-reason]");
-    if (reason) { const item = JSON.parse(reason.dataset.editReason); document.getElementById("reason-id").value = item.id; document.getElementById("reason-code").value = item.code; document.getElementById("reason-label").value = item.label; }
     const cycle = event.target.closest("[data-edit-cycle]");
     if (cycle) { const item = JSON.parse(cycle.dataset.editCycle); document.getElementById("cycle-id").value = item.id; document.getElementById("cycle-line").value = item.line_code; document.getElementById("cycle-colour").value = item.colour; document.getElementById("cycle-minutes").value = item.minutes_per_fb; document.getElementById("cycle-from").value = item.effective_from; document.getElementById("cycle-to").value = item.effective_to || ""; }
-    if (reason || cycle) window.PortalAccess.applyControls();
+    if (cycle) window.PortalAccess.applyControls();
   });
-  document.addEventListener("click", function (event) {
+  document.addEventListener("click", async function (event) {
     const tag = event.target.closest("[data-tag-downtime]");
     if (!tag || !can("downtime", "update")) return;
     app.downtimeEditId = Number(tag.dataset.tagDowntime);
@@ -811,7 +843,7 @@
     document.getElementById("downtime-start").value = toLocal(tag.dataset.startsAt);
     document.getElementById("downtime-end").value = toLocal(tag.dataset.endsAt);
     document.getElementById("downtime-type").value = tag.dataset.eventType;
-    document.getElementById("downtime-reason").value = tag.dataset.reasonCode;
+    await loadDowntimeReasons(tag.dataset.eventType, tag.dataset.reasonCode);
     document.getElementById("downtime-notes").value = tag.dataset.notes;
     document.getElementById("downtime-start").focus();
   });

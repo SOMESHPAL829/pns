@@ -16,6 +16,19 @@ $admin = portal_permission_matrix(true);
 foreach(['dashboard'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'] as $action=>$page){
     permission_check(portal_api_requirement('oee',$action,'GET')===[$page,in_array($action,['export','range-export'],true)?'export':'view'],'GET permission missing: '.$action);
 }
+permission_check(portal_api_requirement('chemicals','list','GET')===['chemical-registration','view'],'Chemical list permission missing');
+permission_check(portal_api_requirement('chemicals','item-save','POST',[])===['chemical-registration','create'],'Chemical item create permission missing');
+permission_check(portal_api_requirement('chemicals','rate-save','POST',['id'=>5])===['chemical-registration','update'],'Chemical rate update permission missing');
+permission_check(portal_api_requirement('chemical-consumption','list','GET')===['chemical-consumption','view'],'Chemical consumption list permission missing');
+permission_check(portal_api_requirement('chemical-consumption','save','POST',[])===['chemical-consumption','create'],'Chemical consumption create permission missing');
+permission_check(portal_api_requirement('chemical-consumption','save','POST',['id'=>5])===['chemical-consumption','update'],'Chemical consumption update permission missing');
+permission_check(portal_api_requirement('chemical-consumption','report','GET')===['chemical-consumption-report','view'],'Chemical consumption report permission missing');
+permission_check(portal_api_requirement('chemical-consumption','cost-report','GET')===['chemical-cost-report','view'],'Chemical cost report permission missing');
+permission_check(portal_api_requirement('breakdowns','list','GET')===['breakdown-registration','view'],'Breakdown list permission missing');
+permission_check(portal_api_requirement('breakdowns','by-type','GET')===['downtime','view'],'Downtime reason lookup permission missing');
+permission_check(portal_api_requirement('breakdowns','save','POST')===['breakdown-registration','create'],'Breakdown create permission missing');
+permission_check(portal_api_requirement('breakdowns','save','POST',['id'=>5])===['breakdown-registration','update'],'Breakdown update permission missing');
+permission_check(portal_api_requirement('breakdowns','delete','POST')===['breakdown-registration','delete'],'Breakdown delete permission missing');
 foreach(['records'=>'record','users'=>'user','roles'=>'role'] as $resource=>$prefix){
     permission_check(portal_api_requirement($resource,$prefix.($resource==='roles'?'-save':'-create'),'POST')===[$resource,'create'],'Create permission missing');
 }
@@ -25,6 +38,10 @@ permission_check(portal_api_requirement('oee','downtime-save','POST',[])===['dow
 $failed=false;try{portal_api_requirement('oee','user-create','POST');}catch(DomainException $e){$failed=true;}
 permission_check($failed,'Forged resource may bypass policy');
 permission_check(portal_can($admin, 'roles', 'delete'), 'Administrator missing supported grant');
+permission_check(portal_can($admin, 'chemical-registration', 'update'), 'Administrator missing chemical update grant');
+permission_check(portal_can($admin, 'chemical-consumption', 'update'), 'Administrator missing chemical consumption update grant');
+permission_check(portal_can($admin, 'chemical-consumption-report', 'view'), 'Administrator missing chemical consumption report grant');
+permission_check(portal_can($admin, 'chemical-cost-report', 'view'), 'Administrator missing chemical cost report grant');
 permission_check(!portal_can($admin, 'dashboard', 'delete'), 'Unsupported operations are not permissions');
 permission_check(portal_grants_within($view, $admin) && !portal_grants_within($admin, $view), 'Assignment must not permit escalation');
 $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
@@ -40,6 +57,10 @@ $standard=(int)$pdo->lastInsertId();
 $insert=$pdo->prepare('INSERT INTO portal_role_permissions VALUES (?,?,?)');
 foreach(portal_standard_permissions() as $page=>$actions)foreach($actions as $action=>$allow)if($allow)$insert->execute([$standard,$page,$action]);
 permission_check(portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'records','delete'),'Legacy user compatibility');
+permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'chemical-registration','view'),'Standard user must not receive chemical access implicitly');
+permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'chemical-consumption','view'),'Standard user must not receive chemical consumption access implicitly');
+permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'chemical-consumption-report','view'),'Standard user must not receive chemical report access implicitly');
+permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'chemical-cost-report','view'),'Standard user must not receive chemical cost report access implicitly');
 $id = portal_save_role($pdo, $actor, null, 'Report viewer', ['oee-report' => ['view' => true]]);
 portal_assign_role($pdo, $actor, 2, $id);
 $access = portal_user_access($pdo, ['id' => 2, 'role' => 'user']);

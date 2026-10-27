@@ -13,6 +13,12 @@ $evening = oee_window_definition('2026-10-22', 12, '12:00');
 $night = oee_window_definition('2026-10-22', 12, '18:00');
 window_check($morning['calendar_minutes'] === 720 && $day['calendar_minutes'] === 1440, 'duration minutes incorrect');
 window_check($night['window_end'] === '2026-10-23 06:00:00', 'night window must cross midnight');
+foreach ([8, 10, 12, 16, 24] as $hours) {
+    $start = $hours === 24 ? '00:00' : '08:00';
+    $window = oee_window_definition('2026-10-22', $hours, $start);
+    window_check($window['duration_minutes'] === $hours * 60, 'supported duration did not produce its full window: ' . $hours);
+    window_check($window['window_end'] === (new DateTimeImmutable('2026-10-22 ' . $start . ':00'))->modify('+' . $hours . ' hours')->format('Y-m-d H:i:s'), 'window end did not use the selected duration: ' . $hours);
+}
 foreach ([[6, '00:00'], [12, '25:00'], [12, '6:00'], [24, '06:00']] as [$hours, $start]) {
     try {
         oee_window_definition('2026-10-22', $hours, $start);
@@ -47,11 +53,21 @@ $dailyQuality = [['report_date' => '2026-10-22', 'shift_code' => '', 'rejected_f
 window_check(oee_window_metrics($morning, $rows, $events, $dailyQuality)['good_fb'] === 2, 'daily losses must not be copied into a shift');
 $shiftQuality = [['report_date' => '2026-10-22', 'shift_code' => 'H12_0000', 'rejected_fb' => 1, 'reworked_fb' => 0]];
 window_check(oee_window_metrics($morning, $rows, $events, $shiftQuality)['good_fb'] === 1, 'matching shift quality not applied');
+$eightHourWindow = oee_window_definition('2026-10-22', 8, '00:00');
+$eightHourQuality = [
+    ['report_date' => '2026-10-22', 'shift_code' => 'DAY', 'rejected_fb' => 99, 'reworked_fb' => 0],
+    ['report_date' => '2026-10-22', 'shift_code' => 'H8_0000', 'rejected_fb' => 0, 'reworked_fb' => 0],
+];
+window_check(oee_window_metrics($eightHourWindow, $rows, $events, $eightHourQuality)['good_fb'] === 1, '8h quality must use its matching window without daily totals');
+$missingWindowQuality = oee_window_metrics($eightHourWindow, $rows, $events, []);
+window_check(!empty($missingWindowQuality['calculation_flags']['shift_quality_not_entered']), 'missing partial-window quality must be flagged');
 $all = oee_window_aggregate([$m, $e]);
 window_check(abs($all['availability'] - 1290 / 1380) < 1e-10 && abs($all['utilization_window'] - 1290 / 1440) < 1e-10, 'weighted aggregate incorrect');
 $range = oee_date_range_definition('2026-10-22', '2026-10-23', 12, '18:00');
 window_check($range['day_count'] === 2 && $range['calendar_minutes'] === 1440, 'range must include both days and selected minutes per day');
 window_check(count($range['windows']) === 2 && $range['windows'][1]['window_start'] === '2026-10-23 18:00:00' && $range['window_end'] === '2026-10-24 06:00:00', '12h range must contain disjoint daily windows');
+$eightHourRange = oee_date_range_definition('2026-10-22', '2026-10-23', 8, '18:00');
+window_check($eightHourRange['calendar_minutes'] === 960 && $eightHourRange['windows'][1]['window_end'] === '2026-10-24 02:00:00', '8h date range must carry selected duration across midnight');
 window_check(oee_date_range_definition('2024-02-28', '2024-03-01')['day_count'] === 3, 'leap day missing');
 window_check(oee_date_range_definition('2026-10-22', '2026-10-22')['calendar_minutes'] === 1440, 'single-day range changed');
 foreach ([['2026-10-23', '2026-10-22'], ['2026-02-30', '2026-03-01'], ['2026-01-01', '2026-04-04']] as [$from, $to]) {
@@ -68,4 +84,4 @@ $nested = oee_window_aggregate([$combined, $combined]);
 window_check($nested['calendar_24h_minutes'] === 5760 && abs($nested['utilization_24h'] - $combined['utilization_24h']) < 1e-10, 'multi-line range lost the number of days');
 $empty = oee_window_aggregate(array_map(static fn (array $w): array => oee_window_metrics($w, [], [], []), $range['windows']));
 window_check($empty['productive_fb'] === 0 && $empty['calendar_minutes'] === 1440 && $empty['oee'] === 0.0, 'empty days must retain their selected time and zero OEE');
-echo "OEE date-range and 12h/24h window tests passed\n";
+echo "OEE date-range and 8h/10h/12h/16h/24h window tests passed\n";

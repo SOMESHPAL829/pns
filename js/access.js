@@ -19,12 +19,23 @@
     });
     const profileEditable = can("profile", "update");
     document.querySelectorAll("#profile-form input:not([readonly]), #password-form input, #password-form button, [form='profile-form']").forEach(function (node) { node.disabled = !profileEditable; });
-    document.querySelectorAll("#reason-form, #cycle-form").forEach(function (form) {
+    document.querySelectorAll("#cycle-form").forEach(function (form) {
       const editing = !!form.querySelector("input[type=hidden]")?.value;
       const allowed = can("oee-masters", editing ? "update" : "create");
       form.hidden = !can("oee-masters", "create") && !can("oee-masters", "update");
       form.querySelectorAll("input,select,button").forEach(function (node) { node.disabled = !allowed; });
     });
+    const breakdownForm = document.getElementById("breakdown-form");
+    if (breakdownForm) {
+      const editing = !!document.getElementById("breakdown-id")?.value;
+      const allowed = can("breakdown-registration", editing ? "update" : "create");
+      breakdownForm.hidden = !can("breakdown-registration", "create") && !can("breakdown-registration", "update");
+      breakdownForm.querySelectorAll("input,select,button").forEach(function (node) { node.disabled = !allowed; });
+      const cancel = document.getElementById("breakdown-cancel");
+      if (cancel) cancel.disabled = false;
+    }
+    document.querySelectorAll("[data-edit-breakdown]").forEach(function (node) { node.hidden = !can("breakdown-registration", "update"); });
+    document.querySelectorAll("[data-delete-breakdown]").forEach(function (node) { node.hidden = !can("breakdown-registration", "delete"); });
     const downtime = document.getElementById("downtime-form");
     if (downtime) downtime.hidden = !can("downtime", "create") && !can("downtime", "update");
     const newStop = document.querySelector("#downtime-form button[type=submit]");

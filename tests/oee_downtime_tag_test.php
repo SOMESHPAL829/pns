@@ -8,8 +8,8 @@ function tag_fails(callable $call,int $status):void{
     throw new RuntimeException('Expected rejection '.$status);
 }
 $pdo=new PDO('sqlite::memory:',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
-$pdo->exec('CREATE TABLE oee_reason_codes(code TEXT,label TEXT,is_active INTEGER)');
-$pdo->exec("INSERT INTO oee_reason_codes VALUES ('UNK','Not classified',1),('CUSTOM_STOP','Custom stop',1),('INACTIVE','Inactive',0)");
+$pdo->exec('CREATE TABLE oee_reason_codes(code TEXT,label TEXT,loss_type TEXT,is_active INTEGER)');
+$pdo->exec("INSERT INTO oee_reason_codes VALUES ('UNK','Not classified','unplanned',1),('CUSTOM_STOP','Custom stop','planned',1),('INACTIVE','Inactive','unplanned',0),('WRONG_TYPE','Wrong Type','unplanned',1)");
 $pdo->exec('CREATE TABLE oee_downtime_events(id INTEGER PRIMARY KEY,line_code TEXT,report_date TEXT,starts_at TEXT,ends_at TEXT,event_type TEXT,source TEXT,status TEXT,reason_code TEXT,notes TEXT,evidence_key TEXT,updated_at TEXT)');
 $pdo->exec("INSERT INTO oee_downtime_events VALUES (1,'APP-07','2026-10-22','2026-10-22 23:55:17','2026-10-23 00:15:43','unplanned','gap','proposed','UNK','Original','evidence-1','2026-10-22 23:55:17')");
 $before=$pdo->query('SELECT * FROM oee_downtime_events')->fetch();
@@ -17,7 +17,7 @@ $permissions=portal_validate_permissions(['dashboard'=>['view'=>true],'downtime'
 $input=['event_id'=>1,'machine'=>'APP-07','event_type'=>'planned','reason_code'=>'CUSTOM_STOP','notes'=>'Reviewed <text>','starts_at'=>'2099-01-01','ends_at'=>'2099-01-02','source'=>'manual','status'=>'approved'];
 tag_fails(fn()=>oee_tag_downtime($pdo,$input,portal_standard_permissions()),403);
 tag_check(portal_api_requirement('oee','downtime-tag','POST',$input)===['downtime','update'],'Tag route must always require Update');
-foreach([['event_id'=>null],['event_id'=>-1],['machine'=>'ALL'],['machine'=>[]],['event_type'=>'unknown'],['reason_code'=>'MISSING'],['reason_code'=>'INACTIVE'],['notes'=>str_repeat('a',501)],['notes'=>[]]] as $bad){tag_fails(fn()=>oee_tag_downtime($pdo,array_replace($input,$bad),$permissions),422);}
+foreach([['event_id'=>null],['event_id'=>-1],['machine'=>'ALL'],['machine'=>[]],['event_type'=>'unknown'],['reason_code'=>'MISSING'],['reason_code'=>'INACTIVE'],['reason_code'=>'WRONG_TYPE'],['notes'=>str_repeat('a',501)],['notes'=>[]]] as $bad){tag_fails(fn()=>oee_tag_downtime($pdo,array_replace($input,$bad),$permissions),422);}
 tag_fails(fn()=>oee_tag_downtime($pdo,array_replace($input,['machine'=>'APP-06']),$permissions),404);
 tag_fails(fn()=>oee_tag_downtime($pdo,array_replace($input,['event_id'=>999]),$permissions),404);
 tag_check($pdo->query('SELECT * FROM oee_downtime_events')->fetch()===$before,'Rejected calls must not write');

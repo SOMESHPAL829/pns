@@ -19,6 +19,26 @@ foreach ($lines as $line) {
     range_export_check($line['productive_fb'] === 2 && $line['good_fb'] === 1 && $line['ideal_output_minutes'] === 20.0, 'Repeated line across dates double-counted production/quality');
     range_export_check($line['unplanned_minutes'] === 60.0 && $line['calendar_minutes'] === 720.0, 'Daily window time is incorrect');
 }
+$partialReport = $report;
+$partialReport['window']['duration_minutes'] = 480;
+foreach ($partialReport['line_metrics'] as &$line) {
+    $line['duration_hours'] = 8;
+    $line['shift_code'] = 'H8_1800';
+    $line['window_end'] = (new DateTimeImmutable($line['report_date'] . ' 18:00:00'))->modify('+8 hours')->format('Y-m-d H:i:s');
+}
+unset($line);
+foreach ($partialReport['quality_entries'] as &$entry) {
+    if ($entry['shift_code'] !== 'DAY') {
+        $entry['shift_code'] = 'H8_1800';
+        $entry['rejected_fb'] = 0;
+    }
+}
+unset($entry);
+$partialLines = oee_export_sources($partialReport)['lines'];
+foreach ($partialLines as $line) {
+    range_export_check($line['productive_fb'] === 2 && $line['good_fb'] === 2 && $line['rejected_fb'] === 0, '8h export must use matching quality and exclude daily totals');
+    range_export_check($line['calendar_minutes'] === 480.0, '8h export must use selected window minutes');
+}
 $path = $argv[1] ?? sys_get_temp_dir() . '/pns-range-formulas-' . bin2hex(random_bytes(6)) . '.xlsx';
 try {
     file_put_contents($path, oee_export_xlsx($report));

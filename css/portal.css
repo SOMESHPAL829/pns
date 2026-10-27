@@ -203,8 +203,7 @@ textarea {
   color: var(--mut);
   font-size: 0.68rem;
   font-weight: 730;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .app-sidebar-link,
@@ -416,8 +415,7 @@ textarea {
   color: var(--mut);
   font-size: 0.7rem;
   font-weight: 730;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .kpi-value {
@@ -466,8 +464,7 @@ table.data th {
   color: #fff;
   font-size: var(--text-xs);
   font-weight: 730;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 table.data tbody tr:hover {
@@ -482,8 +479,7 @@ table.data tbody tr:hover {
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   font-size: var(--text-xs);
   font-weight: 730;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .form-section-body {
@@ -796,8 +792,7 @@ table.data tbody tr:hover {
 .app-header-panel-title {
   font-size: 0.78rem;
   font-weight: 730;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .app-header-panel-action {
@@ -880,8 +875,7 @@ table.data tbody tr:hover {
   color: var(--mut);
   font-size: 10.5px;
   font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.2px;
 }
 
 .dash-kpi .v { font-size: 21px; font-weight: 730; margin-top: 4px; }
@@ -904,8 +898,7 @@ table.data tbody tr:hover {
   color: var(--accent);
   font-size: 0.68rem;
   font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .dash-hero h2 { margin: 3px 0 2px; font-size: 1.15rem; }
@@ -932,6 +925,13 @@ table.data tbody tr:hover {
   font-size: 0.8125rem;
   font-weight: 730;
   color: var(--accent-deep);
+}
+
+.dash-card-head h2,
+.dash-card-head h3 {
+  margin: 0;
+  color: inherit;
+  font: inherit;
 }
 
 .dash-card-body { padding: 10px 12px; }
@@ -1012,8 +1012,7 @@ table.data tbody tr:hover {
   padding: 9px 12px;
   text-align: left;
   font-size: 9.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.2px;
   font-weight: 730;
   white-space: nowrap;
 }
@@ -1071,7 +1070,7 @@ table.data tbody tr:hover {
 }
 
 .form-card.wide { max-width: 48rem; }
-.form-card-title { font-size: 15px; font-weight: 730; color: var(--accent-deep); margin-bottom: 14px; }
+.form-card-title { margin: 0 0 14px; color: var(--accent-deep); font-size: 15px; font-weight: 730; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-stack { display: grid; gap: 12px; }
 .form-panel { border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: #fafbfc; margin-top: 18px; display: flex; gap: 12px; align-items: flex-end; }
@@ -1143,7 +1142,7 @@ table.data tbody tr:hover {
 .oee-alert { margin: 1rem 0; padding: 0.75rem 0.9rem; border: 1px solid var(--warn); border-radius: var(--radius); background: var(--warn-sft); color: #6f4b12; }
 .oee-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
 .oee-kpi { padding: 1rem; border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: var(--radius-lg); background: var(--card); }
-.oee-kpi-label, .oee-stat-label { color: var(--mut); font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+.oee-kpi-label, .oee-stat-label { color: var(--mut); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.03em; }
 .oee-kpi-value { margin-top: 0.35rem; color: var(--accent-deep); font-size: 1.85rem; font-weight: 780; letter-spacing: -0.04em; }
 .oee-kpi-note { margin-top: 0.25rem; color: var(--mut); font-size: var(--text-xs); }
 .oee-grid { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
@@ -1180,6 +1179,159 @@ table.data tbody tr:hover {
 .oee-report-card { overflow: hidden; }
 .oee-report-table { min-width: 980px; }
 .oee-master-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1rem; }
+.chemical-registration-grid { display: grid; gap: 1rem; }
+.chemical-description-field { flex: 1 1 18rem; }
+.chemical-description-field input { width: 100%; box-sizing: border-box; }
+.chemical-rate-help { margin: 0; padding: 0.8rem 0.9rem; border-bottom: 1px solid var(--line); }
+.chemical-items-table, .chemical-rates-table { min-width: 720px; }
+.row-actions-cell .row-actions { justify-content: flex-start; }
+.chemical-consumption-card { overflow: hidden; }
+.chemical-consumption-form {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+  padding: 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+.chemical-consumption-form label {
+  display: grid;
+  grid-column: span 3;
+  gap: 0.28rem;
+  min-width: 0;
+  color: var(--mut);
+  font-size: var(--text-xs);
+  font-weight: 650;
+}
+.chemical-consumption-form .chemical-consumption-wide { grid-column: span 6; }
+.chemical-consumption-form .chemical-consumption-remarks { grid-column: span 9; }
+.chemical-consumption-form input,
+.chemical-consumption-form select,
+.chemical-consumption-form textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.15rem;
+  box-sizing: border-box;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: var(--card);
+  font: inherit;
+}
+.chemical-consumption-form textarea { resize: vertical; }
+.chemical-quantity-control { display: flex; align-items: stretch; }
+.chemical-quantity-control input { border-radius: var(--radius) 0 0 var(--radius); }
+.chemical-quantity-uom {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.65rem;
+  border: 1px solid var(--line);
+  border-left: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--accent-sft);
+  color: var(--mut);
+  white-space: nowrap;
+}
+.chemical-consumption-actions { grid-column: span 3; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.chemical-consumption-actions .btn { min-height: 2.15rem; }
+.chemical-consumption-table { min-width: 1700px; }
+.chemical-report-filter-card { margin-bottom: 1rem; overflow: hidden; }
+.chemical-report-filter-card h2 { margin: 0; font: inherit; }
+.chemical-consumption-report-card { overflow: hidden; }
+.chemical-report-title { display: none; padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--line); }
+.chemical-report-title h2 { margin: 0; font-size: var(--text-lg); }
+.chemical-report-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.chemical-report-meta div { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; padding: 0.75rem; background: var(--card); }
+.chemical-report-meta dt { color: var(--mut); font-weight: 700; }
+.chemical-report-meta dd { margin: 0; color: var(--ink); font-weight: 700; }
+.chemical-report-table { min-width: 1800px; }
+.chemical-report-table th { white-space: normal; vertical-align: middle; }
+.chemical-report-table th span { color: var(--mut); font-size: 0.7rem; font-weight: 600; }
+.chemical-report-serial { text-align: center; }
+.chemical-cost-report-filter-card { margin-bottom: 1rem; overflow: hidden; }
+.chemical-cost-report-filter-card h2 { margin: 0; font: inherit; }
+.chemical-cost-report-card { overflow: hidden; }
+.chemical-cost-report-title { display: none; padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--line); }
+.chemical-cost-report-title h2 { margin: 0; font-size: var(--text-lg); }
+.chemical-cost-report-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.chemical-cost-report-meta div { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; padding: 0.75rem; background: var(--card); }
+.chemical-cost-report-meta dt { color: var(--mut); font-weight: 700; }
+.chemical-cost-report-meta dd { margin: 0; color: var(--ink); font-weight: 700; }
+.chemical-cost-report-table { min-width: 980px; }
+.chemical-cost-report-table th { white-space: normal; }
+.chemical-cost-report-formula { margin: 0; padding: 0.8rem 0.9rem; border-top: 1px solid var(--line); color: var(--mut); }
+.chemical-cost-missing { color: var(--crit); font-weight: 700; }
+
+@media (max-width: 1050px) {
+  .chemical-consumption-form { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .chemical-consumption-form label { grid-column: span 2; }
+  .chemical-consumption-form .chemical-consumption-wide { grid-column: span 3; }
+  .chemical-consumption-form .chemical-consumption-remarks { grid-column: span 4; }
+  .chemical-consumption-actions { grid-column: span 2; }
+}
+
+@media (max-width: 640px) {
+  .chemical-consumption-form { grid-template-columns: 1fr; }
+  .chemical-consumption-form label,
+  .chemical-consumption-form .chemical-consumption-wide,
+  .chemical-consumption-form .chemical-consumption-remarks,
+  .chemical-consumption-actions { grid-column: 1 / -1; }
+  .chemical-report-meta { grid-template-columns: 1fr; }
+  .chemical-cost-report-meta { grid-template-columns: 1fr; }
+}
+
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body { background: #fff; font-size: 9px; color: #000; }
+  .app-sidebar,
+  .app-topbar,
+  .app-sidebar-backdrop,
+  .chemical-report-page-heading,
+  .chemical-cost-report-page-heading,
+  .chemical-report-filter-card,
+  .chemical-cost-report-filter-card,
+  #chemical-report-alert,
+  .app-toast-stack { display: none !important; }
+  .app-main { margin: 0 !important; }
+  .app-content { padding: 0 !important; }
+  .view { display: none !important; }
+  .view.active { display: block !important; }
+  .chemical-consumption-report-card,
+  .chemical-cost-report-card { border: 0; box-shadow: none; }
+  .chemical-report-title,
+  .chemical-cost-report-title { display: block; }
+  .chemical-report-meta,
+  .chemical-cost-report-meta { border: 1px solid #000; }
+  .chemical-report-meta div,
+  .chemical-cost-report-meta div { background: #fff; padding: 5px; }
+  .chemical-consumption-report-card .data-scroll,
+  .chemical-cost-report-card .data-scroll { overflow: visible; }
+  .chemical-report-table,
+  .chemical-cost-report-table { width: 100%; min-width: 0; border-collapse: collapse; }
+  .chemical-report-table th,
+  .chemical-report-table td,
+  .chemical-cost-report-table th,
+  .chemical-cost-report-table td { border: 1px solid #000; padding: 3px; color: #000; background: #fff; }
+  .chemical-report-table th span { color: #000; font-size: 8px; }
+  .chemical-report-table tr,
+  .chemical-cost-report-table tr { break-inside: avoid; }
+  .chemical-cost-report-formula { color: #000; border-top: 1px solid #000; }
+}
 .threshold-card { margin-bottom: 1rem; }
 [hidden] { display: none !important; }
 .role-editor { margin-top: 1rem; overflow: hidden; }

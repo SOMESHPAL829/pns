@@ -16,6 +16,9 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 4. Ensure the database account can create and use the `portal_*` tables.
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
 6. Run `php migrate-permissions.php`, then `php migrate-export-permissions.php` to install page-level roles and permissions.
+7. Run `php migrate-chemicals.php` to install chemical items and effective-dated INR rates.
+8. Run `php migrate-chemical-consumption.php` to install the chemical consumption ledger.
+9. Run `php migrate-breakdowns.php` to add the planned and unplanned breakdown reasons.
 
 The account recovery page returns the same confirmation for existing and unknown email addresses. Reset links expire after 30 minutes and can only be used once. PHP's `mail()` must be connected to a working mail transport for delivery.
 
@@ -29,6 +32,13 @@ php -S 127.0.0.1:4173
 
 Open `http://127.0.0.1:4173/`. Do not use `python -m http.server`; PHP routes are required for authentication and database access.
 
+## Icon Standard
+
+Interface icons come from the official [Heroicons](https://heroicons.com) outline
+set and are registered centrally in `js/icons.js`. Reference icons through a
+`data-icon` name; do not embed SVG markup in page templates. Sidebar actions
+must use distinct icons that communicate their individual purpose.
+
 ## App screens
 
 - `#/dashboard` — current user's recent records and summary
@@ -36,7 +46,65 @@ Open `http://127.0.0.1:4173/`. Do not use `python -m http.server`; PHP routes ar
 - `#/create` and `#/detail` — create and update records
 - `#/users` and `#/user-create` — permission-controlled account management
 - `#/roles` — protected administrator role/permission editor
+- `#/chemical-registration` — permission-controlled chemical items and effective-dated INR rates
+- `#/chemical-consumption` — daily chemical consumption entries by operator, machine, and process
+- `#/chemical-consumption-report` — printable date-range and machine-filtered chemical consumption report
+- `#/chemical-cost-report` — weekly, monthly, or consolidated chemical cost per dm² report
 - `#/profile` — update profile and change password
+
+## Chemical Registration
+
+Open **Administration → Chemical Registration** to register an item code,
+description, Active/Inactive status, and UOM. Each item can have effective-dated
+rates in INR. Effective dates are inclusive, and overlapping rate periods for
+the same item are rejected so the current rate is always unambiguous.
+
+Run `php migrate-chemicals.php` before opening this page. Access is controlled
+independently through Chemical Registration View/Create/Update permissions;
+new custom roles and the built-in Standard User role receive no access by default.
+
+## Chemical Consumption
+
+Open **Workspace → Chemical Consumption** to record Date, Shift, Operator Name,
+Machine Code, Process Description, Chemical Name, Consume Quantity, Used For,
+Recommended By, and Remarks. Chemical names are selected from Chemical
+Registration, quantities display the registered UOM, and inactive chemicals
+cannot be used for new entries. Used For is limited to Fresh Makeup or Top-Up.
+
+Run `php migrate-chemical-consumption.php` after the chemical registration
+migration. Access is controlled independently through Chemical Consumption
+View/Create/Update permissions and is denied to new custom roles and the
+built-in Standard User role until explicitly granted.
+
+## Chemical Consumption Report
+
+Open **Workspace → Chemical Consumption Report** to filter consumption entries
+by From Date, To Date, and Machine. The report follows the operational register
+format, includes the chemical name and item code together, shows quantity with
+its UOM, and provides a landscape print layout. Report access is controlled by
+the independent Chemical Consumption Report View permission.
+
+## Chemical Cost Report
+
+Open **Workspace → Chemical Cost Report** to select From Date, To Date, Machine,
+and a Weekly Basis, Monthly Basis, or Consolidated report. Total Chemical Cost
+uses each consumption entry's effective INR item rate. Chemical Cost per dm² is
+calculated as Total Chemical Cost divided by production Total Surface Area from
+the OEE feed. When an effective rate is missing, the affected cost is withheld
+and clearly flagged instead of being understated. The report supports landscape
+printing and a maximum date range of 366 days.
+
+## Breakdown Registration
+
+Open **Administration → Breakdown Registration** to create, edit, and delete
+planned or unplanned loss reasons. The page uses the OEE reason master so saved
+reasons are available in Downtime Review; its reason selector filters by the
+selected loss type. A reason cannot be deleted while it is referenced by a
+downtime record. Run `php migrate-breakdowns.php` after installing the OEE
+foundation and reason-master migrations to add the loss type field and seed the
+default reason list. Access is controlled by the Breakdown Registration
+View/Create/Update/Delete permissions; Downtime Review users need Downtime/View
+to load the active reason choices.
 
 Authorized account managers create accounts; there is no public sign-up route. Record ownership restrictions still apply in addition to role grants. Protected administrators retain full access and can view all records.
 
@@ -130,22 +198,25 @@ The authenticated app now includes:
 
 ### Formula-driven Excel export
 
-Dashboard and production report offer **1440 min (24 hours)** and **720 min
-(12 hours)**. The full-day default starts at midnight. For 720 minutes, choose
-the window start; overnight windows include the next day's production until the
-displayed end time. Flight bars are selected by loading timestamp, including the
-start and excluding the end; downtime is clipped to the same window.
+Dashboard, production report, and date-range report offer **480 min (8 hours)**,
+**600 min (10 hours)**, **720 min (12 hours)**, **960 min (16 hours)**, and
+**1440 min (24 hours)**. The full-day default starts at midnight. For partial-day
+windows, choose the start time; overnight windows include the next day's
+production until the displayed end time. Flight bars are selected by loading
+timestamp, including the start and excluding the end; downtime is clipped to the
+same window.
 
-The report/export API accepts `duration_minutes=1440|720&start_time=HH:MM`
-(`duration_hours=24|12` is also supported). Window utilization uses the selected
-minutes per line; `utilization_24h` in API responses retains the fixed 1440-minute
-meaning. Exports include the selection in their filename and workbook header.
-12-hour views are calculated separately and do not replace stored DAY results.
+The report/export API accepts `duration_minutes=480|600|720|960|1440&start_time=HH:MM`
+(`duration_hours=8|10|12|16|24` is also supported). Window utilization uses the
+selected minutes per line; `utilization_24h` in API responses retains the fixed
+1440-minute meaning. Exports include the selection in their filename and
+workbook header. Partial-day views are calculated separately and do not replace
+stored DAY results.
 
-12-hour quality uses entries matching `H12_HHMM` and the selected start date;
-daily quality losses are never copied into both shifts. When matching quality
-is missing, a visible warning explains the zero-loss assumption. Details and
-acceptance criteria: `OEE_DURATION_SELECTION.md`. Run
+Partial-day quality uses entries matching `H<duration>_HHMM` and the selected
+start date; daily quality losses are never copied into a partial window. When
+matching quality is missing, a visible warning explains the zero-loss
+assumption. Details and acceptance criteria: `OEE_DURATION_SELECTION.md`. Run
 `php tests/oee_window_test.php` for boundary/overnight/quality and weighted-total
 checks.
 
@@ -188,16 +259,17 @@ validates the workbook against the strict OpenXML schema.
 
 Open **Date-range OEE** in the sidebar (`app.php#/oee-range`). The original
 daily dashboard and production report remain separate. Choose From date and
-To date (inclusive, up to 93 days), one machine or all machines, and 1440 or
-720 minutes **per day**. For 720 minutes choose the daily start time, then
+To date (inclusive, up to 93 days), one machine or all machines, and 480, 600,
+720, 960 or 1440 minutes **per day**. For partial-day windows choose the daily
+start time, then
 click **Calculate OEE**. The page shows aggregate KPIs, line-wise OEE, a daily
 breakdown, and time/production totals. Excel export uses the same selections.
 
 Percentages use sums, not averages: availability = total run / total planned,
 performance = total ideal / total run, quality = total good / total productive,
 OEE = availability × performance × quality. Utilization = total run /
-(days × selected lines × selected minutes). A 12-hour overnight range includes
-each day's selected shift, not the daytime gaps. Empty days remain in the time
+(days × selected lines × selected minutes). An overnight partial-day range includes
+each day's selected window, not the uncovered time. Empty days remain in the time
 denominator. See [duration/range rules](OEE_DURATION_SELECTION.md).
 
 API: authenticated `resource=oee&action=range-dashboard` or `range-export`, with

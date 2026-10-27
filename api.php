@@ -10,6 +10,9 @@ require_once __DIR__ . '/includes/oee_export.php';
 require_once __DIR__ . '/includes/permissions.php';
 require_once __DIR__ . '/includes/oee_dashboard_view.php';
 require_once __DIR__ . '/includes/oee_downtime_tag.php';
+require_once __DIR__ . '/includes/chemicals.php';
+require_once __DIR__ . '/includes/chemical_consumption.php';
+require_once __DIR__ . '/includes/breakdowns.php';
 
 function api_user(PDO $pdo): array
 {
@@ -84,10 +87,10 @@ function oee_requested_machine(): string
 function oee_requested_window_selection(): array
 {
     $hours = filter_var($_GET['duration_hours'] ?? 24, FILTER_VALIDATE_INT);
-    if (!in_array($hours, [12, 24], true)) json_response(['error' => 'Duration must be 12 or 24 hours.'], 422);
+    if (!in_array($hours, oee_supported_window_hours(), true)) json_response(['error' => 'Duration must be 8, 10, 12, 16, or 24 hours.'], 422);
     $minutes = filter_var($_GET['duration_minutes'] ?? ($hours * 60), FILTER_VALIDATE_INT);
     $start = $_GET['start_time'] ?? '00:00';
-    if (!in_array($minutes, [720, 1440], true) || !is_string($start)) json_response(['error' => 'Choose 1440 or 720 minutes and a valid start time.'], 422);
+    if (!in_array($minutes, array_map(static fn (int $duration): int => $duration * 60, oee_supported_window_hours()), true) || !is_string($start)) json_response(['error' => 'Choose a supported duration and a valid start time.'], 422);
     if (isset($_GET['duration_hours'], $_GET['duration_minutes']) && $minutes !== $hours * 60) json_response(['error' => 'Duration hours and minutes must agree.'], 422);
     $hours = intdiv($minutes, 60);
     try {
@@ -107,7 +110,7 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06', int 
         $date = (string) ($pdo->query('SELECT MAX(report_date) FROM oee_import_batches')->fetchColumn() ?: date('Y-m-d'));
     }
     $window = oee_window_definition($date, $durationHours, $startTime);
-    if ($durationHours === 12) {
+    if ($durationHours !== 24) {
         $report = oee_window_report($pdo, $date, $machine, $window);
         unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
         return $report;
@@ -154,7 +157,7 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06', int 
 
 function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06', int $durationHours = 24, string $startTime = '00:00'): array
 {
-    if ($durationHours === 12) {
+    if ($durationHours !== 24) {
         if (!oee_tables_ready($pdo)) return ['available' => false, 'message' => 'OEE database migration is not installed yet.'];
         $date ??= (string) ($pdo->query('SELECT MAX(report_date) FROM oee_import_batches')->fetchColumn() ?: date('Y-m-d'));
         return oee_window_report($pdo, $date, $machine, oee_window_definition($date, $durationHours, $startTime));
@@ -207,7 +210,7 @@ function oee_downtime(PDO $pdo, string $date, string $machine): array
     $dayStart = $date . ' 00:00:00';
     $dayEnd = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
     $query = $pdo->prepare(
-        'SELECT id, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes, created_at, updated_at FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at ASC'
+        'SELECT e.id,e.report_date,e.starts_at,e.ends_at,e.event_type,e.source,e.status,e.reason_code,COALESCE(r.label,e.reason_code) AS reason_label,e.notes,e.created_at,e.updated_at FROM oee_downtime_events e LEFT JOIN oee_reason_codes r ON r.code=e.reason_code WHERE e.line_code = ? AND e.starts_at < ? AND e.ends_at > ? ORDER BY e.starts_at ASC'
     );
     $query->execute([$lineCode, $dayEnd, $dayStart]);
     return ['available' => true, 'date' => $date, 'machine' => $machine, 'events' => $query->fetchAll()];
@@ -225,9 +228,12 @@ function oee_downtime_save(PDO $pdo, array $data): void
     $eventType = api_text($data, 'event_type', 20);
     $reason = strtoupper(api_text($data, 'reason_code', 40));
     $notes = api_text($data, 'notes', 500);
-    if (!in_array($eventType, ['planned', 'unplanned'], true) || !in_array($reason, ['UNK', 'BATH', 'HOIST', 'WAITING_MATERIAL', 'QUALITY', 'PLANNED_STOP', 'OTHER'], true)) {
+    if (!in_array($eventType, ['planned', 'unplanned'], true)) {
         json_response(['error' => 'Invalid downtime type or reason.'], 422);
     }
+    $reasonQuery = $pdo->prepare('SELECT code FROM oee_reason_codes WHERE code=? AND loss_type=? AND is_active=1');
+    $reasonQuery->execute([$reason, $eventType]);
+    if (!$reasonQuery->fetchColumn()) json_response(['error' => 'Choose a registered reason matching the selected downtime type.'], 422);
     $startDate = DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i', $start);
     $endDate = DateTimeImmutable::createFromFormat('!Y-m-d\\TH:i', $end);
     if (!$startDate || !$endDate || $endDate <= $startDate) {
@@ -254,7 +260,7 @@ function oee_downtime_save(PDO $pdo, array $data): void
 
 function oee_masters(PDO $pdo): array
 {
-    $reasons = $pdo->query('SELECT id, code, label, is_active FROM oee_reason_codes ORDER BY label')->fetchAll();
+    $reasons = $pdo->query('SELECT id, code, label, loss_type, is_active FROM oee_reason_codes ORDER BY loss_type,label')->fetchAll();
     $cycles = $pdo->query('SELECT id, line_code, colour, minutes_per_fb, effective_from, effective_to FROM oee_cycle_time_standards ORDER BY line_code, colour, effective_from DESC')->fetchAll();
     $thresholds = [];
     foreach (oee_gap_thresholds($pdo) as $line => $minutes) {
@@ -275,19 +281,6 @@ function oee_master_save(PDO $pdo, array $data, array $user): void
             json_response(['error' => $exception->getMessage()], 422);
         }
         json_response(['ok' => true, 'line_code' => $line, 'gap_threshold_minutes' => $minutes]);
-    }
-    if ($type === 'reason') {
-        $code = strtoupper(api_text($data, 'code', 40));
-        $label = api_text($data, 'label', 120);
-        if (!preg_match('/^[A-Z0-9_:-]+$/', $code) || $label === '') json_response(['error' => 'Enter a valid reason code and label.'], 422);
-        if ($id) {
-            $q = $pdo->prepare('UPDATE oee_reason_codes SET code = ?, label = ?, is_active = 1 WHERE id = ?');
-            $q->execute([$code, $label, $id]);
-        } else {
-            $q = $pdo->prepare('INSERT INTO oee_reason_codes (code, label, created_by) VALUES (?, ?, ?)');
-            $q->execute([$code, $label, $user['id']]);
-        }
-        json_response(['ok' => true]);
     }
     if ($type === 'cycle') {
         $line = strtoupper(api_text($data, 'line_code', 40));
@@ -421,7 +414,7 @@ try {
                 json_response(oee_downtime($pdo, $requestedDate ?: date('Y-m-d'), $requestedMachine));
             }
             if ($action === 'masters') {
-                if($reasonSelector)json_response(['available'=>true,'reasons'=>$pdo->query('SELECT id,code,label,is_active FROM oee_reason_codes ORDER BY label')->fetchAll(),'cycles'=>[],'thresholds'=>[]]);
+                if($reasonSelector)json_response(['available'=>true,'reasons'=>$pdo->query('SELECT id,code,label,loss_type,is_active FROM oee_reason_codes ORDER BY loss_type,label')->fetchAll(),'cycles'=>[],'thresholds'=>[]]);
                 json_response(oee_masters($pdo));
             }
             json_response(['error' => 'OEE action not found.'], 404);
@@ -481,6 +474,17 @@ try {
 
         if($resource==='roles')json_response(['roles'=>portal_list_roles($pdo),'catalog'=>portal_permission_catalog()]);
 
+        if($resource==='chemicals'&&$action==='list')json_response(chemical_list($pdo));
+        if($resource==='chemical-consumption'&&$action==='list')json_response(chemical_consumption_list($pdo,(string)$user['full_name']));
+        if($resource==='chemical-consumption'&&$action==='report')json_response(chemical_consumption_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL'));
+        if($resource==='chemical-consumption'&&$action==='cost-report')json_response(chemical_cost_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL',$_GET['report_type']??'weekly'));
+        if($resource==='breakdowns'&&$action==='list')json_response(breakdown_list($pdo));
+        if($resource==='breakdowns'&&$action==='by-type'){
+            $lossType=$_GET['loss_type']??null;
+            if(!is_string($lossType))json_response(['error'=>'Choose Planned or Unplanned loss type.'],422);
+            json_response(breakdown_list($pdo,$lossType));
+        }
+
         json_response(['error' => 'Resource not found.'], 404);
     }
 
@@ -493,6 +497,19 @@ try {
     if ($resource === 'oee' && $action === 'master-save' && $method === 'POST') {
         oee_master_save($pdo, $data, $user);
     }
+    if($resource==='chemicals'&&$action==='item-save'&&$method==='POST'){
+        json_response(chemical_save_item($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
+    }
+    if($resource==='chemicals'&&$action==='rate-save'&&$method==='POST'){
+        json_response(chemical_save_rate($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
+    }
+    if($resource==='chemical-consumption'&&$action==='save'&&$method==='POST'){
+        json_response(chemical_consumption_save($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
+    }
+    if($resource==='breakdowns'&&$action==='save'&&$method==='POST'){
+        json_response(breakdown_save($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
+    }
+    if($resource==='breakdowns'&&$action==='delete'&&$method==='POST')json_response(breakdown_delete($pdo,$data['id']??null));
 
     if($resource==='roles'&&$action==='role-save'){
         $input=$data['permissions']??null;
@@ -643,7 +660,7 @@ try {
     json_response(['error' => 'Action not found.'], 404);
 } catch (InvalidArgumentException | DomainException $exception) {
     if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();
-    $status=$exception instanceof InvalidArgumentException?422:(in_array($exception->getCode(),[403,404,409],true)?$exception->getCode():403);
+    $status=$exception instanceof InvalidArgumentException?422:(in_array($exception->getCode(),[403,404,409,503],true)?$exception->getCode():403);
     json_response(['error'=>$exception->getMessage()],$status);
 } catch (Throwable $exception) {
     if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();

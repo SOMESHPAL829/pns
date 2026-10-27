@@ -40,6 +40,7 @@ try{
     foreach([['oee','downtime-save',[]],['oee','downtime-save',['event_id'=>1]],['oee','master-save',['master_type'=>'threshold']],['oee','master-save',['master_type'=>'cycle']],['oee','master-save',['master_type'=>'reason','id'=>1]],['records','record-create',[]],['records','record-update',[]],['records','record-delete',[]],['users','user-create',[]],['users','user-toggle',[]],['users','user-role',[]],['roles','role-save',[]],['roles','role-delete',[]],['','profile',[]],['','password',[]]] as [$r,$a,$data])$check($call($r,$a,$viewer,$data)[0]===403,'Mutation allowed without permission: '.$a);
     $selection=['date'=>'2026-10-22','machine'=>'APP-06'];
     $check($call('oee','report',$viewer,null,$selection)[0]===200,'Permitted report read failed');
+    $check($call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>840]))[0]===422,'Unsupported duration must be rejected');
     $check($call('oee','export',$viewer,null,$selection)[0]===403,'View-only role may download daily Excel');
     $grants=['oee-report'=>['view'=>true,'export'=>true],'oee-range'=>['view'=>true]];
     $check($call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$grants])[0]===200,'Export grant failed');
@@ -55,7 +56,7 @@ try{
     $check($call('oee','report',$viewer,null,$selection)[0]===200&&$call('oee','export',$viewer,null,$selection)[0]===403,'Export revocation must block active session without revoking View');
     $dashboardGrants=['dashboard'=>['view'=>true]];
     $check($call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants])[0]===200,'Dashboard-only role update failed');
-    foreach([1440,720] as $duration){
+    foreach([1440,960,720,600,480] as $duration){
         [$status,$basic]=$call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>$duration]));
         $check($status===200,'Permitted dashboard failed');
         foreach(['recent_batches','recent_downtime','downtime_breakdown'] as $key)$check(!array_key_exists($key,$basic),'Dashboard-only API leaked '.$key);
@@ -66,7 +67,7 @@ try{
     $check($status===200&&isset($batches['recent_batches'])&&count($batches['recent_batches'])<=6&&!isset($batches['recent_downtime']),'Batch dashboard projection is not permission scoped');
     $dashboardGrants=['dashboard'=>['view'=>true],'downtime'=>['view'=>true]];
     $call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$dashboardGrants]);
-    foreach([1440,720] as $duration){
+    foreach([1440,960,720,600,480] as $duration){
         [$status,$stops]=$call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>$duration,'start_time'=>$duration===720?'18:00':'00:00']));
         $check($status===200&&isset($stops['recent_downtime'],$stops['downtime_breakdown'])&&!isset($stops['recent_batches']),'Stop dashboard projection is not permission scoped');
         $check(abs((float)$stops['oee']['unplanned_minutes']-(float)$stops['downtime_breakdown']['unplanned_minutes'])<0.01,'Reason breakdown disagrees with OEE unplanned duration');
