@@ -595,21 +595,23 @@
       makeCell(row, user.access_role_name === "Standard user" ? "Standard User" : (user.access_role_name || titleLabel(user.role)));
       makeCell(row, Number(user.is_active) === 1 ? "Active" : "Inactive");
       makeCell(row, readableDate(user.created_at), "muted");
-      const actions = makeCell(row, "", "r");
+      const actions = makeCell(row, "", "user-actions-cell");
+      const actionGroup = document.createElement("div");
+      actionGroup.className = "user-actions";
       const toggle = document.createElement("button");
       toggle.type = "button";
-      toggle.className = "link";
+      toggle.className = Number(user.is_active) === 1 ? "table-action table-action-danger" : "table-action";
       toggle.textContent = Number(user.is_active) === 1 ? "Deactivate" : "Activate";
       toggle.dataset.toggleUser = String(user.id);
       if (can("users", "update") && user.role !== "admin" && Number(user.id) !== Number(app.user.id)) {
-        actions.appendChild(toggle);
+        actionGroup.appendChild(toggle);
         const controls = document.createElement("div"); controls.className = "role-controls";
         const select = document.createElement("select"); select.setAttribute("aria-label", "Role for " + user.username); select.dataset.userRole = String(user.id);
         (app.assignableRoles || []).forEach(function (role) { select.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); });
         const assigned = user.access_role_id || (app.assignableRoles || []).find(role => Number(role.is_builtin) === 1)?.id;
         select.value = String(assigned || "");
-        const save = document.createElement("button"); save.type = "button"; save.className = "link"; save.textContent = "Save Role"; save.dataset.saveUserRole = String(user.id);
-        controls.append(select, save); actions.appendChild(controls);
+        const save = document.createElement("button"); save.type = "button"; save.className = "table-action"; save.textContent = "Save Role"; save.dataset.saveUserRole = String(user.id);
+        controls.append(select, save); actionGroup.prepend(controls); actions.appendChild(actionGroup);
       }
       body.appendChild(row);
     });

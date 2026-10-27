@@ -37,18 +37,19 @@
       const row = document.createElement("tr");
       cell(row, role.name === "Standard user" ? "Standard User" : role.name); cell(row, Number(role.is_builtin) === 1 ? "Built-In" : "Custom"); cell(row, role.assigned_users);
       const actions = cell(row, "");
-      const edit = document.createElement("button"); edit.type = "button"; edit.className = "link";
+      const controls = document.createElement("div"); controls.className = "row-actions"; actions.appendChild(controls);
+      const edit = document.createElement("button"); edit.type = "button"; edit.className = "table-action";
       edit.textContent = Number(role.is_builtin) === 1 ? "Inspect" : "Edit";
-      edit.setAttribute("aria-label", edit.textContent + " role " + role.name); edit.addEventListener("click", function () { editor(role); document.getElementById("role-name").scrollIntoView({ block: "center" }); }); actions.appendChild(edit);
+      edit.setAttribute("aria-label", edit.textContent + " role " + role.name); edit.addEventListener("click", function () { editor(role); document.getElementById("role-name").scrollIntoView({ block: "center" }); }); controls.appendChild(edit);
       if (!Number(role.is_builtin) && access.can("roles", "delete")) {
-        const remove = document.createElement("button"); remove.type = "button"; remove.className = "link"; remove.textContent = "Delete";
+        const remove = document.createElement("button"); remove.type = "button"; remove.className = "table-action table-action-danger"; remove.textContent = "Delete";
         remove.setAttribute("aria-label", "Delete role " + role.name);
         remove.disabled = Number(role.assigned_users) > 0;
         remove.addEventListener("click", async function () {
           if (!window.confirm('Delete role "' + role.name + '"?')) return;
           try { remove.disabled = true; await api("roles", "role-delete", { method: "POST", body: { id: Number(role.id) } }); await load(); editor(); message("Role deleted."); }
           catch (error) { message(error.message); remove.disabled = false; }
-        }); actions.appendChild(remove);
+        }); controls.appendChild(remove);
       }
       body.appendChild(row);
     });

@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['auth_version'] = (int) $user['auth_version'];
                 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                $_SESSION['welcome_message'] = 'Welcome, ' . $user['full_name'] . '!';
                 header('Location: app.php');
                 exit;
             }
@@ -92,7 +93,7 @@ $csrf = csrf_token();
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KARAM Portal — Sign In</title>
-  <link rel="stylesheet" href="css/portal.css">
+  <link rel="stylesheet" href="css/portal.css?v=<?= filemtime(__DIR__ . '/css/portal.css') ?>">
 </head>
 <body>
   <main class="login-page">
@@ -104,10 +105,13 @@ $csrf = csrf_token();
           <div class="app-topbar-sub">Sign In to Continue</div>
         </div>
       </header>
-      <form class="login-card-body" method="post" action="index.php">
+      <form class="login-card-body" method="post" action="index.php" data-loading-form>
         <input type="hidden" name="csrf_token" value="<?= escape_html($csrf) ?>">
         <?php if (($_GET['reset'] ?? '') === 'success'): ?>
           <p class="auth-message" role="status">Your password was updated. Sign in with the new password.</p>
+        <?php endif; ?>
+        <?php if (($_GET['logged_out'] ?? '') === '1'): ?>
+          <p class="auth-message auth-message-transient" role="status">You Have Signed Out Successfully.</p>
         <?php endif; ?>
         <?php if ($error !== ''): ?>
           <p class="auth-message error" role="alert"><?= escape_html($error) ?></p>
@@ -125,5 +129,7 @@ $csrf = csrf_token();
       </form>
     </section>
   </main>
+  <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Signing In…</strong><span id="page-transition-note">Verifying your account securely.</span></div></div></div>
+  <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>

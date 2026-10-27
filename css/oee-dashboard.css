@@ -22,7 +22,7 @@
 .pns-batches-actions > span { color: var(--mut); font-size: 0.75rem; }
 .pns-dashboard .oee-grid-main { margin-top: 0; grid-template-columns: minmax(0,1.45fr) minmax(0,1fr); gap: 0.9rem; }
 .pns-dashboard .dash-card { padding: 0; overflow: hidden; border-radius: 0.75rem; }
-.pns-dashboard .dash-card-head { padding: 0.95rem 1rem; border-bottom: 1px solid var(--line); background: var(--card); }
+.pns-dashboard .dash-card-head { padding: 0.95rem 1rem; border-bottom: 1px solid #d8e4ef; background: var(--accent-sft); }
 .pns-dashboard .dash-card-head h3 { margin: 0; font-size: 0.95rem; color: var(--accent-deep); }
 .pns-dashboard .dash-card-head a { font-size: 0.8rem; text-align: right; }
 .pns-dashboard .oee-production-grid { padding: 1.15rem; gap: 1.25rem 1rem; }
@@ -48,7 +48,7 @@
 .pns-reason-track { height: 0.5rem; border-radius: 1rem; overflow: hidden; background: var(--accent-sft); }
 .pns-reason-track > span { display: block; height: 100%; background: var(--pns-stop); }
 .pns-operations { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,24rem),1fr)); gap: 0.9rem; }
-.pns-dashboard .data-table th { background: var(--bg); color: var(--mut); font-size: 0.65rem; }
+.pns-dashboard .data-table th { background: var(--accent-deep); color: #fff; font-size: 0.68rem; }
 .pns-dashboard .data-table td { padding: 0.75rem 0.9rem; font-size: 0.8rem; }
 .pns-dashboard .data-table th { padding: 0.7rem 0.9rem; }
 .pns-cell-detail { display: block; color: var(--mut); font-size: 0.7rem; margin-top: 0.2rem; }

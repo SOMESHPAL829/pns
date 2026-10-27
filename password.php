@@ -83,7 +83,7 @@ $csrf = csrf_token();
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= $isReset ? 'Set a New Password' : 'Reset Your Password' ?> — App Portal</title>
-  <link rel="stylesheet" href="css/portal.css">
+  <link rel="stylesheet" href="css/portal.css?v=<?= filemtime(__DIR__ . '/css/portal.css') ?>">
 </head>
 <body>
   <main class="login-page">

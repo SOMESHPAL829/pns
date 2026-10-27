@@ -59,7 +59,10 @@
       const controls = document.createElement("div");
       controls.className = "row-actions";
       controls.appendChild(action("Edit", "editBreakdown", item.id));
-      controls.appendChild(action("Delete", "deleteBreakdown", item.id));
+      const remove = action(Number(item.assigned_count) > 0 ? "In Use" : "Delete", "deleteBreakdown", item.id);
+      remove.disabled = Number(item.assigned_count) > 0;
+      if (remove.disabled) remove.title = "Assigned downtime reasons cannot be deleted.";
+      controls.appendChild(remove);
       actions.appendChild(controls);
       body.appendChild(row);
     });
@@ -107,9 +110,7 @@
       await load();
     } catch (error) {
       alertMessage(error.message);
-    } finally {
-      save.disabled = false;
-    }
+    } finally { applyControls(); }
   });
 
   byId("breakdown-cancel").addEventListener("click", resetForm);

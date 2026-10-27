@@ -3,6 +3,8 @@ require_once __DIR__ . '/includes/security.php';
 require_once __DIR__ . '/includes/permissions.php';
 require_authentication();
 $csrfToken = csrf_token();
+$welcomeMessage = is_string($_SESSION['welcome_message'] ?? null) ? $_SESSION['welcome_message'] : '';
+unset($_SESSION['welcome_message']);
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -41,9 +43,9 @@ $csrfToken = csrf_token();
         <a class="app-sidebar-link" href="#/users" data-nav="users" title="Users"><span class="app-sidebar-icon" data-icon="user-group"></span><span class="app-sidebar-label">Users</span></a>
         <a class="app-sidebar-link" href="#/oee-masters" data-nav="oee-masters" title="OEE Master Data"><span class="app-sidebar-icon" data-icon="cog-6-tooth"></span><span class="app-sidebar-label">OEE Master Data</span></a>
         <a class="app-sidebar-link" href="#/chemical-registration" data-nav="chemical-registration" title="Chemical Registration"><span class="app-sidebar-icon" data-icon="beaker"></span><span class="app-sidebar-label">Chemical Registration</span></a>
-        <a class="app-sidebar-link" href="#/breakdown-registration" data-nav="breakdown-registration" title="Breakdown Registration"><span class="app-sidebar-icon" data-icon="list-bullet"></span><span class="app-sidebar-label">Breakdown Registration</span></a>
+        <a class="app-sidebar-link" href="#/breakdown-registration" data-nav="breakdown-registration" title="Breakdown Registration"><span class="app-sidebar-icon" data-icon="wrench-screwdriver"></span><span class="app-sidebar-label">Breakdown Registration</span></a>
         <a class="app-sidebar-link" href="#/profile" data-nav="profile" title="Profile"><span class="app-sidebar-icon" data-icon="user-circle"></span><span class="app-sidebar-label">My Profile</span></a>
-        <form method="post" action="logout.php">
+        <form method="post" action="logout.php" data-logout-form>
           <input type="hidden" name="csrf_token" value="<?= escape_html($csrfToken) ?>">
           <button class="app-sidebar-logout" type="submit" title="Sign Out"><span class="app-sidebar-icon" data-icon="arrow-left-start-on-rectangle"></span><span class="app-sidebar-label">Sign Out</span></button>
         </form>
@@ -67,9 +69,8 @@ $csrfToken = csrf_token();
                 <span class="app-header-profile-text"><span class="app-header-profile-name">Account</span><span class="app-header-profile-user">username</span></span>
               </button>
               <div id="header-profile-panel" class="app-header-panel" data-header-panel="profile" hidden>
-                <div class="app-header-profile-card"><span class="app-header-avatar app-header-avatar-lg">P</span><div><div class="app-header-profile-name">Account</div><div class="app-header-profile-user">username</div></div></div>
                 <a class="app-header-profile-link" href="#/profile" data-goto="profile">View Profile</a>
-                <form method="post" action="logout.php">
+                <form method="post" action="logout.php" data-logout-form>
                   <input type="hidden" name="csrf_token" value="<?= escape_html($csrfToken) ?>">
                   <button class="app-header-logout" type="submit">Sign Out</button>
                 </form>
@@ -173,7 +174,7 @@ $csrfToken = csrf_token();
         <section class="view" data-view="users">
           <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-goto="user-create">+ Add User</button></div></div>
           <div class="page-toolbar"><form class="page-toolbar-left" id="user-search-form"><div class="page-search"><input id="users-search" type="search" placeholder="Search Users"></div><button class="btn ghost sm" type="submit">Search</button></form></div>
-          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th class="r">Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
         </section>
 
         <section class="view" data-view="user-create">
@@ -237,16 +238,16 @@ $csrfToken = csrf_token();
         <section class="view" data-view="breakdown-registration">
           <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Breakdown Registration</h1><p class="page-lead">Maintain planned and unplanned loss reasons used in downtime review.</p></div><div class="page-heading-actions"><button class="btn ghost" id="breakdowns-refresh" type="button">Refresh</button></div></div>
           <div id="breakdowns-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card" aria-labelledby="breakdown-registration-heading">
+          <section class="data-card breakdown-registration-card" aria-labelledby="breakdown-registration-heading">
             <div class="dash-card-head"><h2 id="breakdown-registration-heading">Register Breakdown Reason</h2></div>
             <form id="breakdown-form" class="master-form">
               <input id="breakdown-id" type="hidden">
               <label for="breakdown-loss-type">Loss Type<select id="breakdown-loss-type" required><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></label>
-              <label for="breakdown-loss-name">Loss Name<input id="breakdown-loss-name" maxlength="120" required></label>
+              <label class="breakdown-name-field" for="breakdown-loss-name">Loss Name<input id="breakdown-loss-name" maxlength="120" required></label>
               <button id="breakdown-save" class="btn" type="submit">Save</button>
               <button id="breakdown-cancel" class="btn ghost" type="button" hidden>Cancel Edit</button>
             </form>
-            <div class="data-scroll"><table class="data-table"><thead><tr><th>Sl. No.</th><th>Loss Type</th><th>Loss Name</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="4">Loading breakdown reasons…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table"><thead><tr><th>SR. No.</th><th>Loss Type</th><th>Loss Name</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="4">Loading breakdown reasons…</td></tr></tbody></table></div>
           </section>
         </section>
 
@@ -292,7 +293,7 @@ $csrfToken = csrf_token();
               <div><dt>To Date</dt><dd id="chemical-report-to-display">—</dd></div>
               <div><dt>Machine</dt><dd id="chemical-report-machine-display">All Machines</dd></div>
             </dl>
-            <div class="data-scroll"><table class="data-table chemical-report-table"><thead><tr><th>Sr. No.</th><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="11">Choose report filters to load entries.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-report-table"><thead><tr><th>SR. No.</th><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="11">Choose report filters to load entries.</td></tr></tbody></table></div>
           </section>
         </section>
 
@@ -317,7 +318,7 @@ $csrfToken = csrf_token();
               <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
               <div><dt>Report Type</dt><dd id="chemical-cost-report-type-display">Weekly Basis</dd></div>
             </dl>
-            <div class="data-scroll"><table class="data-table chemical-cost-report-table"><thead><tr><th>Sl. No.</th><th>Machine</th><th>Report Period</th><th>Total Surface Area (dm²)</th><th>Total Chemical Cost (INR)</th><th>Chemical Cost per dm² (INR)</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="6">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-cost-report-table"><thead><tr><th>SR. No.</th><th>Machine</th><th>Report Period</th><th>Total Surface Area (dm²)</th><th>Total Chemical Cost (INR)</th><th>Chemical Cost per dm² (INR)</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="6">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
             <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost (INR) / Total Surface Area (dm²)</p>
           </section>
         </section>
@@ -335,7 +336,7 @@ $csrfToken = csrf_token();
             </form>
             <div class="data-scroll"><table class="data-table"><thead><tr><th>Plant / Machine</th><th>Gap Threshold (Minutes)</th><th>Action</th></tr></thead><tbody id="thresholds-body"><tr><td colspan="3">Loading Plant Thresholds…</td></tr></tbody></table></div>
           </section>
-          <div class="oee-master-grid">
+          <div class="oee-master-grid oee-master-grid-single">
             <section class="data-card"><div class="dash-card-head"><h2>Cycle-Time Registration</h2></div><form id="cycle-form" class="master-form"><input id="cycle-id" type="hidden"><label>Machine<select id="cycle-line"><option>APP-06</option><option>APP-07</option><option>APP-10</option></select></label><label>Colour<input id="cycle-colour" maxlength="120" placeholder="BLACK-1" required></label><label>Minutes / FB<input id="cycle-minutes" type="number" min="0.001" step="0.001" required></label><label>Effective From<input id="cycle-from" type="date" required></label><label>Effective To<input id="cycle-to" type="date"></label><button class="btn" type="submit">Save Cycle Time</button></form><div class="data-scroll"><table class="data-table"><thead><tr><th>Machine</th><th>Colour</th><th>Minutes / FB</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody id="cycles-body"></tbody></table></div></section>
           </div>
         </section>
@@ -343,6 +344,8 @@ $csrfToken = csrf_token();
     </div>
   </div>
   <div id="toast-stack" class="app-toast-stack" aria-live="polite"></div>
+  <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Please Wait…</strong><span id="page-transition-note">Completing your request securely.</span></div></div></div>
+  <script id="welcome-message" type="application/json"><?= json_encode($welcomeMessage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script id="permission-catalog" type="application/json"><?= json_encode(portal_permission_catalog(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
@@ -355,5 +358,6 @@ $csrfToken = csrf_token();
   <script src="js/chemical-consumption-report.js?v=<?= filemtime(__DIR__ . '/js/chemical-consumption-report.js') ?>"></script>
   <script src="js/chemical-cost-report.js?v=<?= filemtime(__DIR__ . '/js/chemical-cost-report.js') ?>"></script>
   <script src="js/breakdowns.js?v=<?= filemtime(__DIR__ . '/js/breakdowns.js') ?>"></script>
+  <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>
