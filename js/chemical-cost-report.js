@@ -24,7 +24,7 @@
   function cell(row, value, className) {
     const td = document.createElement("td");
     if (className) td.className = className;
-    td.textContent = value == null || value === "" ? "—" : String(value);
+    td.textContent = value === "" ? "" : (value == null ? "—" : String(value));
     row.appendChild(td);
     return td;
   }

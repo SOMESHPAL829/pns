@@ -60,8 +60,8 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Delete role Renamed operator',exact:true}).click();
     await page.waitForFunction(()=>document.getElementById('roles-alert').textContent==='Role deleted.');
     await page.locator('[data-nav="users"]').click();
-    await page.locator('[data-user-role="77"]').selectOption('1');await page.locator('[data-save-user-role="77"]').click();
-    await page.waitForFunction(()=>document.querySelector('[data-user-role="77"]').value==='1');
+    await page.locator('[data-assign-user-role="77"]').click();await page.locator('#user-role-select').selectOption('1');await page.locator('#user-role-form button[type="submit"]').click();
+    await page.waitForFunction(()=>!document.querySelector('[data-form-modal="user-role-form"]').open);
     assert(requests.some(x=>x.a==='user-role'&&x.data.role_id===1));
     await page.locator('[data-nav="roles"]').click();
     for(const width of [1440,1024,768,320]){

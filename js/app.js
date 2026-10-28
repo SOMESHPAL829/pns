@@ -638,13 +638,8 @@
       toggle.dataset.toggleUser = String(user.id);
       if (can("users", "update") && user.role !== "admin" && Number(user.id) !== Number(app.user.id)) {
         actionGroup.appendChild(toggle);
-        const controls = document.createElement("div"); controls.className = "role-controls";
-        const select = document.createElement("select"); select.setAttribute("aria-label", "Role for " + user.username); select.dataset.userRole = String(user.id);
-        (app.assignableRoles || []).forEach(function (role) { select.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); });
-        const assigned = user.access_role_id || (app.assignableRoles || []).find(role => Number(role.is_builtin) === 1)?.id;
-        select.value = String(assigned || "");
-        const save = document.createElement("button"); save.type = "button"; save.className = "table-action"; save.textContent = "Save Role"; save.dataset.saveUserRole = String(user.id);
-        controls.append(select, save); actionGroup.prepend(controls); actions.appendChild(actionGroup);
+        const assign = document.createElement("button"); assign.type = "button"; assign.className = "table-action"; assign.textContent = "Assign Role"; assign.dataset.assignUserRole = String(user.id);
+        actionGroup.prepend(assign); actions.appendChild(actionGroup);
       }
       body.appendChild(row);
     });
@@ -716,6 +711,8 @@
       app.assignableRoles = users.assignable_roles || [];
       const roleSelect = document.getElementById("new-user-role");
       if (roleSelect) { roleSelect.replaceChildren(); app.assignableRoles.forEach(function (role) { roleSelect.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); }); }
+      const assignmentSelect = document.getElementById("user-role-select");
+      if (assignmentSelect) { assignmentSelect.replaceChildren(); app.assignableRoles.forEach(function (role) { assignmentSelect.add(new Option(role.name === "Standard user" ? "Standard User" : role.name, role.id)); }); }
       renderUsers(users.users);
     }
   }
@@ -734,6 +731,7 @@
         const updatedRecord = app.records.find(function (record) { return Number(record.id) === Number(app.currentRecord.id); });
         if (updatedRecord) setDetail(updatedRecord);
       }
+      window.PortalModalForms?.saved(form.id);
       if (form.id === "record-create-form") location.hash = "#/requests";
       if (form.id === "user-create-form") location.hash = "#/users";
     } catch (error) {
@@ -851,8 +849,8 @@
     event.preventDefault();
     try {
       await request("oee", "downtime-save", { method: "POST", body: { event_id: app.downtimeEditId, machine: document.getElementById("downtime-machine").value, report_date: document.getElementById("downtime-date").value, starts_at: document.getElementById("downtime-start").value, ends_at: document.getElementById("downtime-end").value, event_type: document.getElementById("downtime-type").value, reason_code: document.getElementById("downtime-reason").value, notes: document.getElementById("downtime-notes").value } });
-      toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok"); app.downtimeEditId = null; downtimeForm.reset(); downtimeForm.querySelector('button[type=submit]').dataset.editing = "false"; window.PortalAccess.applyControls(); await loadDowntime();
-    } catch (error) { showOeeAlert("downtime-alert", error.message, true); }
+      toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok"); app.downtimeEditId = null; downtimeForm.reset(); downtimeForm.querySelector('button[type=submit]').dataset.editing = "false"; window.PortalAccess.applyControls(); await loadDowntime(); window.PortalModalForms?.saved("downtime-form");
+    } catch (error) { showOeeAlert("downtime-alert", error.message, true); toast(error.message, "crit"); }
   });
   const mastersRefresh = document.getElementById("masters-refresh");
   if (mastersRefresh) mastersRefresh.addEventListener("click", loadMasters);
@@ -869,11 +867,12 @@
       await request("oee", "master-save", { method: "POST", body: { master_type: "threshold", line_code: line, gap_threshold_minutes: minutes } });
       renderMasters(await request("oee", "masters", {}));
       showOeeAlert("masters-alert", line + " threshold saved: " + minutes + " min. Refresh the dashboard/report to recalculate automatic proposals.", true);
-    } catch (error) { showOeeAlert("masters-alert", error.message, true); }
+      window.PortalModalForms?.saved("threshold-form");
+    } catch (error) { showOeeAlert("masters-alert", error.message, true); toast(error.message, "crit"); }
     finally { button.disabled = !can("oee-masters", "update"); button.textContent = "Save Threshold"; }
   });
   const cycleForm = document.getElementById("cycle-form");
-  if (cycleForm) cycleForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "cycle", id: Number(document.getElementById("cycle-id").value) || null, line_code: document.getElementById("cycle-line").value, colour: document.getElementById("cycle-colour").value, minutes_per_fb: document.getElementById("cycle-minutes").value, effective_from: document.getElementById("cycle-from").value, effective_to: document.getElementById("cycle-to").value } }); toast("Cycle time saved", "ok"); cycleForm.reset(); await loadMasters(); } catch (error) { showOeeAlert("masters-alert", error.message, true); } });
+  if (cycleForm) cycleForm.addEventListener("submit", async function (event) { event.preventDefault(); try { await request("oee", "master-save", { method: "POST", body: { master_type: "cycle", id: Number(document.getElementById("cycle-id").value) || null, line_code: document.getElementById("cycle-line").value, colour: document.getElementById("cycle-colour").value, minutes_per_fb: document.getElementById("cycle-minutes").value, effective_from: document.getElementById("cycle-from").value, effective_to: document.getElementById("cycle-to").value } }); toast("Cycle time saved", "ok"); cycleForm.reset(); await loadMasters(); window.PortalModalForms?.saved("cycle-form"); } catch (error) { showOeeAlert("masters-alert", error.message, true); toast(error.message, "crit"); } });
   document.addEventListener("click", function (event) {
     const threshold = event.target.closest("[data-edit-threshold]");
     if (threshold && can("oee-masters", "update")) { document.getElementById("threshold-line").value = threshold.dataset.editThreshold; updateThresholdForm(); document.getElementById("threshold-minutes").focus(); }
@@ -894,6 +893,14 @@
     await loadDowntimeReasons(tag.dataset.eventType, tag.dataset.reasonCode);
     document.getElementById("downtime-notes").value = tag.dataset.notes;
     document.getElementById("downtime-start").focus();
+    window.PortalModalForms?.open("downtime-form", "Tag Downtime");
+  });
+
+  window.addEventListener("portal-modal-create", function (event) {
+    if (event.detail.formId !== "downtime-form") return;
+    app.downtimeEditId = null;
+    downtimeForm?.querySelector('button[type="submit"]')?.setAttribute("data-editing", "false");
+    window.PortalAccess.applyControls();
   });
   const logsRefresh = document.getElementById("logs-refresh");
   if (logsRefresh) logsRefresh.addEventListener("click", loadScadaLogs);
@@ -914,12 +921,17 @@
   });
 
   document.addEventListener("click", async function (event) {
-    const assign = event.target.closest("[data-save-user-role]");
-    if (assign) {
-      const select = assign.parentElement.querySelector("select");
-      if (!select.value) return toast("Choose an assignable role", "crit");
-      try { assign.disabled = true; await request("users", "user-role", { method: "POST", body: { id: Number(assign.dataset.saveUserRole), role_id: Number(select.value) } }); toast("Role assigned; the user's existing sessions are invalidated", "ok"); await refresh(); }
-      catch (error) { toast(error.message, "crit"); } finally { assign.disabled = false; }
+    const roleAssignment = event.target.closest("[data-assign-user-role]");
+    if (roleAssignment) {
+      const selectedUser = app.users.find(function (item) { return String(item.id) === roleAssignment.dataset.assignUserRole; });
+      if (selectedUser) {
+        document.getElementById("user-role-user-id").value = selectedUser.id;
+        document.getElementById("user-role-user-name").value = selectedUser.full_name + " (" + selectedUser.username + ")";
+        const roleSelect = document.getElementById("user-role-select");
+        const assigned = selectedUser.access_role_id || (app.assignableRoles || []).find(role => Number(role.is_builtin) === 1)?.id;
+        roleSelect.value = String(assigned || "");
+        window.PortalModalForms?.open("user-role-form", "Assign Role to " + selectedUser.full_name);
+      }
     }
     const view = event.target.closest("[data-record-id]");
     if (view) {
@@ -953,10 +965,24 @@
     }
   });
 
+  const userRoleForm = document.getElementById("user-role-form");
+  if (userRoleForm) userRoleForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    const button = userRoleForm.querySelector('button[type="submit"]');
+    try {
+      button.disabled = true;
+      await request("users", "user-role", { method: "POST", body: { id: Number(document.getElementById("user-role-user-id").value), role_id: Number(document.getElementById("user-role-select").value) } });
+      toast("Role assigned; the user's existing sessions are invalidated", "ok");
+      await refresh();
+      window.PortalModalForms?.saved("user-role-form");
+    } catch (error) { toast(error.message, "crit"); }
+    finally { button.disabled = false; }
+  });
+
   const editToggle = document.getElementById("record-edit-toggle");
   if (editToggle) editToggle.addEventListener("click", function () {
     const form = document.getElementById("record-edit-form");
-    if (form && app.currentRecord) form.hidden = !form.hidden;
+    if (form && app.currentRecord) { form.hidden = false; window.PortalModalForms?.open("record-edit-form", "Edit Record"); }
   });
 
   const editForm = document.getElementById("record-edit-form");

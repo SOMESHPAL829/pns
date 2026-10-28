@@ -83,6 +83,7 @@
       alertMessage("");
     } catch (error) {
       alertMessage(error.message);
+      window.AppToast?.show(error.message, "crit");
     } finally {
       state.loading = false;
       byId("breakdowns-refresh").disabled = false;
@@ -105,6 +106,7 @@
       window.AppToast?.show(id ? "Downtime reason updated" : "Downtime reason registered", "ok");
       resetForm();
       await load();
+      window.PortalModalForms?.saved("breakdown-form");
     } catch (error) {
       alertMessage(error.message);
     } finally { applyControls(); }

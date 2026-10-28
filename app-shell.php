@@ -154,7 +154,7 @@ unset($_SESSION['welcome_message']);
         </section>
 
         <section class="view" data-view="requests">
-          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Records</h1><p class="page-lead">Search, review, and manage your records.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-goto="create">+ New Record</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Records</h1><p class="page-lead">Search, review, and manage your records.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-modal-open="record-create-form" data-modal-mode="create" data-permission-page="records" data-permission-action="create">+ New Record</button></div></div>
           <div class="page-toolbar">
             <form class="page-toolbar-left" id="record-filter-form">
               <div class="page-search"><input id="records-search" type="search" placeholder="Search Number or Title"></div>
@@ -189,9 +189,10 @@ unset($_SESSION['welcome_message']);
         </section>
 
         <section class="view" data-view="users">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-goto="user-create">+ Add User</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div>
           <div class="page-toolbar"><form class="page-toolbar-left" id="user-search-form"><div class="page-search"><input id="users-search" type="search" placeholder="Search Users"></div><button class="btn ghost sm" type="submit">Search</button></form></div>
           <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+          <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div><button class="btn" type="submit">Save Role</button></form>
         </section>
 
         <section class="view" data-view="user-create">
@@ -211,8 +212,8 @@ unset($_SESSION['welcome_message']);
         </section>
 
         <section class="view" data-view="profile">
-          <div class="page-heading"><div><div class="dash-eyebrow">Account</div><h1>My Profile</h1><p class="page-lead">Review your account details and update your password.</p></div><div class="page-heading-actions"><button class="btn" type="submit" form="profile-form">Save</button></div></div>
-          <div class="detail-layout"><div class="form-card"><h2 class="form-card-title">Profile Details</h2><form id="profile-form" class="form-stack" method="post" action="app.php">
+          <div class="page-heading"><div><div class="dash-eyebrow">Account</div><h1>My Profile</h1><p class="page-lead">Review your account details and update your password.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-modal-open="profile-form" data-permission-page="profile" data-permission-action="update">Edit Profile</button></div></div>
+          <div class="detail-layout"><div class="form-card"><h2 class="form-card-title">Profile Details</h2><p class="form-note profile-modal-guide">Use Edit Profile or Change Password to update your account securely in a popup.</p><form id="profile-form" class="form-stack" method="post" action="app.php">
               <div><label class="form-label" for="profile-username">Username</label><input class="form-input" id="profile-username" readonly></div><div><label class="form-label" for="profile-name">Full Name</label><input class="form-input" id="profile-name" name="full_name" maxlength="160" required></div><div><label class="form-label" for="profile-email">Email</label><input class="form-input" id="profile-email" type="email" readonly><p class="form-note">Contact an administrator to change your account email.</p></div>
           </form><form id="password-form" class="form-stack" style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--line)" method="post" action="app.php"><h3 class="form-card-title">Change Password</h3><div><label class="form-label" for="current-password">Current Password</label><input class="form-input" id="current-password" name="current_password" type="password" autocomplete="current-password" required></div><div><label class="form-label" for="new-password">New Password</label><input class="form-input" id="new-password" name="new_password" type="password" minlength="12" autocomplete="new-password" required></div><button class="btn" type="submit">Update Password</button></form></div></div>
         </section>
@@ -376,6 +377,9 @@ unset($_SESSION['welcome_message']);
   <script src="js/chemical-consumption-report.js?v=<?= filemtime(__DIR__ . '/js/chemical-consumption-report.js') ?>"></script>
   <script src="js/chemical-cost-report.js?v=<?= filemtime(__DIR__ . '/js/chemical-cost-report.js') ?>"></script>
   <script src="js/breakdowns.js?v=<?= filemtime(__DIR__ . '/js/breakdowns.js') ?>"></script>
+  <script src="js/modal-forms.js?v=<?= filemtime(__DIR__ . '/js/modal-forms.js') ?>"></script>
+  <script src="js/table-export.js?v=<?= filemtime(__DIR__ . '/js/table-export.js') ?>"></script>
+  <script src="js/table-pagination.js?v=<?= filemtime(__DIR__ . '/js/table-pagination.js') ?>"></script>
   <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@
   function cell(row, value, className) {
     const td = document.createElement("td");
     if (className) td.className = className;
-    td.textContent = value == null || value === "" ? "—" : String(value);
+    td.textContent = value === "" ? "" : (value == null ? "—" : String(value));
     row.appendChild(td);
     return td;
   }
@@ -134,6 +134,7 @@
       showAlert("");
     } catch (error) {
       showAlert(error.message);
+      window.AppToast?.show(error.message, "crit");
     } finally {
       state.loading = false;
       byId("chemical-consumption-refresh").disabled = false;
@@ -163,6 +164,7 @@
       window.AppToast?.show(id ? "Chemical consumption entry updated" : "Chemical consumption entry recorded", "ok");
       resetForm();
       await load();
+      window.PortalModalForms?.saved("chemical-consumption-form");
     } catch (error) {
       showAlert(error.message);
     } finally {

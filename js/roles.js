@@ -40,6 +40,8 @@
       const controls = document.createElement("div"); controls.className = "row-actions"; actions.appendChild(controls);
       const edit = document.createElement("button"); edit.type = "button"; edit.className = "table-action";
       edit.textContent = Number(role.is_builtin) === 1 ? "Inspect" : "Edit";
+      edit.dataset.modalOpen = "role-form";
+      edit.dataset.modalTitle = Number(role.is_builtin) === 1 ? "Inspect Role Permissions" : "Edit Role Permissions";
       edit.setAttribute("aria-label", edit.textContent + " role " + role.name); edit.addEventListener("click", function () { editor(role); document.getElementById("role-name").scrollIntoView({ block: "center" }); }); controls.appendChild(edit);
       if (!Number(role.is_builtin) && access.can("roles", "delete")) {
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "table-action table-action-danger"; remove.textContent = "Delete";
@@ -82,8 +84,8 @@
     try {
       button.disabled = true;
       await api("roles", "role-save", { method: "POST", body: { id, name: document.getElementById("role-name").value, permissions } });
-      await load(); editor(); message("Role saved. Permission changes apply on the next API request. Assign the role under Users.");
-    } catch (error) { message(error.message); button.disabled = false; }
+      await load(); editor(); message("Role saved. Permission changes apply on the next API request. Assign the role under Users."); window.PortalModalForms?.saved("role-form");
+    } catch (error) { message(error.message); window.AppToast?.show(error.message, "crit"); button.disabled = false; }
   });
   window.addEventListener("portal-view-changed", function (event) { if (event.detail.route === "roles") load(); });
   editor();

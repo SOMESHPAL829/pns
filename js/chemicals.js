@@ -14,7 +14,7 @@
   function cell(row, value, className) {
     const td = document.createElement("td");
     if (className) td.className = className;
-    td.textContent = value == null || value === "" ? "—" : String(value);
+    td.textContent = value === "" ? "" : (value == null ? "—" : String(value));
     row.appendChild(td);
     return td;
   }
@@ -169,7 +169,8 @@
       window.AppToast?.show(id ? "Chemical item updated" : "Chemical item registered", "ok");
       resetItemForm();
       await load();
-    } catch (error) { alertMessage(error.message); }
+      window.PortalModalForms?.saved("chemical-item-form");
+    } catch (error) { alertMessage(error.message); window.AppToast?.show(error.message, "crit"); }
     finally { save.disabled = false; }
   });
 
@@ -184,7 +185,8 @@
       window.AppToast?.show(id ? "Chemical rate updated" : "Chemical rate registered", "ok");
       resetRateForm();
       await load();
-    } catch (error) { alertMessage(error.message); }
+      window.PortalModalForms?.saved("chemical-rate-form");
+    } catch (error) { alertMessage(error.message); window.AppToast?.show(error.message, "crit"); }
     finally { save.disabled = false; }
   });
 
