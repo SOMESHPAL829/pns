@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__.'/permissions.php';
+require_once __DIR__.'/oee_settings.php';
 
 /** Read-only presentation of clipped stop unions; never changes OEE inputs. */
 function oee_dashboard_breakdown(array $window,array $events): array
@@ -40,7 +41,7 @@ function oee_dashboard_view(PDO $pdo,array $dashboard,array $permissions): array
     if(empty($dashboard['available']))return $dashboard;
     $batches=portal_can($permissions,'oee-report');$downtime=portal_can($permissions,'downtime');
     $dashboard['detail_access']=['batches'=>$batches,'downtime'=>$downtime];
-    $lines=$dashboard['machine']==='ALL'?['APP-06','APP-07','APP-10']:[$dashboard['machine']];
+    $lines=$dashboard['machine']==='ALL'?oee_known_lines($pdo):[$dashboard['machine']];
     $in=implode(',',array_fill(0,count($lines),'?'));$window=$dashboard['window'];
     if($batches){
         $q=$pdo->prepare('SELECT line_code,seq,part_code,grade,used_colour,report_colour,loading_at,unloading_at,pcs,total_surface_area,is_productive FROM oee_fb_runs WHERE line_code IN ('.$in.') AND loading_at>=? AND loading_at<? ORDER BY loading_at DESC,line_code,si_no DESC LIMIT 6');

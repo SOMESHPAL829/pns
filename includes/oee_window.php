@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/oee_settings.php';
+
 function oee_supported_window_hours(): array
 {
     return [8, 10, 12, 16, 24];
@@ -120,10 +122,17 @@ function oee_window_aggregate(array $lines): array
 
 function oee_window_report(PDO $pdo, string $date, string $machine, array $window): array
 {
-    $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [$machine];
-    $result = ['available' => true, 'date' => $date, 'machine' => $machine, 'line_code' => $machine, 'window' => $window,
+    $knownLines = oee_known_lines($pdo);
+    $lines = $machine === 'ALL' ? $knownLines : [$machine];
+    $result = ['available' => true, 'date' => $date, 'machine' => $machine, 'line_code' => $machine, 'machines' => $knownLines, 'window' => $window,
         'rows' => [], 'line_metrics' => [], 'downtime_events' => [], 'quality_entries' => [],
         'metrics' => ['total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0.0]];
+    if ($lines === []) {
+        $result['oee'] = oee_window_aggregate([]);
+        $result['sync'] = [];
+        $result['imports'] = [];
+        return $result;
+    }
     $rowsQuery = $pdo->prepare('SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code = ? AND loading_at >= ? AND loading_at < ? ORDER BY loading_at, si_no');
     $eventQuery = $pdo->prepare('SELECT line_code, starts_at, ends_at, event_type, status, source, reason_code, notes FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at, id');
     $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ?' . ($window['duration_hours'] !== 24 ? ' AND shift_code = ?' : ''));
