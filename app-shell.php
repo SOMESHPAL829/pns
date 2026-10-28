@@ -40,7 +40,7 @@ $oeeLines = oee_known_lines(db());
         <a class="app-sidebar-link" href="#/requests" data-nav="requests" title="Records"><span class="app-sidebar-icon" data-icon="clipboard-document-list"></span><span class="app-sidebar-label">Records</span></a>
         <a class="app-sidebar-link" href="#/chemical-consumption" data-nav="chemical-consumption" title="Chemical Consumption"><span class="app-sidebar-icon" data-icon="scale"></span><span class="app-sidebar-label">Chemical Consumption</span></a>
         <a class="app-sidebar-link" href="#/chemical-consumption-report" data-nav="chemical-consumption-report" title="Chemical Consumption Report"><span class="app-sidebar-icon" data-icon="document-chart-bar"></span><span class="app-sidebar-label">Chemical Consumption Report</span></a>
-        <a class="app-sidebar-link" href="#/chemical-cost-report" data-nav="chemical-cost-report" title="Chemical Cost Report"><span class="app-sidebar-icon" data-icon="currency-rupee"></span><span class="app-sidebar-label">Chemical Cost Report</span></a>
+        <a class="app-sidebar-link" href="#/chemical-cost-report" data-nav="chemical-cost-report" title="Chemical Cost Analytics"><span class="app-sidebar-icon" data-icon="currency-rupee"></span><span class="app-sidebar-label">Chemical Cost Analytics</span></a>
         <div class="app-sidebar-section-label">Administration</div>
         <a class="app-sidebar-link" href="#/roles" data-nav="roles" title="Roles & Permissions"><span class="app-sidebar-icon" data-icon="key"></span><span class="app-sidebar-label">Roles & Permissions</span></a>
         <a class="app-sidebar-link" href="#/users" data-nav="users" title="Users"><span class="app-sidebar-icon" data-icon="user-group"></span><span class="app-sidebar-label">Users</span></a>
@@ -320,29 +320,98 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="chemical-cost-report">
-          <div class="page-heading chemical-cost-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Cost Report</h1><p class="page-lead">Compare chemical cost with processed surface area by week, month, or consolidated period.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button></div></div>
+          <div class="page-heading chemical-cost-report-page-heading">
+            <div>
+              <div class="dash-eyebrow">Workspace / Cost Intelligence</div>
+              <h1>Chemical Cost Dashboard</h1>
+              <p class="page-lead">Monitor chemical expenses, surface-area productivity and cost efficiency across periods.</p>
+            </div>
+            <div class="page-heading-actions">
+              <span class="chemical-cost-badge" id="chemical-cost-report-scope">● Chemical cost monitoring</span>
+              <button class="btn ghost" id="chemical-cost-report-export" type="button">Export CSV</button>
+              <button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button>
+            </div>
+          </div>
           <div id="chemical-cost-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-cost-report-filter-card" aria-labelledby="chemical-cost-report-filter-heading">
-            <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2></div>
-            <form id="chemical-cost-report-filter-form" class="master-form">
+            <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2><span class="chemical-cost-mini">Source: live consumption + OEE surface area</span></div>
+            <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
               <label>From Date<input id="chemical-cost-report-from" type="date" required></label>
               <label>To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Machine<select id="chemical-cost-report-machine"><option value="ALL">All Machines</option></select></label>
-              <label>Report Type<select id="chemical-cost-report-type"><option value="weekly">Weekly Basis</option><option value="monthly">Monthly Basis</option><option value="consolidated">Consolidated</option></select></label>
-              <button class="btn" id="chemical-cost-report-run" type="submit">Generate Report</button>
+              <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
+              <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>
             </form>
           </section>
-          <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
-            <div class="chemical-cost-report-title"><h2 id="chemical-cost-report-table-heading">Chemical Cost Report</h2></div>
-            <dl class="chemical-cost-report-meta">
-              <div><dt>From Date</dt><dd id="chemical-cost-report-from-display">—</dd></div>
-              <div><dt>To Date</dt><dd id="chemical-cost-report-to-display">—</dd></div>
-              <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
-              <div><dt>Report Type</dt><dd id="chemical-cost-report-type-display">Weekly Basis</dd></div>
-            </dl>
-            <div class="data-scroll"><table class="data-table chemical-cost-report-table"><thead><tr><th>SR. No.</th><th>Machine</th><th>Report Period</th><th>Total Surface Area (dm²)</th><th>Total Chemical Cost (INR)</th><th>Chemical Cost per dm² (INR)</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="6">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
-            <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost (INR) / Total Surface Area (dm²)</p>
+          <section class="dash-kpis chemical-cost-kpis" id="chemical-cost-report-kpis" aria-label="Cost summary"></section>
+          <section class="chemical-cost-chart-grid">
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Chemical Cost per dm² · Trend</h2>
+                  <p class="chemical-cost-caption" id="chemical-cost-trend-caption">Weekly unit-cost variation</p>
+                </div>
+                <div class="chemical-cost-tabs" role="tablist" aria-label="Trend view">
+                  <button type="button" data-cost-tab="weekly" class="selected">WoW</button>
+                  <button type="button" data-cost-tab="monthly">MoM</button>
+                </div>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-trend" role="img" aria-label="Chemical cost per dm2 trend"></div>
+            </article>
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Chemical Cost · Period Comparison</h2>
+                  <p class="chemical-cost-caption">₹ expenditure across selected periods</p>
+                </div>
+                <span class="chemical-cost-mini">INR</span>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-cost-chart" role="img" aria-label="Chemical cost by period"></div>
+            </article>
           </section>
+          <section class="chemical-cost-chart-grid equal">
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Surface Area Processed</h2>
+                  <p class="chemical-cost-caption">Total processed surface area, dm²</p>
+                </div>
+                <span class="chemical-cost-mini">dm²</span>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-area-chart" role="img" aria-label="Surface area by period"></div>
+            </article>
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Cost vs Surface Area</h2>
+                  <p class="chemical-cost-caption">Trend comparison (indexed to first period = 100)</p>
+                </div>
+                <div class="chemical-cost-legend"><span><i class="chemical-cost-dot cost"></i>Cost</span><span><i class="chemical-cost-dot area"></i>Area</span></div>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-indexed-chart" role="img" aria-label="Indexed cost versus area"></div>
+            </article>
+          </section>
+          <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
+            <div class="dash-card-head chemical-cost-table-head">
+              <div>
+                <h2 id="chemical-cost-report-table-heading">Detailed Chemical Cost Report</h2>
+                <p class="chemical-cost-caption" id="chemical-cost-table-caption">Period-wise financial and surface-area performance</p>
+              </div>
+              <dl class="chemical-cost-report-meta chemical-cost-report-meta-inline">
+                <div><dt>From</dt><dd id="chemical-cost-report-from-display">—</dd></div>
+                <div><dt>To</dt><dd id="chemical-cost-report-to-display">—</dd></div>
+                <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
+                <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
+              </dl>
+            </div>
+            <div class="chemical-cost-report-title"><h2>Chemical Cost Report</h2></div>
+            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Sr.</th><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="8">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
+            <div class="chemical-cost-report-footer">
+              <span id="chemical-cost-report-row-count">Showing 0 rows</span>
+              <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost ÷ Total Surface Area</p>
+            </div>
+          </section>
+          <div class="chemical-cost-tip" id="chemical-cost-tip" hidden></div>
         </section>
 
         <section class="view" data-view="oee-masters">

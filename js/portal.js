@@ -14,7 +14,7 @@
     "breakdown-registration": "Downtime Registration",
     "chemical-consumption": "Chemical Consumption",
     "chemical-consumption-report": "Chemical Consumption Report",
-    "chemical-cost-report": "Chemical Cost Report",
+    "chemical-cost-report": "Chemical Cost Analytics",
     requests: "Records",
     create: "New Record",
     detail: "Record Detail",
@@ -56,7 +56,11 @@
     const routeParts = name.split("/");
     const routeName = routeParts[0].split("?")[0];
     const requestedKey = titles[routeName] ? routeName : "dashboard";
-    const key = !window.PortalAccess?.ready ? "access-loading" : window.PortalAccess.routeAllowed(requestedKey) ? requestedKey : "access-denied";
+    const key = !window.PortalAccess?.ready
+      ? "access-loading"
+      : window.PortalAccess.routeAllowed(requestedKey)
+        ? requestedKey
+        : "access-denied";
     views.forEach(function (view) {
       view.classList.toggle("active", view.getAttribute("data-view") === key);
     });
@@ -66,20 +70,24 @@
       link.classList.toggle("is-active", on);
     });
     if (pageTitle) pageTitle.textContent = titles[key];
-    const routeHash = requestedKey === "detail" && routeParts[1]
-      ? "#/detail/" + encodeURIComponent(routeParts[1])
-      : "#/" + requestedKey;
-    if (location.hash !== routeHash)
-      history.replaceState(null, "", routeHash);
+    const routeHash =
+      requestedKey === "detail" && routeParts[1]
+        ? "#/detail/" + encodeURIComponent(routeParts[1])
+        : "#/" + requestedKey;
+    if (location.hash !== routeHash) history.replaceState(null, "", routeHash);
     if (shell) shell.classList.remove("sidebar-open");
     closeHeaderMenus();
-    window.dispatchEvent(new CustomEvent("portal-view-changed", { detail: { route: key } }));
+    window.dispatchEvent(
+      new CustomEvent("portal-view-changed", { detail: { route: key } }),
+    );
   }
 
   window.addEventListener("hashchange", function () {
     setView((location.hash || "#/dashboard").replace("#/", ""));
   });
-  window.addEventListener("portal-access-ready", function () { setView((location.hash || "#/dashboard").replace("#/", "")); });
+  window.addEventListener("portal-access-ready", function () {
+    setView((location.hash || "#/dashboard").replace("#/", ""));
+  });
 
   document.querySelectorAll("[data-nav], [data-goto]").forEach(function (el) {
     el.addEventListener("click", function (event) {

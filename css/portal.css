@@ -1294,7 +1294,111 @@ table.data tbody tr:hover {
 .chemical-report-serial { text-align: center; }
 .chemical-cost-report-filter-card { margin-bottom: 1rem; overflow: hidden; }
 .chemical-cost-report-filter-card h2 { margin: 0; font: inherit; }
+.chemical-cost-filters { align-items: end; }
+.chemical-cost-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  color: var(--mut);
+  background: var(--card);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chemical-cost-mini {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 5px;
+  padding: 0.25rem 0.5rem;
+  background: color-mix(in srgb, var(--accent-sft) 70%, transparent);
+  color: var(--mut);
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+.chemical-cost-kpis { margin: 0 0 1rem; }
+.chemical-cost-kpi .chemical-cost-kpi-foot {
+  margin-top: 0.35rem;
+  color: var(--mut);
+  font-size: 0.72rem;
+}
+.chemical-cost-chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.chemical-cost-chart-grid.equal { grid-template-columns: 1fr 1fr; }
+.chemical-cost-chart-card { overflow: hidden; min-width: 0; }
+.chemical-cost-chart-card .dash-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.chemical-cost-chart-card .dash-card-head h2 { margin: 0; font: inherit; font-weight: 750; color: var(--accent-deep); }
+.chemical-cost-caption { margin: 0.2rem 0 0; color: var(--mut); font-size: 0.72rem; }
+.chemical-cost-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent-sft) 80%, #edf3f9);
+}
+.chemical-cost-tabs button {
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--mut);
+  padding: 0.4rem 0.7rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.chemical-cost-tabs button.selected {
+  background: var(--card);
+  color: var(--accent-deep);
+  box-shadow: 0 1px 5px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.chemical-cost-legend {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--mut);
+  font-size: 0.72rem;
+}
+.chemical-cost-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 0.3rem;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+.chemical-cost-dot.cost { background: #2b65a2; }
+.chemical-cost-dot.area { background: #16a191; }
+.chemical-cost-chartarea {
+  height: 285px;
+  padding: 0.55rem 0.7rem 0.9rem;
+  color: var(--mut);
+}
+.chemical-cost-chartarea svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.chemical-cost-gridline { opacity: 0.35; }
+.chemical-cost-axis { fill: currentColor; font-size: 11px; }
+.chemical-cost-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--mut);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem;
+}
 .chemical-cost-report-card { overflow: hidden; }
+.chemical-cost-table-head { align-items: flex-start; gap: 1rem; }
 .chemical-cost-report-title { display: none; padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--line); }
 .chemical-cost-report-title h2 { margin: 0; font-size: var(--text-lg); }
 .chemical-cost-report-meta {
@@ -1305,13 +1409,59 @@ table.data tbody tr:hover {
   background: var(--line);
   border-bottom: 1px solid var(--line);
 }
-.chemical-cost-report-meta div { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; padding: 0.75rem; background: var(--card); }
-.chemical-cost-report-meta dt { color: var(--mut); font-weight: 700; }
-.chemical-cost-report-meta dd { margin: 0; color: var(--ink); font-weight: 700; }
-.chemical-cost-report-table { min-width: 980px; }
+.chemical-cost-report-meta-inline {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: min(100%, 28rem);
+}
+.chemical-cost-report-meta div { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; padding: 0.55rem 0.7rem; background: var(--card); }
+.chemical-cost-report-meta dt { color: var(--mut); font-weight: 700; font-size: 0.72rem; }
+.chemical-cost-report-meta dd { margin: 0; color: var(--ink); font-weight: 700; font-size: 0.78rem; }
+.chemical-cost-report-table { min-width: 1080px; }
 .chemical-cost-report-table th { white-space: normal; }
-.chemical-cost-report-formula { margin: 0; padding: 0.8rem 0.9rem; border-top: 1px solid var(--line); color: var(--mut); }
+.chemical-cost-report-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.75rem 0.9rem;
+  border-top: 1px solid var(--line);
+  color: var(--mut);
+  font-size: 0.78rem;
+}
+.chemical-cost-report-formula { margin: 0; }
 .chemical-cost-missing { color: var(--crit); font-weight: 700; }
+.chemical-cost-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #f8e9ed;
+  color: #bc3750;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+.chemical-cost-pill.low { background: #e7f5f1; color: #178779; }
+.chemical-cost-tip {
+  position: fixed;
+  z-index: 40;
+  pointer-events: none;
+  max-width: 240px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 7px;
+  background: var(--accent-deep, #1d3b63);
+  color: #fff;
+  font-size: 0.78rem;
+  box-shadow: 0 5px 16px color-mix(in srgb, #000 25%, transparent);
+}
+
+@media (max-width: 1200px) {
+  .chemical-cost-chart-grid,
+  .chemical-cost-chart-grid.equal { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 1050px) {
   .chemical-consumption-form { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -1319,6 +1469,9 @@ table.data tbody tr:hover {
   .chemical-consumption-form .chemical-consumption-wide { grid-column: span 3; }
   .chemical-consumption-form .chemical-consumption-remarks { grid-column: span 4; }
   .chemical-consumption-actions { grid-column: span 2; }
+  .chemical-cost-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .chemical-cost-table-head { flex-direction: column; }
+  .chemical-cost-report-meta-inline { margin-left: 0; width: 100%; }
 }
 
 @media (max-width: 640px) {
@@ -1329,6 +1482,9 @@ table.data tbody tr:hover {
   .chemical-consumption-actions { grid-column: 1 / -1; }
   .chemical-report-meta { grid-template-columns: 1fr; }
   .chemical-cost-report-meta { grid-template-columns: 1fr; }
+  .chemical-cost-kpis { grid-template-columns: 1fr; }
+  .chemical-cost-badge { display: none; }
+  .chemical-cost-chartarea { height: 240px; }
 }
 
 @media print {
@@ -1349,10 +1505,14 @@ table.data tbody tr:hover {
   .view.active { display: block !important; }
   .chemical-consumption-report-card,
   .chemical-cost-report-card { border: 0; box-shadow: none; }
+  .chemical-cost-kpis,
+  .chemical-cost-chart-grid,
+  .chemical-cost-tip { display: none !important; }
   .chemical-report-title,
   .chemical-cost-report-title { display: block; }
   .chemical-report-meta,
   .chemical-cost-report-meta { border: 1px solid #000; }
+  .chemical-cost-report-meta-inline { min-width: 0; width: 100%; margin: 0 0 0.5rem; }
   .chemical-report-meta div,
   .chemical-cost-report-meta div { background: #fff; padding: 5px; }
   .chemical-consumption-report-card .data-scroll,
@@ -1366,7 +1526,9 @@ table.data tbody tr:hover {
   .chemical-report-table th span { color: #000; font-size: 8px; }
   .chemical-report-table tr,
   .chemical-cost-report-table tr { break-inside: avoid; }
-  .chemical-cost-report-formula { color: #000; border-top: 1px solid #000; }
+  .chemical-cost-report-footer { color: #000; border-top: 1px solid #000; }
+  .chemical-cost-report-formula { color: #000; }
+  .chemical-cost-pill { border: 1px solid #000; background: #fff; color: #000; }
 }
 .threshold-card { margin-bottom: 1rem; }
 [hidden] { display: none !important; }
