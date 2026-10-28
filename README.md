@@ -18,7 +18,8 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 6. Run `php migrate-permissions.php`, then `php migrate-export-permissions.php` to install page-level roles and permissions.
 7. Run `php migrate-chemicals.php` to install chemical items and effective-dated INR rates.
 8. Run `php migrate-chemical-consumption.php` to install the chemical consumption ledger.
-9. Run `php migrate-breakdowns.php` to add the planned and unplanned breakdown reasons.
+9. Run `php migrate-breakdowns.php` to refresh the downtime reason catalogue and archive referenced legacy reasons without deleting downtime history.
+10. Run `php migrate-user-appearance.php` to enable per-user theme and brightness preferences.
 
 The account recovery page returns the same confirmation for existing and unknown email addresses. Reset links expire after 30 minutes and can only be used once. PHP's `mail()` must be connected to a working mail transport for delivery.
 
@@ -31,6 +32,10 @@ php -S 127.0.0.1:4173
 ```
 
 Open `http://127.0.0.1:4173/`. Do not use `python -m http.server`; PHP routes are required for authentication and database access.
+
+Use the sun/adjustment control in the signed-in top bar to switch between dark
+and light appearance icons and set dashboard brightness. Appearance preferences
+are saved to the signed-in user's account and restored on the next login.
 
 ## Icon Standard
 
@@ -94,17 +99,19 @@ the OEE feed. When an effective rate is missing, the affected cost is withheld
 and clearly flagged instead of being understated. The report supports landscape
 printing and a maximum date range of 366 days.
 
-## Breakdown Registration
+## Downtime Registration
 
-Open **Administration → Breakdown Registration** to create, edit, and delete
-planned or unplanned loss reasons. The page uses the OEE reason master so saved
-reasons are available in Downtime Review; its reason selector filters by the
-selected loss type. A reason cannot be deleted while it is referenced by a
-downtime record. Run `php migrate-breakdowns.php` after installing the OEE
-foundation and reason-master migrations to add the loss type field and seed the
-default reason list. Access is controlled by the Breakdown Registration
-View/Create/Update/Delete permissions; Downtime Review users need Downtime/View
-to load the active reason choices.
+Open **Administration → Downtime Registration** to add and edit planned or
+unplanned reasons and set each reason Active or Inactive. The page uses the OEE
+reason master so active reasons are available in Downtime Review; its reason
+selector filters by the selected loss type. The registration list includes
+inactive reasons, which cannot be selected for new downtime records. There is
+no delete action. Run `php migrate-breakdowns.php` after installing the OEE
+foundation and reason-master migrations to install the approved catalogue.
+Unused legacy reasons are removed, while legacy reasons referenced by downtime
+records are archived and retained so historical downtime remains intact.
+Access is controlled by the Downtime Registration View/Create/Update
+permissions; Downtime Review users need Downtime/View to load active choices.
 
 Authorized account managers create accounts; there is no public sign-up route. Record ownership restrictions still apply in addition to role grants. Protected administrators retain full access and can view all records.
 

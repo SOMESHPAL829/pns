@@ -1,5 +1,5 @@
 (function () {
-  const app = { csrf: "", user: null, users: [], records: [], currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null, durationMinutes: "1440", windowStart: "00:00", dashboardRequest: 0, reportRequest: 0 };
+  const app = { csrf: "", user: null, users: [], records: [], currentRecord: null, oee: null, reportRows: [], reportDate: "", reportData: null, downtimeEditId: null, durationMinutes: "1440", windowStart: "00:00", dashboardRequest: 0, reportRequest: 0, appearance: { theme: "light", brightness: 100 }, appearanceSaveTimer: null };
   const apiUrl = "api.php";
   const can = (page, action = "view") => window.PortalAccess.can(page, action);
 
@@ -83,6 +83,39 @@
     if (!node) return;
     node.hidden = !visible;
     node.textContent = message || "";
+  }
+
+  function applyAppearance(settings) {
+    const theme = settings?.theme === "dark" ? "dark" : "light";
+    const parsedBrightness = Number(settings?.brightness);
+    const brightness = Number.isInteger(parsedBrightness) && parsedBrightness >= 80 && parsedBrightness <= 120 && parsedBrightness % 5 === 0 ? parsedBrightness : 100;
+    app.appearance = { theme, brightness };
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.setProperty("--app-brightness", String(brightness / 100));
+    const triggerIcon = document.getElementById("appearance-trigger-icon");
+    if (triggerIcon) {
+      triggerIcon.dataset.icon = theme === "dark" ? "moon" : "sun";
+      window.ThemeIcons?.mount(triggerIcon.parentElement);
+    }
+    document.querySelectorAll("[data-appearance-theme]").forEach(function (button) {
+      const selected = button.dataset.appearanceTheme === theme;
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    const slider = document.getElementById("appearance-brightness");
+    if (slider) slider.value = String(brightness);
+    const output = document.getElementById("appearance-brightness-value");
+    if (output) output.value = brightness + "%";
+  }
+
+  function queueAppearanceSave() {
+    clearTimeout(app.appearanceSaveTimer);
+    app.appearanceSaveTimer = setTimeout(async function () {
+      try {
+        await request("appearance", "save", { method: "POST", body: app.appearance });
+      } catch (error) {
+        toast("Appearance preference was not saved: " + error.message, "crit");
+      }
+    }, 350);
   }
 
   function oeeWindowQuery(prefix) {
@@ -665,6 +698,7 @@
     app.csrf = data.csrf_token;
     app.user = data.user;
     app.records = data.records;
+    applyAppearance(data.appearance);
     window.PortalAccess.set(data.access);
     updateThresholdForm();
     updateIdentity(app.user);
@@ -750,6 +784,18 @@
   });
   const userSearch = document.getElementById("users-search");
   if (userSearch) userSearch.addEventListener("input", function () { renderUsers(app.users); });
+
+  document.querySelectorAll("[data-appearance-theme]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      applyAppearance({ ...app.appearance, theme: button.dataset.appearanceTheme });
+      queueAppearanceSave();
+    });
+  });
+  const appearanceBrightness = document.getElementById("appearance-brightness");
+  if (appearanceBrightness) appearanceBrightness.addEventListener("input", function () {
+    applyAppearance({ ...app.appearance, brightness: Number(this.value) });
+    queueAppearanceSave();
+  });
 
   const dashboardRefresh = document.getElementById("dashboard-refresh");
   const rangeForm = document.getElementById("range-form");

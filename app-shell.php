@@ -43,7 +43,7 @@ unset($_SESSION['welcome_message']);
         <a class="app-sidebar-link" href="#/users" data-nav="users" title="Users"><span class="app-sidebar-icon" data-icon="user-group"></span><span class="app-sidebar-label">Users</span></a>
         <a class="app-sidebar-link" href="#/oee-masters" data-nav="oee-masters" title="OEE Master Data"><span class="app-sidebar-icon" data-icon="cog-6-tooth"></span><span class="app-sidebar-label">OEE Master Data</span></a>
         <a class="app-sidebar-link" href="#/chemical-registration" data-nav="chemical-registration" title="Chemical Registration"><span class="app-sidebar-icon" data-icon="beaker"></span><span class="app-sidebar-label">Chemical Registration</span></a>
-        <a class="app-sidebar-link" href="#/breakdown-registration" data-nav="breakdown-registration" title="Breakdown Registration"><span class="app-sidebar-icon" data-icon="wrench-screwdriver"></span><span class="app-sidebar-label">Breakdown Registration</span></a>
+        <a class="app-sidebar-link" href="#/breakdown-registration" data-nav="breakdown-registration" title="Downtime Registration"><span class="app-sidebar-icon" data-icon="wrench-screwdriver"></span><span class="app-sidebar-label">Downtime Registration</span></a>
         <a class="app-sidebar-link" href="#/profile" data-nav="profile" title="Profile"><span class="app-sidebar-icon" data-icon="user-circle"></span><span class="app-sidebar-label">My Profile</span></a>
         <form method="post" action="logout.php" data-logout-form>
           <input type="hidden" name="csrf_token" value="<?= escape_html($csrfToken) ?>">
@@ -63,6 +63,23 @@ unset($_SESSION['welcome_message']);
             <div class="app-topbar-title" id="page-title">Dashboard</div>
           </div>
           <div class="app-topbar-actions">
+            <div class="app-header-menu app-appearance-menu" data-header-menu>
+              <button type="button" class="app-header-icon-btn" data-header-toggle="appearance" aria-label="Appearance settings" aria-expanded="false" aria-controls="appearance-panel" title="Appearance settings">
+                <span data-icon="sun" id="appearance-trigger-icon"></span>
+              </button>
+              <div id="appearance-panel" class="app-header-panel app-appearance-panel" data-header-panel="appearance" hidden>
+                <div class="app-appearance-modes" role="group" aria-label="Theme">
+                  <button type="button" class="app-appearance-mode" data-appearance-theme="light" aria-label="Light theme" title="Light theme"><span data-icon="sun"></span></button>
+                  <button type="button" class="app-appearance-mode" data-appearance-theme="dark" aria-label="Dark theme" title="Dark theme"><span data-icon="moon"></span></button>
+                </div>
+                <label class="app-appearance-brightness">
+                  <span data-icon="sun-low" aria-hidden="true"></span>
+                  <input id="appearance-brightness" type="range" min="80" max="120" step="5" value="100" aria-label="Dashboard brightness">
+                  <span data-icon="sun-high" aria-hidden="true"></span>
+                  <output id="appearance-brightness-value" for="appearance-brightness">100%</output>
+                </label>
+              </div>
+            </div>
             <div class="app-header-menu" data-header-menu>
               <button type="button" class="app-header-profile-btn" data-header-toggle="profile" aria-label="User menu" aria-expanded="false" aria-controls="header-profile-panel">
                 <span class="app-header-avatar">P</span>
@@ -236,18 +253,19 @@ unset($_SESSION['welcome_message']);
         </section>
 
         <section class="view" data-view="breakdown-registration">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Breakdown Registration</h1><p class="page-lead">Maintain planned and unplanned loss reasons used in downtime review.</p></div><div class="page-heading-actions"><button class="btn ghost" id="breakdowns-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Downtime Registration</h1><p class="page-lead">Maintain planned and unplanned loss reasons used in downtime review.</p></div><div class="page-heading-actions"><button class="btn ghost" id="breakdowns-refresh" type="button">Refresh</button></div></div>
           <div id="breakdowns-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card breakdown-registration-card" aria-labelledby="breakdown-registration-heading">
-            <div class="dash-card-head"><h2 id="breakdown-registration-heading">Register Breakdown Reason</h2></div>
+            <div class="dash-card-head"><h2 id="breakdown-registration-heading">Register Downtime Reason</h2></div>
             <form id="breakdown-form" class="master-form">
               <input id="breakdown-id" type="hidden">
               <label for="breakdown-loss-type">Loss Type<select id="breakdown-loss-type" required><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></label>
               <label class="breakdown-name-field" for="breakdown-loss-name">Loss Name<input id="breakdown-loss-name" maxlength="120" required></label>
+              <label class="breakdown-active-field" for="breakdown-is-active"><input id="breakdown-is-active" type="checkbox" checked><span>Active</span></label>
               <button id="breakdown-save" class="btn" type="submit">Save</button>
               <button id="breakdown-cancel" class="btn ghost" type="button" hidden>Cancel Edit</button>
             </form>
-            <div class="data-scroll"><table class="data-table"><thead><tr><th>SR. No.</th><th>Loss Type</th><th>Loss Name</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="4">Loading breakdown reasons…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table"><thead><tr><th>SRNO</th><th>Type</th><th>Loss Name</th><th>Status</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="5">Loading downtime reasons…</td></tr></tbody></table></div>
           </section>
         </section>
 

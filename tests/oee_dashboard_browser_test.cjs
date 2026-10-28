@@ -4,14 +4,15 @@ const root=path.resolve(__dirname,'..');
 const all=JSON.parse(execFileSync('php',['-r','require "includes/permissions.php";echo json_encode(portal_permission_matrix(true));'],{cwd:root,encoding:'utf8'}));
 const html=execFileSync('php',['-r','require "includes/security.php";start_app_session();$_SESSION["user_id"]=1;require "app-shell.php";'],{cwd:root,encoding:'utf8'});
 (async()=>{const browser=await chromium.launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE?{executablePath:process.env.CHROMIUM_EXECUTABLE}:{})});try{
-  const page=await browser.newPage({viewport:{width:1440,height:1100}}),requests=[],errors=[],saves=[];let permissions=all,fail=false,empty=false,tagFailure=false,reasonFailure=false,tagged=false,exportMode='ok';
+  const page=await browser.newPage({viewport:{width:1440,height:1100}}),requests=[],errors=[],saves=[];let permissions=all,appearance={theme:'light',brightness:100},fail=false,empty=false,tagFailure=false,reasonFailure=false,tagged=false,exportMode='ok';
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://127.0.0.1:4173/**',async route=>{
     const url=new URL(route.request().url()),q=url.searchParams;
     if(url.pathname.endsWith('/app.php'))return route.fulfill({contentType:'text/html',body:html});
     if(url.pathname.endsWith('/api.php')){
       requests.push(Object.fromEntries(q));
-      if(q.get('resource')==='bootstrap')return route.fulfill({json:{user:{id:1,full_name:'Real Test Admin',username:'admin'},csrf_token:'test',access:{permissions},records:[],user_count:0}});
+      if(q.get('resource')==='bootstrap')return route.fulfill({json:{user:{id:1,full_name:'Real Test Admin',username:'admin'},csrf_token:'test',access:{permissions},records:[],user_count:0,appearance}});
+      if(q.get('resource')==='appearance'&&q.get('action')==='save'){appearance=route.request().postDataJSON();return route.fulfill({json:{ok:true,appearance}});}
       if(q.get('resource')==='users')return route.fulfill({json:{users:[],assignable_roles:[]}});
       if(q.get('resource')==='breakdowns'&&q.get('action')==='by-type'){
         if(reasonFailure)return route.fulfill({status:500,json:{error:'Reasons unavailable'}});
@@ -51,6 +52,19 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   assert(await page.locator('#dashboard-export').isVisible(),'Export grant must expose the dashboard export');
   assert.equal(await page.locator('#dashboard-run-bar').evaluate(el=>el.style.width),'80%');
   assert.equal(await page.locator('#dashboard-stopped-share').textContent(),'20.0%');
+  await page.locator('[data-header-toggle="appearance"]').click();
+  await page.locator('[data-appearance-theme="dark"]').click();
+  await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
+  await page.locator('#appearance-brightness').evaluate(el=>{el.value='115';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.waitForFunction(()=>document.getElementById('appearance-brightness-value').value==='115%');
+  await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark'&&document.documentElement.style.getPropertyValue('--app-brightness')==='1.15');
+  await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark'&&document.querySelector('[data-appearance-theme="dark"]').getAttribute('aria-pressed')==='true');
+  await page.waitForTimeout(500);
+  assert.deepEqual(appearance,{theme:'dark',brightness:115},'Theme and brightness must persist through the user preference API');
+  await page.locator('[data-appearance-theme="light"]').click();
+  await page.locator('#appearance-brightness').evaluate(el=>{el.value='100';el.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.waitForTimeout(500);
+  await page.locator('[data-header-toggle="appearance"]').click();
   for(const duration of ['960','600','480']){
     await page.locator('#dashboard-duration').selectOption(duration);
     await page.waitForFunction(value=>document.getElementById('dashboard-oee-detail').textContent.includes(value+' Min per Line'),duration);

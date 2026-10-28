@@ -35,12 +35,17 @@ try{
     [$status]=$call('users','user-role',$admin,['id'=>$users['viewer'],'role_id'=>$roleId]);$check($status===200,'Role assignment failed');
     $viewer=$session($users['viewer']);
     [$status,$bootstrap]=$call('bootstrap','',$viewer);$check($status===200&&$bootstrap['records']===[]&&$bootstrap['record_count']===0&&$bootstrap['user_count']===null,'Bootstrap leaked restricted data');
+    [$status,$savedAppearance]=$call('appearance','save',$viewer,['theme'=>'dark','brightness'=>115,'user_id'=>0]);
+    $check($status===200&&$savedAppearance['appearance']===['theme'=>'dark','brightness'=>115],'Authenticated user appearance preferences were not saved');
+    [$status,$appearanceBootstrap]=$call('bootstrap','',$viewer);
+    $check($status===200&&$appearanceBootstrap['appearance']===['theme'=>'dark','brightness'=>115],'Appearance preferences did not persist for the signed-in user');
+    $check($call('appearance','save',$viewer,['theme'=>'dark','brightness'=>121])[0]===422,'Out-of-range appearance brightness must be rejected');
     foreach(['dashboard','range-dashboard','range-export','logs','downtime','masters'] as $action)$check($call('oee',$action,$viewer)[0]===403,'Forbidden OEE GET allowed: '.$action);
     foreach(['records','users','roles'] as $resource)$check($call($resource,'',$viewer)[0]===403,'Forbidden page allowed: '.$resource);
     foreach([['oee','downtime-save',[]],['oee','downtime-save',['event_id'=>1]],['oee','master-save',['master_type'=>'threshold']],['oee','master-save',['master_type'=>'cycle']],['oee','master-save',['master_type'=>'reason','id'=>1]],['records','record-create',[]],['records','record-update',[]],['records','record-delete',[]],['users','user-create',[]],['users','user-toggle',[]],['users','user-role',[]],['roles','role-save',[]],['roles','role-delete',[]],['','profile',[]],['','password',[]]] as [$r,$a,$data])$check($call($r,$a,$viewer,$data)[0]===403,'Mutation allowed without permission: '.$a);
     $selection=['date'=>'2026-10-22','machine'=>'APP-06'];
     $check($call('oee','report',$viewer,null,$selection)[0]===200,'Permitted report read failed');
-    $check($call('oee','dashboard',$viewer,null,array_merge($selection,['duration_minutes'=>840]))[0]===422,'Unsupported duration must be rejected');
+    $check($call('oee','dashboard',$admin,null,array_merge($selection,['duration_minutes'=>840]))[0]===422,'Unsupported duration must be rejected');
     $check($call('oee','export',$viewer,null,$selection)[0]===403,'View-only role may download daily Excel');
     $grants=['oee-report'=>['view'=>true,'export'=>true],'oee-range'=>['view'=>true]];
     $check($call('roles','role-save',$admin,['id'=>$roleId,'name'=>'RBAC viewer '.$suffix,'permissions'=>$grants])[0]===200,'Export grant failed');

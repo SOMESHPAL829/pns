@@ -16,7 +16,7 @@ function portal_permission_catalog(): array
         'users' => ['label'=>'Users (Deactivate = Update)','actions'=>['view','create','update']],
         'oee-masters' => ['label'=>'OEE Master Data','actions'=>['view','create','update']],
         'chemical-registration' => ['label'=>'Chemical Registration','actions'=>['view','create','update']],
-        'breakdown-registration' => ['label'=>'Breakdown Registration','actions'=>['view','create','update','delete']],
+        'breakdown-registration' => ['label'=>'Downtime Registration','actions'=>['view','create','update']],
         'profile' => ['label'=>'My Profile / Password','actions'=>['view','update']],
         'roles' => ['label'=>'Roles & Permissions (Administrators Only)','actions'=>['view','create','update','delete']],
     ];
@@ -85,13 +85,13 @@ function portal_api_requirement(string $resource, string $action, string $method
         }
     }
     if($method==='POST'){
+        if($resource==='appearance'&&$action==='save')return null;
         if($resource==='oee'&&$action==='downtime-tag')return ['downtime','update'];
         if($resource==='oee'&&$action==='downtime-save')return ['downtime',filter_var($data['event_id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='oee'&&$action==='master-save')return ['oee-masters',($data['master_type']??null)==='threshold'||filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='chemicals'&&in_array($action,['item-save','rate-save'],true))return ['chemical-registration',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='chemical-consumption'&&$action==='save')return ['chemical-consumption',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='breakdowns'&&$action==='save')return ['breakdown-registration',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
-        if($resource==='breakdowns'&&$action==='delete')return ['breakdown-registration','delete'];
         if($resource==='roles'&&$action==='role-save')return ['roles',filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='roles'&&$action==='role-delete')return ['roles','delete'];
         if($resource==='users'&&in_array($action,['user-create','user-toggle','user-role'],true))return ['users',$action==='user-create'?'create':'update'];
@@ -133,7 +133,15 @@ function portal_list_roles(PDO $pdo): array
     $roles=$pdo->query("SELECT r.*, (SELECT COUNT(*) FROM portal_user_roles ur WHERE ur.role_id=r.id) + CASE WHEN r.is_builtin=1 AND r.name='Standard user' THEN (SELECT COUNT(*) FROM portal_users u WHERE u.role='user' AND NOT EXISTS(SELECT 1 FROM portal_user_roles ur WHERE ur.user_id=u.id)) ELSE 0 END AS assigned_users FROM portal_access_roles r ORDER BY r.is_builtin DESC,r.name LIMIT 100")->fetchAll();
     $grants=$pdo->query('SELECT role_id,page_code,action_code FROM portal_role_permissions')->fetchAll();
     $byRole=[];
-    foreach($grants as $grant) $byRole[$grant['role_id']][$grant['page_code']][$grant['action_code']]=true;
+    $catalog=portal_permission_catalog();
+    foreach($grants as $grant) {
+        $page=(string)$grant['page_code'];
+        $action=(string)$grant['action_code'];
+        // Old deployments can retain grants for pages/actions that were removed.
+        // Never let those stale rows hide an otherwise valid role from assignment lists.
+        if(!isset($catalog[$page]) || !in_array($action,$catalog[$page]['actions'],true))continue;
+        $byRole[$grant['role_id']][$page][$action]=true;
+    }
     foreach($roles as &$role) $role['permissions']=array_replace_recursive(portal_permission_matrix(),$byRole[$role['id']] ?? []);
     unset($role);
     return $roles;

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS portal_user_appearance (
+    user_id BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    theme ENUM('light', 'dark') NOT NULL DEFAULT 'light',
+    brightness TINYINT UNSIGNED NOT NULL DEFAULT 100,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT portal_user_appearance_user_fk FOREIGN KEY (user_id) REFERENCES portal_users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

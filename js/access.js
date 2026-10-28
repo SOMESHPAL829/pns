@@ -35,7 +35,6 @@
       if (cancel) cancel.disabled = false;
     }
     document.querySelectorAll("[data-edit-breakdown]").forEach(function (node) { node.hidden = !can("breakdown-registration", "update"); });
-    document.querySelectorAll("[data-delete-breakdown]").forEach(function (node) { node.hidden = !can("breakdown-registration", "delete"); });
     const downtime = document.getElementById("downtime-form");
     if (downtime) downtime.hidden = !can("downtime", "create") && !can("downtime", "update");
     const newStop = document.querySelector("#downtime-form button[type=submit]");

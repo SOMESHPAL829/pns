@@ -34,7 +34,6 @@
     form.querySelectorAll("input,select,button").forEach(control => { control.disabled = !allowed; });
     byId("breakdown-cancel").disabled = false;
     document.querySelectorAll("[data-edit-breakdown]").forEach(button => { button.hidden = !access.can("breakdown-registration", "update"); });
-    document.querySelectorAll("[data-delete-breakdown]").forEach(button => { button.hidden = !access.can("breakdown-registration", "delete"); });
   }
 
   function resetForm() {
@@ -54,22 +53,19 @@
       cell(row, index + 1);
       cell(row, item.loss_type === "planned" ? "Planned" : "Unplanned");
       cell(row, item.label);
+      cell(row, Number(item.is_active) === 1 ? "Active" : "Inactive");
       const actions = cell(row, "");
       actions.className = "row-actions-cell";
       const controls = document.createElement("div");
       controls.className = "row-actions";
       controls.appendChild(action("Edit", "editBreakdown", item.id));
-      const remove = action(Number(item.assigned_count) > 0 ? "In Use" : "Delete", "deleteBreakdown", item.id);
-      remove.disabled = Number(item.assigned_count) > 0;
-      if (remove.disabled) remove.title = "Assigned downtime reasons cannot be deleted.";
-      controls.appendChild(remove);
       actions.appendChild(controls);
       body.appendChild(row);
     });
     if (!state.breakdowns.length) {
       const row = document.createElement("tr");
       const empty = cell(row, "No breakdown reasons are registered yet.");
-      empty.colSpan = 4;
+      empty.colSpan = 5;
       body.appendChild(row);
     }
     applyControls();
@@ -104,8 +100,9 @@
         id,
         loss_type: byId("breakdown-loss-type").value,
         loss_name: byId("breakdown-loss-name").value,
+        is_active: byId("breakdown-is-active").checked,
       } });
-      window.AppToast?.show(id ? "Breakdown reason updated" : "Breakdown reason registered", "ok");
+      window.AppToast?.show(id ? "Downtime reason updated" : "Downtime reason registered", "ok");
       resetForm();
       await load();
     } catch (error) {
@@ -125,6 +122,7 @@
       byId("breakdown-id").value = item.id;
       byId("breakdown-loss-type").value = item.loss_type;
       byId("breakdown-loss-name").value = item.label;
+      byId("breakdown-is-active").checked = Number(item.is_active) === 1;
       byId("breakdown-save").textContent = "Update";
       byId("breakdown-cancel").hidden = false;
       applyControls();
@@ -132,21 +130,6 @@
       return;
     }
 
-    const remove = event.target.closest("[data-delete-breakdown]");
-    if (!remove || !access.can("breakdown-registration", "delete")) return;
-    const item = state.breakdowns.find(entry => String(entry.id) === remove.dataset.deleteBreakdown);
-    if (!item || !window.confirm("Delete \"" + item.label + "\"?")) return;
-    remove.disabled = true;
-    try {
-      await api("breakdowns", "delete", { method: "POST", body: { id: Number(item.id) } });
-      alertMessage("");
-      window.AppToast?.show("Breakdown reason deleted", "ok");
-      await load();
-    } catch (error) {
-      alertMessage(error.message);
-    } finally {
-      remove.disabled = false;
-    }
   });
 
   window.addEventListener("portal-view-changed", event => {

@@ -440,9 +440,14 @@ try {
             $userCount = portal_can($user['access']['permissions'],'users')
                 ? (int) $pdo->query('SELECT COUNT(*) FROM portal_users WHERE is_active = 1')->fetchColumn()
                 : null;
+            $appearanceQuery = $pdo->prepare('SELECT theme, brightness FROM portal_user_appearance WHERE user_id = ?');
+            $appearanceQuery->execute([$user['id']]);
+            $appearance = $appearanceQuery->fetch() ?: ['theme' => 'light', 'brightness' => 100];
+            $appearance['brightness'] = (int) $appearance['brightness'];
             $publicUser=$user;unset($publicUser['access'],$publicUser['auth_version']);
             json_response([
                 'user' => $publicUser,
+                'appearance' => $appearance,
                 'access' => $user['access'],
                 'permission_catalog' => portal_permission_catalog(),
                 'csrf_token' => csrf_token(),
@@ -491,6 +496,16 @@ try {
     if ($resource === 'oee' && $action === 'downtime-tag' && $method === 'POST') {
         json_response(oee_tag_downtime($pdo, $data, $user['access']['permissions']));
     }
+    if ($resource === 'appearance' && $action === 'save' && $method === 'POST') {
+        $theme = $data['theme'] ?? null;
+        $brightness = filter_var($data['brightness'] ?? null, FILTER_VALIDATE_INT);
+        if (!is_string($theme) || !in_array($theme, ['light', 'dark'], true) || $brightness === false || $brightness < 80 || $brightness > 120 || $brightness % 5 !== 0) {
+            json_response(['error' => 'Choose a supported theme and brightness from 80% to 120% in 5% steps.'], 422);
+        }
+        $saveAppearance = $pdo->prepare('INSERT INTO portal_user_appearance (user_id, theme, brightness) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE theme = VALUES(theme), brightness = VALUES(brightness)');
+        $saveAppearance->execute([$user['id'], $theme, $brightness]);
+        json_response(['ok' => true, 'appearance' => ['theme' => $theme, 'brightness' => $brightness]]);
+    }
     if ($resource === 'oee' && $action === 'downtime-save' && $method === 'POST') {
         oee_downtime_save($pdo, $data);
     }
@@ -509,8 +524,6 @@ try {
     if($resource==='breakdowns'&&$action==='save'&&$method==='POST'){
         json_response(breakdown_save($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
     }
-    if($resource==='breakdowns'&&$action==='delete'&&$method==='POST')json_response(breakdown_delete($pdo,$data['id']??null));
-
     if($resource==='roles'&&$action==='role-save'){
         $input=$data['permissions']??null;
         if(!is_array($input))json_response(['error'=>'Permissions must be a page/action object.'],422);

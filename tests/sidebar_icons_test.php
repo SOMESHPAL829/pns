@@ -10,7 +10,9 @@ $shell = file_get_contents(dirname(__DIR__) . '/app-shell.php');
 $registry = file_get_contents(dirname(__DIR__) . '/js/icons.js');
 sidebar_icon_check($shell !== false && $registry !== false, 'Sidebar icon files could not be read.');
 
-preg_match_all('/data-icon="([a-z0-9-]+)"/', $shell, $iconMatches);
+$navMatched = preg_match('/<nav class="app-sidebar-nav">(.*?)<\/nav>/s', $shell, $navMatch);
+sidebar_icon_check($navMatched === 1, 'Sidebar navigation could not be located.');
+preg_match_all('/data-icon="([a-z0-9-]+)"/', $navMatch[1], $iconMatches);
 $usedIcons = $iconMatches[1];
 sidebar_icon_check(count($usedIcons) > 0, 'No centralized sidebar icons were found.');
 sidebar_icon_check(count($usedIcons) === count(array_unique($usedIcons)), 'A sidebar heading or action reuses another icon.');

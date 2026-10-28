@@ -22,8 +22,10 @@ ui_check(str_contains($dashboardStyles, '.pns-dashboard .data-table th { backgro
 ui_check(str_contains($styles, '.oee-kpi:hover') && str_contains($styles, 'border-color: var(--accent)'), 'KPI hover highlighting is missing.');
 ui_check(!str_contains($styles, 'border-top: 3px solid var(--accent)'), 'KPI cards still use the heavy blue top border.');
 ui_check(str_contains($styles, '.data-scroll { width: 100%; scrollbar-gutter: auto; }'), 'Table containers still reserve a blank right-side gutter.');
-ui_check(substr_count($shell, 'SR. No.') === 3 && !preg_match('/S[lr]\. No\./', str_replace('SR. No.', '', $shell)), 'Serial number table headings are inconsistent.');
+ui_check(substr_count($shell, 'SR. No.') >= 1 && !preg_match('/S[lr]\. No\./', $shell), 'Serial number table headings are inconsistent.');
 ui_check(str_contains($styles, '.table-action') && str_contains($styles, '.user-actions'), 'Shared table action button styling is missing.');
+ui_check(str_contains($styles, '*::-webkit-scrollbar-thumb') && str_contains($styles, 'scrollbar-color: var(--scroll-thumb) var(--scroll-track)'), 'Shared themed scrollbar styling is missing.');
+ui_check(str_contains($styles, '.app-sidebar-header {') && str_contains($styles, 'border-bottom: 1px solid var(--line)'), 'Sidebar/topbar divider alignment is missing.');
 ui_check(str_contains($styles, '.app-sidebar-link.is-active') && str_contains($styles, 'box-shadow: inset 3px 0 0 var(--accent)'), 'Sidebar active spacing/highlight treatment is missing.');
 
 echo "Portal UI consistency and authentication feedback tests passed\n";

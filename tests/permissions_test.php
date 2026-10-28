@@ -28,7 +28,9 @@ permission_check(portal_api_requirement('breakdowns','list','GET')===['breakdown
 permission_check(portal_api_requirement('breakdowns','by-type','GET')===['downtime','view'],'Downtime reason lookup permission missing');
 permission_check(portal_api_requirement('breakdowns','save','POST')===['breakdown-registration','create'],'Breakdown create permission missing');
 permission_check(portal_api_requirement('breakdowns','save','POST',['id'=>5])===['breakdown-registration','update'],'Breakdown update permission missing');
-permission_check(portal_api_requirement('breakdowns','delete','POST')===['breakdown-registration','delete'],'Breakdown delete permission missing');
+$deleteRouteMissing=false;try{portal_api_requirement('breakdowns','delete','POST');}catch(DomainException $e){$deleteRouteMissing=$e->getCode()===404;}
+permission_check($deleteRouteMissing,'Breakdown delete route must be unavailable');
+permission_check(portal_api_requirement('appearance','save','POST')===null,'User appearance must be scoped to the signed-in user without profile edit permission');
 foreach(['records'=>'record','users'=>'user','roles'=>'role'] as $resource=>$prefix){
     permission_check(portal_api_requirement($resource,$prefix.($resource==='roles'?'-save':'-create'),'POST')===[$resource,'create'],'Create permission missing');
 }
@@ -63,6 +65,10 @@ permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['
 permission_check(!portal_can(portal_user_access($pdo,['id'=>3,'role'=>'user'])['permissions'],'chemical-cost-report','view'),'Standard user must not receive chemical cost report access implicitly');
 $id = portal_save_role($pdo, $actor, null, 'Report viewer', ['oee-report' => ['view' => true]]);
 portal_assign_role($pdo, $actor, 2, $id);
+$insert->execute([$id,'retired-page','view']);
+$listedRole=array_values(array_filter(portal_list_roles($pdo),static fn(array $role):bool=>(int)$role['id']===$id))[0]??null;
+permission_check($listedRole!==null && !isset($listedRole['permissions']['retired-page']) && portal_grants_within($listedRole['permissions'],portal_permission_matrix(true)),'Stale permission rows must not hide valid assignable roles');
+$pdo->prepare("DELETE FROM portal_role_permissions WHERE role_id=? AND page_code='retired-page'")->execute([$id]);
 $access = portal_user_access($pdo, ['id' => 2, 'role' => 'user']);
 permission_check(portal_can($access['permissions'], 'oee-report', 'view') && !portal_can($access['permissions'], 'records', 'view'), 'Assignment grants wrong page');
 permission_check((int) $pdo->query('SELECT auth_version FROM portal_users WHERE id=2')->fetchColumn() === 2, 'Assignment must invalidate sessions');

@@ -11,7 +11,7 @@
     downtime: "Downtime Review",
     "oee-masters": "OEE Master Data",
     "chemical-registration": "Chemical Registration",
-    "breakdown-registration": "Breakdown Registration",
+    "breakdown-registration": "Downtime Registration",
     "chemical-consumption": "Chemical Consumption",
     "chemical-consumption-report": "Chemical Consumption Report",
     "chemical-cost-report": "Chemical Cost Report",
