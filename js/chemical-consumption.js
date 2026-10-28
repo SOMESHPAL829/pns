@@ -47,7 +47,22 @@
   }
 
   function updateUom() {
-    byId("chemical-consumption-uom").textContent = selectedItem()?.uom || "UOM";
+    const uomSelect = byId("chemical-consumption-uom");
+    const item = selectedItem();
+    const unit = item?.uom || "";
+    const currentValue = uomSelect.value || unit;
+    const options = [...new Set(state.items.map(item => item.uom).filter(Boolean))];
+    if (unit && !options.includes(unit)) options.push(unit);
+    uomSelect.replaceChildren(new Option("UOM", ""));
+    options.sort((left, right) => left.localeCompare(right));
+    options.forEach(value => uomSelect.add(new Option(value, value)));
+    if (unit) {
+      uomSelect.value = unit;
+    } else if (currentValue && options.includes(currentValue)) {
+      uomSelect.value = currentValue;
+    } else {
+      uomSelect.value = "";
+    }
   }
 
   function applyControls() {
@@ -71,6 +86,14 @@
     byId("chemical-consumption-operator").value = state.defaultOperator;
     byId("chemical-consumption-save").textContent = "Save Entry";
     byId("chemical-consumption-cancel").hidden = true;
+    const uomSelect = byId("chemical-consumption-uom");
+    uomSelect.replaceChildren(new Option("UOM", ""));
+    if (state.items.length) {
+      const defaultItem = state.items.find(item => item.status === "active");
+      if (defaultItem) {
+        byId("chemical-consumption-item").value = String(defaultItem.id);
+      }
+    }
     updateUom();
     applyControls();
   }

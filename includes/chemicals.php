@@ -48,6 +48,7 @@ function chemical_save_item(PDO $pdo, array $data, int $actorId): array
     $description = chemical_text($data['description'] ?? null, 'Description', 500);
     $status = strtolower(chemical_text($data['status'] ?? null, 'Status', 16));
     $uom = strtoupper(chemical_text($data['uom'] ?? null, 'UOM', 40));
+    if ($uom === 'L') $uom = 'LTR';
     if (!preg_match('/^[A-Z0-9][A-Z0-9._\/-]*$/', $code)) throw new InvalidArgumentException('Item code may contain letters, numbers, dots, underscores, slashes and hyphens.');
     if (!in_array($status, ['active', 'inactive'], true)) throw new InvalidArgumentException('Status must be Active or Inactive.');
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/%-]*$/', $uom)) throw new InvalidArgumentException('Enter a valid UOM.');

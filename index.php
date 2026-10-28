@@ -23,6 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo = db();
             $pdo->beginTransaction();
+            $pdo->prepare('DELETE FROM portal_login_attempts WHERE locked_until IS NOT NULL AND locked_until <= NOW()')->execute();
+            $pdo->prepare('UPDATE portal_login_attempts SET attempts = 0, window_started_at = NOW(), locked_until = NULL WHERE window_started_at < NOW() - INTERVAL 15 MINUTE')->execute();
             $insert = $pdo->prepare(
                 'INSERT IGNORE INTO portal_login_attempts (attempt_key, attempts, window_started_at) VALUES (?, 0, NOW())'
             );
@@ -62,7 +64,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
-            if (!$isLocked) {
+            if ($isLocked) {
+                $pdo->commit();
+                $error = 'This account was temporarily locked after multiple failed sign-in attempts. Please try again shortly.';
+            } else {
                 $inWindow = empty($attempt['locked_until'])
                   && strtotime($attempt['window_started_at']) >= time() - 900;
                 $attempts = $inWindow ? (int) $attempt['attempts'] + 1 : 1;
@@ -72,9 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'UPDATE portal_login_attempts SET attempts = ?, window_started_at = ?, locked_until = ? WHERE attempt_key = ?'
                 );
                 $update->execute([$attempts, $windowStarted, $lockedUntil, $attemptKey]);
+                $pdo->commit();
+                $error = 'The login details were not accepted. Check them or try again later.';
             }
-            $pdo->commit();
-            $error = 'The login details were not accepted. Check them or try again later.';
         } catch (Throwable $exception) {
             if (isset($pdo) && $pdo->inTransaction()) {
                 $pdo->rollBack();

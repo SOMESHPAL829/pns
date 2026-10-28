@@ -18,7 +18,7 @@
       node.hidden = !can(node.dataset.permissionPage, node.dataset.permissionAction || "view");
     });
     const profileEditable = can("profile", "update");
-    document.querySelectorAll("#profile-form input:not([readonly]), #password-form input, #password-form button, [form='profile-form']").forEach(function (node) { node.disabled = !profileEditable; });
+    document.querySelectorAll("#profile-form input:not([readonly]), #profile-form button, #password-form input, #password-form button, [form='profile-form']").forEach(function (node) { node.disabled = !profileEditable; });
     document.querySelectorAll("#cycle-form").forEach(function (form) {
       const editing = !!form.querySelector("input[type=hidden]")?.value;
       const allowed = can("oee-masters", editing ? "update" : "create");

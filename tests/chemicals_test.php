@@ -15,6 +15,8 @@ $pdo->exec('CREATE TABLE chemical_item_rates (id INTEGER PRIMARY KEY AUTOINCREME
 $item = chemical_save_item($pdo, ['item_code' => 'chem-001', 'description' => 'Sulphuric Acid', 'status' => 'active', 'uom' => 'kg'], 7);
 chemical_check($item['item_code'] === 'CHEM-001', 'Item code was not normalized.');
 chemical_check((int) $pdo->query('SELECT created_by FROM chemical_items')->fetchColumn() === 7, 'Item actor was not stored.');
+chemical_save_item($pdo, ['item_code' => 'chem-002', 'description' => 'Liquid Cleaner', 'status' => 'active', 'uom' => 'L'], 7);
+chemical_check((string) $pdo->query("SELECT uom FROM chemical_items WHERE item_code='CHEM-002'")->fetchColumn() === 'LTR', 'Legacy L UOM was not normalized to LTR.');
 
 $rate = chemical_save_rate($pdo, ['chemical_item_id' => $item['id'], 'rate_inr' => '125.5000', 'effective_from' => '2026-01-01', 'effective_to' => '2026-03-31'], 7);
 chemical_check($rate['currency'] === 'INR', 'Rate currency is not INR.');
@@ -45,7 +47,7 @@ try {
 chemical_check($duplicateRejected, 'Duplicate item code was accepted.');
 
 $list = chemical_list($pdo);
-chemical_check($list['available'] && count($list['items']) === 1 && count($list['rates']) === 2, 'Chemical list did not return saved items and rates.');
+chemical_check($list['available'] && count($list['items']) === 2 && count($list['rates']) === 2, 'Chemical list did not return saved items and rates.');
 chemical_check($list['currency'] === 'INR', 'Chemical list omitted INR currency.');
 
 echo "Chemical registration and effective-rate tests passed\n";

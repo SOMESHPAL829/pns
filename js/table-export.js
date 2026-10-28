@@ -99,10 +99,38 @@
   }
 
   function titleFor(table, index) {
+    if (table.dataset.exportTitle) return table.dataset.exportTitle;
     const card = table.closest(".data-card, .dash-card, .form-card");
     const heading = card?.querySelector("h2,h3")?.textContent.trim();
     const page = table.closest("[data-view]")?.querySelector(".page-heading h1")?.textContent.trim();
     return heading || page || "Portal Data " + (index + 1);
+  }
+
+  function headingHost(table, title) {
+    const scroll = table.closest(".data-scroll");
+    const card = table.closest(".data-card, .dash-card, .form-card");
+    const tables = card ? Array.from(card.querySelectorAll(".data-table")) : [];
+    let heading = null;
+    if (card && tables.length === 1) {
+      heading = Array.from(card.children).find(child => child.classList.contains("dash-card-head")) || null;
+    }
+    if (!heading) {
+      heading = document.createElement("div");
+      heading.className = "dash-card-head table-section-heading";
+      const label = document.createElement("h3");
+      label.textContent = title;
+      heading.appendChild(label);
+      scroll.before(heading);
+    }
+
+    let actions = Array.from(heading.children).find(child => child.classList.contains("table-heading-actions"));
+    if (!actions) {
+      actions = document.createElement("div");
+      actions.className = "table-heading-actions";
+      Array.from(heading.children).filter(child => !/^H[1-6]$/.test(child.tagName) && child !== actions).forEach(child => actions.appendChild(child));
+      heading.appendChild(actions);
+    }
+    return actions;
   }
 
   function exportTable(table, title) {
@@ -119,10 +147,9 @@
 
   document.querySelectorAll(".data-table").forEach(function (table, index) {
     const scroll = table.closest(".data-scroll");
-    if (!scroll || scroll.previousElementSibling?.classList.contains("table-export-toolbar")) return;
+    if (!scroll || table.dataset.exportEnhanced === "true") return;
+    table.dataset.exportEnhanced = "true";
     const title = titleFor(table, index);
-    const toolbar = document.createElement("div");
-    toolbar.className = "table-export-toolbar";
     const button = document.createElement("button");
     button.type = "button";
     button.className = "btn ghost sm table-export-button";
@@ -132,8 +159,7 @@
       try { exportTable(table, title); window.AppToast?.show(title + " exported to Excel", "ok"); }
       catch (error) { window.AppToast?.show(error.message || "Excel export failed", "crit"); }
     });
-    toolbar.appendChild(button);
-    scroll.before(toolbar);
+    headingHost(table, title).appendChild(button);
   });
   window.ThemeIcons?.mount(document);
 })();

@@ -27,5 +27,7 @@ ui_check(str_contains($styles, '.table-action') && str_contains($styles, '.user-
 ui_check(str_contains($styles, '*::-webkit-scrollbar-thumb') && str_contains($styles, 'scrollbar-color: var(--scroll-thumb) var(--scroll-track)'), 'Shared themed scrollbar styling is missing.');
 ui_check(str_contains($styles, '.app-sidebar-header {') && str_contains($styles, 'border-bottom: 1px solid var(--line)'), 'Sidebar/topbar divider alignment is missing.');
 ui_check(str_contains($styles, '.app-sidebar-link.is-active') && str_contains($styles, 'box-shadow: inset 3px 0 0 var(--accent)'), 'Sidebar active spacing/highlight treatment is missing.');
+ui_check(str_contains($styles, '.oee-log-grid { display: grid; grid-template-columns: minmax(0, 1fr);'), 'SCADA cards are not stacked vertically.');
+ui_check(str_contains($shell, 'class="profile-settings-grid"') && !str_contains($shell, 'data-modal-open="profile-form"'), 'Profile forms are not visible inline.');
 
 echo "Portal UI consistency and authentication feedback tests passed\n";
