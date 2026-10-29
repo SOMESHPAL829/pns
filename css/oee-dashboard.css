@@ -10,9 +10,15 @@
 .pns-dashboard .oee-status-strip { margin: 1.25rem 0; padding: 0.8rem 0.9rem; border-radius: 0.6rem; }
 .pns-dashboard .oee-status-meta { display: block; }
 .pns-dashboard .oee-kpis { gap: 0.9rem; }
-.pns-dashboard .oee-kpi { min-width: 0; padding: 1.2rem; border-radius: 0.75rem; }
+.pns-dashboard .oee-kpi {
+  min-width: 0;
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.05);
+}
+.pns-dashboard .oee-kpi-header { margin-bottom: 0.7rem; }
 .pns-dashboard .oee-kpi-label { margin: 0; font-size: 0.75rem; }
-.pns-dashboard .oee-kpi-value { margin: 0.6rem 0 0.35rem; font-size: 2.05rem; }
+.pns-dashboard .oee-kpi-value { margin: 0.1rem 0 0.35rem; font-size: 2.05rem; }
 .pns-dashboard .oee-kpi-note { line-height: 1.5; }
 .pns-kpi-detail { margin-top: 0.8rem; color: var(--accent-deep); font-size: 0.75rem; line-height: 1.5; }
 .pns-section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 1.7rem 0 0.75rem; }

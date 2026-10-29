@@ -109,8 +109,8 @@ $oeeLines = oee_known_lines(db());
           <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and line.</p></div></div>
           <section class="data-card">
             <form id="range-form" class="report-filters">
-              <label>From Date<input id="range-from-date" type="date" required></label>
-              <label>To Date<input id="range-to-date" type="date" required></label>
+              <label class="date-range-control">From Date<input id="range-from-date" type="date" required></label>
+              <label class="date-range-control">To Date<input id="range-to-date" type="date" required></label>
               <label>Machine<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
@@ -121,10 +121,26 @@ $oeeLines = oee_known_lines(db());
           <div id="range-window" class="oee-window-summary" role="status" aria-live="polite"></div>
           <div id="range-alert" class="oee-alert" role="status" hidden></div>
           <div class="oee-kpis">
-            <article class="oee-kpi"><div class="oee-kpi-label">OEE</div><div class="oee-kpi-value" id="range-oee">—</div><div class="oee-kpi-note">Availability × Performance × Quality</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Availability</div><div class="oee-kpi-value" id="range-availability">—</div><div class="oee-kpi-note">Total run / total planned time</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Performance</div><div class="oee-kpi-value" id="range-performance">—</div><div class="oee-kpi-note">Total ideal output time / total run time</div></article>
-            <article class="oee-kpi"><div class="oee-kpi-label">Quality</div><div class="oee-kpi-value" id="range-quality">—</div><div class="oee-kpi-note">Total good FB / total productive FB</div></article>
+            <article class="oee-kpi">
+              <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="presentation-chart-bar"></span><div class="oee-kpi-label">OEE</div></div>
+              <div class="oee-kpi-value" id="range-oee">?</div>
+              <div class="oee-kpi-note">Availability ? Performance ? Quality</div>
+            </article>
+            <article class="oee-kpi">
+              <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="clock"></span><div class="oee-kpi-label">Availability</div></div>
+              <div class="oee-kpi-value" id="range-availability">?</div>
+              <div class="oee-kpi-note">Total run / total planned time</div>
+            </article>
+            <article class="oee-kpi">
+              <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="presentation-chart-bar"></span><div class="oee-kpi-label">Performance</div></div>
+              <div class="oee-kpi-value" id="range-performance">?</div>
+              <div class="oee-kpi-note">Total ideal output time / total run time</div>
+            </article>
+            <article class="oee-kpi">
+              <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="document-chart-bar"></span><div class="oee-kpi-label">Quality</div></div>
+              <div class="oee-kpi-value" id="range-quality">?</div>
+              <div class="oee-kpi-note">Total good FB / total productive FB</div>
+            </article>
           </div>
           <div class="oee-grid oee-grid-main">
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Production Summary</h2></div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="range-total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="range-productive-fb">—</strong></div><div><span class="oee-stat-label">Empty Racks</span><strong id="range-empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="range-pcs">—</strong></div><div><span class="oee-stat-label">Surface Area</span><strong id="range-area">—</strong></div><div><span class="oee-stat-label">Days Selected</span><strong id="range-days">—</strong></div></div></section>
@@ -135,7 +151,7 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="oee-report">
-          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div><div class="page-heading-actions"><label class="date-control">Report Date <input id="report-date" type="date"></label><label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label><button class="btn" id="report-load" type="button">Load Report</button><button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button></div></div>
+          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div></div>
           <div id="report-window" class="oee-window-summary" role="status"></div>
           <div id="oee-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card oee-report-card">
@@ -159,24 +175,30 @@ $oeeLines = oee_known_lines(db());
                   <option value="empty">Empty</option>
                 </select>
               </label>
+              <div class="report-primary-controls" aria-label="Report calculation controls">
+                <label class="date-control">Report Date <input id="report-date" type="date"></label>
+                <label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
+                <button class="btn" id="report-load" type="button">Load Report</button>
+                <button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button>
+              </div>
             </div>
 
             <div class="oee-kpis report-kpis">
               <article class="oee-kpi">
-                <div class="oee-kpi-label">OEE</div>
-                <div class="oee-kpi-value" id="report-oee-value">—</div>
+                <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="presentation-chart-bar"></span><div class="oee-kpi-label">OEE</div></div>
+                <div class="oee-kpi-value" id="report-oee-value">?</div>
               </article>
               <article class="oee-kpi">
-                <div class="oee-kpi-label">Availability</div>
-                <div class="oee-kpi-value" id="report-availability-value">—</div>
+                <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="clock"></span><div class="oee-kpi-label">Availability</div></div>
+                <div class="oee-kpi-value" id="report-availability-value">?</div>
               </article>
               <article class="oee-kpi">
-                <div class="oee-kpi-label">Performance</div>
-                <div class="oee-kpi-value" id="report-performance-value">—</div>
+                <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="presentation-chart-bar"></span><div class="oee-kpi-label">Performance</div></div>
+                <div class="oee-kpi-value" id="report-performance-value">?</div>
               </article>
               <article class="oee-kpi">
-                <div class="oee-kpi-label">Quality</div>
-                <div class="oee-kpi-value" id="report-quality-value">—</div>
+                <div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="document-chart-bar"></span><div class="oee-kpi-label">Quality</div></div>
+                <div class="oee-kpi-value" id="report-quality-value">?</div>
               </article>
             </div>
 
@@ -210,9 +232,9 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="downtime">
-          <div class="page-heading"><div><div class="dash-eyebrow">Loss Accounting</div><h1>Downtime Review</h1><p class="page-lead">Tag planned and unplanned stops so OEE can calculate the loss correctly.</p></div><div class="page-heading-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Loss Accounting</div><h1>Downtime Review</h1><p class="page-lead">Tag planned and unplanned stops so OEE can calculate the loss correctly.</p></div></div>
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card downtime-card"><div class="report-filters"><label>Machine<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label></div>
+          <section class="data-card downtime-card"><div class="report-filters downtime-filter-bar"><label>Machine<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label><div class="downtime-filter-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
             <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
             <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
@@ -372,8 +394,8 @@ $oeeLines = oee_known_lines(db());
           <section class="data-card chemical-report-filter-card" aria-labelledby="chemical-report-filter-heading">
             <div class="dash-card-head"><h2 id="chemical-report-filter-heading">Report Filters</h2></div>
             <form id="chemical-report-filter-form" class="master-form">
-              <label>From Date<input id="chemical-report-from" type="date" required></label>
-              <label>To Date<input id="chemical-report-to" type="date" required></label>
+              <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
+              <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
               <label>Machine<select id="chemical-report-machine"><option value="ALL">All Machines</option></select></label>
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
             </form>
@@ -405,8 +427,8 @@ $oeeLines = oee_known_lines(db());
           <section class="data-card chemical-cost-report-filter-card" aria-labelledby="chemical-cost-report-filter-heading">
             <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2><span class="chemical-cost-mini">Source: live consumption + OEE surface area</span></div>
             <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
-              <label>From Date<input id="chemical-cost-report-from" type="date" required></label>
-              <label>To Date<input id="chemical-cost-report-to" type="date" required></label>
+              <label class="date-range-control">From Date<input id="chemical-cost-report-from" type="date" required></label>
+              <label class="date-range-control">To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Machine<select id="chemical-cost-report-machine"><option value="ALL">All Machines</option></select></label>
               <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
               <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>

@@ -5,7 +5,7 @@
     { id: "user-create-form", title: "Add User", submit: "Create User" },
     { id: "user-role-form", title: "Assign Access Role" },
     { id: "role-form", title: "Role Permission Editor", label: "New Role", host: '[data-view="roles"] .data-card .dash-card-head', page: "roles", action: "create", mode: "create" },
-    { id: "downtime-form", title: "Downtime Entry", label: "Add Downtime", host: '[data-view="downtime"] .page-heading-actions', page: "downtime", action: "create", mode: "create" },
+    { id: "downtime-form", title: "Downtime Entry", label: "Add Downtime", host: '[data-view="downtime"] .downtime-filter-actions', page: "downtime", action: "create", mode: "create" },
     { id: "chemical-item-form", title: "Chemical Item Registration", label: "Add Item", host: '[aria-labelledby="chemical-item-heading"] .dash-card-head', page: "chemical-registration", action: "create", mode: "create" },
     { id: "chemical-rate-form", title: "Chemical Rate Registration", label: "Add Rate", host: '[aria-labelledby="chemical-rate-heading"] .dash-card-head', page: "chemical-registration", action: "create", mode: "create" },
     { id: "breakdown-form", title: "Downtime Reason Registration", label: "Add Reason", host: '[data-view="breakdown-registration"] .page-heading-actions', page: "breakdown-registration", action: "create", mode: "create" },

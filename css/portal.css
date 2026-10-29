@@ -1298,11 +1298,50 @@ table.data tbody tr:hover {
 .status-dot.ok { background: var(--ok); }
 .status-dot.warn { background: var(--warn); }
 .oee-alert { margin: 1rem 0; padding: 0.75rem 0.9rem; border: 1px solid var(--warn); border-radius: var(--radius); background: var(--warn-sft); color: #6f4b12; }
-.oee-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
-.oee-kpi { padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--card); }
+.oee-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9rem; padding-top: 0.5rem; }
+.oee-kpi {
+  position: relative;
+  padding: 1rem 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96));
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.05);
+  overflow: hidden;
+}
+.oee-kpi::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-deep) 0%, #6fa9de 100%);
+  border-radius: 1rem 1rem 0 0;
+}
+.oee-kpi-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-top: 0.15rem;
+  margin-bottom: 0.75rem;
+}
+.oee-kpi-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.7rem;
+  background: var(--accent-sft);
+  color: var(--accent-deep);
+  flex: 0 0 auto;
+}
+.oee-kpi-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+.oee-kpi-header h2, .oee-kpi-header .oee-kpi-label { margin: 0; }
 .oee-kpi-label, .oee-stat-label { color: var(--mut); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.03em; }
-.oee-kpi-value { margin-top: 0.35rem; color: var(--accent-deep); font-size: 1.85rem; font-weight: 780; letter-spacing: -0.04em; }
-.oee-kpi-note { margin-top: 0.25rem; color: var(--mut); font-size: var(--text-xs); }
+.oee-kpi-value { margin-top: 0.15rem; color: var(--accent-deep); font-size: 1.85rem; font-weight: 780; letter-spacing: -0.04em; }
+.oee-kpi-note { margin-top: 0.35rem; color: var(--mut); font-size: var(--text-xs); line-height: 1.5; }
 .oee-grid { display: grid; gap: 0.75rem; margin-top: 0.75rem; }
 .oee-grid-main { grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr); }
 .oee-grid-bottom { grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr); }
@@ -2634,6 +2673,91 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   box-shadow: 0 3px 9px rgb(31 58 95 / 14%);
 }
 .password-toggle svg { width: 1.15rem; height: 1.15rem; }
+
+/* Page context remains secondary to the fixed topbar title but is clearly readable. */
+.page-heading.topbar-synced .dash-eyebrow,
+.dash-eyebrow {
+  font-size: 0.8rem;
+  line-height: 1.25;
+  letter-spacing: 0.055em;
+  font-weight: 800;
+}
+
+/* Align page-specific actions with the filters they operate on. */
+.downtime-filter-bar { min-height: 5.8rem; align-items: flex-end; }
+.downtime-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+.downtime-filter-actions .portal-modal-launcher { margin-left: 0; }
+.downtime-filter-actions .btn { min-width: 7.5rem; }
+
+.report-primary-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  margin-left: auto;
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
+}
+.report-primary-controls .date-control { min-width: 9.5rem; }
+.report-primary-controls .date-control select { min-width: 10rem; }
+.report-primary-controls .btn { min-height: 2.5rem; white-space: nowrap; }
+
+/* Date ranges use one consistent, readable control treatment on every report. */
+.date-range-control {
+  flex: 0 1 11rem;
+  min-width: 10.5rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--accent-sft) 42%, var(--card));
+}
+.date-range-control input[type="date"] {
+  width: 100%;
+  min-width: 0;
+  background: var(--card);
+}
+.date-range-control:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.chemical-report-meta,
+.chemical-cost-report-meta-inline {
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border: 0;
+  background: color-mix(in srgb, var(--accent-sft) 42%, var(--card));
+  overflow: visible;
+}
+.chemical-report-meta div,
+.chemical-cost-report-meta-inline div {
+  border: 1px solid var(--line);
+  border-radius: 0.48rem;
+  box-shadow: 0 2px 6px rgb(31 58 95 / 6%);
+}
+
+@media (max-width: 1280px) {
+  .report-primary-controls {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-left: 0;
+    padding: 0.85rem 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+@media (max-width: 760px) {
+  .downtime-filter-actions,
+  .report-primary-controls { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  .downtime-filter-actions .btn,
+  .report-primary-controls .btn,
+  .report-primary-controls .date-control { flex: 1 1 100%; }
+  .date-range-control { flex: 1 1 100%; }
+}
 
 /* Production tables are separate report sections, not one attached block. */
 [data-view="oee-report"] .oee-report-card .table-section-heading {
