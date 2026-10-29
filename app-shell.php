@@ -382,13 +382,13 @@ $oeeLines = oee_known_lines(db());
         <section class="view" data-view="chemical-consumption-report">
           <div class="page-heading chemical-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption Report</h1><p class="page-lead">Review and print chemical consumption entries for a selected date range and machine.</p></div></div>
           <div id="chemical-report-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card chemical-report-filter-card" aria-labelledby="chemical-report-filter-heading">
-            <div class="dash-card-head"><h2 id="chemical-report-filter-heading">Report Filters</h2><div class="table-heading-actions"><button class="btn ghost" id="chemical-report-print" type="button">Print Report</button></div></div>
-            <form id="chemical-report-filter-form" class="master-form">
+          <section class="data-card chemical-report-filter-card" aria-label="Chemical Consumption Report Controls">
+            <form id="chemical-report-filter-form" class="master-form chemical-report-toolbar">
               <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
               <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
               <label>Machine<select id="chemical-report-machine"><option value="ALL">All Machines</option></select></label>
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
+              <button class="btn ghost" id="chemical-report-print" type="button">Print Report</button>
             </form>
           </section>
           <section class="data-card chemical-consumption-report-card" id="chemical-consumption-report-print" aria-label="Chemical Consumption Results">

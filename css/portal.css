@@ -2808,11 +2808,42 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 }
 .chemical-cost-toolbar-actions .btn { min-height: 2.5rem; white-space: nowrap; }
 
+.chemical-report-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  width: 100%;
+}
+.chemical-report-toolbar > label {
+  flex: 0 0 10.5rem;
+  width: 10.5rem;
+}
+.chemical-report-toolbar > .date-range-control {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.chemical-report-toolbar input,
+.chemical-report-toolbar select {
+  width: 100%;
+  min-height: 2.5rem;
+}
+.chemical-report-toolbar > .btn {
+  min-height: 2.5rem;
+  white-space: nowrap;
+}
+.chemical-report-toolbar #chemical-report-print { margin-left: auto; }
+
 @media (max-width: 1180px) {
   [data-view="oee-range"] .range-toolbar,
-  .chemical-cost-filters { flex-wrap: wrap; }
+  .chemical-cost-filters,
+  .chemical-report-toolbar { flex-wrap: wrap; }
   [data-view="oee-range"] #range-export,
-  .chemical-cost-toolbar-actions { margin-left: 0; }
+  .chemical-cost-toolbar-actions,
+  .chemical-report-toolbar #chemical-report-print { margin-left: 0; }
   .chemical-cost-toolbar-actions { flex: 1 1 100%; justify-content: flex-end; }
 }
 
@@ -2827,7 +2858,8 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   .table-heading-filter-form select { width: 100%; min-width: 0; }
   .table-heading-filter-form { flex-wrap: wrap; }
   [data-view="oee-range"] .range-toolbar > label,
-  .chemical-cost-filters > label { flex: 1 1 100%; width: 100%; }
+  .chemical-cost-filters > label,
+  .chemical-report-toolbar > label { flex: 1 1 100%; width: 100%; }
 }
 
 .chemical-report-meta,
