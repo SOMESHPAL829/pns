@@ -4,7 +4,7 @@
   const navLinks = document.querySelectorAll("[data-nav]");
   const pageTitle = document.getElementById("page-title");
   const titles = {
-    dashboard: "Dashboard",
+    dashboard: "PNS OEE",
     "oee-range": "Date-Range OEE",
     "oee-report": "Production Report",
     "scada-logs": "SCADA Logs",

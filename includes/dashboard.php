@@ -1,18 +1,21 @@
 <section class="view pns-dashboard" data-view="dashboard" aria-label="OEE Dashboard">
-  <div class="page-heading oee-page-heading">
-    <div><div class="dash-eyebrow">Production Intelligence</div><h1>PNS OEE</h1><p class="page-lead">Production, Batches, Downtime and Line performance in one view.</p></div>
-    <div class="page-heading-actions">
+  <div class="dashboard-overview-bar">
+    <div class="dashboard-live-messages" aria-live="polite">
+      <div id="dashboard-loading" class="pns-loading" role="status" hidden>Updating Selected Calculation…</div>
+      <div id="oee-dashboard-alert" class="oee-alert" role="status" hidden></div>
+      <div id="dashboard-window" class="oee-window-summary" role="status"></div>
+      <div class="oee-status-strip"><span class="status-dot" id="oee-status-dot"></span><span id="oee-status-text">Checking SCADA Sync…</span><span class="oee-status-meta" id="oee-last-sync">—</span></div>
+    </div>
+    <div class="dashboard-control-bar" aria-label="Dashboard calculation controls">
+    <div class="dashboard-control-fields">
       <label class="date-control">Machine<select id="dashboard-machine"><?= oee_machine_options_html($oeeLines ?? [], true) ?></select></label>
       <label class="date-control">Report Date<input id="dashboard-date" type="date"></label>
       <label class="date-control">Calculation Duration<select id="dashboard-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
       <button class="btn ghost" id="dashboard-duration-save" type="button" title="Save this duration for the selected report date">Save Duration</button>
       <button class="btn" id="dashboard-refresh" type="button">Refresh</button>
     </div>
+    </div>
   </div>
-  <div id="dashboard-window" class="oee-window-summary" role="status"></div>
-  <div id="dashboard-loading" class="pns-loading" role="status" hidden>Updating Selected Calculation…</div>
-  <div id="oee-dashboard-alert" class="oee-alert" role="status" hidden></div>
-  <div class="oee-status-strip"><span class="status-dot" id="oee-status-dot"></span><span id="oee-status-text">Checking SCADA Sync…</span><span class="oee-status-meta" id="oee-last-sync">—</span></div>
   <div class="oee-kpis">
     <article class="oee-kpi"><div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="presentation-chart-bar"></span><h2 class="oee-kpi-label">OEE</h2></div><div class="oee-kpi-value" id="oee-value">—</div><div class="oee-kpi-note">Availability × Performance × Quality</div><div class="pns-kpi-detail" id="dashboard-oee-detail">Selected Calculation</div></article>
     <article class="oee-kpi"><div class="oee-kpi-header"><span class="oee-kpi-icon" data-icon="clock"></span><h2 class="oee-kpi-label">Availability</h2></div><div class="oee-kpi-value" id="availability-value">—</div><div class="oee-kpi-note">Run Time / Planned Time</div><div class="pns-kpi-detail" id="dashboard-availability-detail">—</div></article>
