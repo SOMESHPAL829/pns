@@ -2488,7 +2488,7 @@ html[data-theme="dark"] .table-page-button.is-current { border-color: var(--acce
 .data-table th[aria-sort="descending"] .table-sort-indicator::before { content: "↓"; }
 html[data-theme="dark"] .data-table thead tr.col-filter-row th { background: var(--accent-sft); }
 
-/* Page identity: only the main title is repeated in the fixed topbar. */
+/* Page identity lives in the fixed topbar; page-level space is reserved for actions only. */
 .app-topbar-title {
   color: var(--accent-deep);
   font-size: 1.05rem;
@@ -2499,13 +2499,15 @@ html[data-theme="dark"] .data-table thead tr.col-filter-row th { background: var
 .page-heading.topbar-synced.page-heading-copy-only {
   display: flex;
   min-height: 0;
-  justify-content: space-between;
+  margin: 0 0 0.75rem;
+  justify-content: flex-end;
 }
-.page-heading.topbar-synced > :first-child { display: block; }
-.page-heading.topbar-synced h1 { display: none; }
-.page-heading.topbar-synced.page-heading-copy-only { justify-content: flex-start; }
-.page-heading.topbar-synced .dash-eyebrow { margin-bottom: 0.2rem; }
-.page-heading.topbar-synced .page-lead { margin-top: 0; }
+.page-heading.topbar-synced > :first-child { display: none; }
+.page-heading.topbar-synced.page-heading-copy-only { display: none; }
+.page-heading.topbar-synced .page-heading-actions,
+.page-heading.topbar-synced > :not(:first-child) {
+  margin: 0;
+}
 
 /* Categorical filters live inside their headings and do not also sort. */
 .data-table th.is-filter-heading { padding: 0; }

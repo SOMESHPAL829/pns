@@ -443,8 +443,8 @@
     setText(
       "oee-status-text",
       latest && latest.last_status === "ok"
-        ? "Unit 1 Sync is Healthy"
-        : "Waiting for Unit 1 Sync",
+        ? "SCADA Sync is Healthy"
+        : "Waiting for SCADA Sync",
     );
     setText(
       "oee-last-sync",
