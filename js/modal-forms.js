@@ -4,13 +4,13 @@
     { id: "record-edit-form", title: "Edit Record" },
     { id: "user-create-form", title: "Add User", submit: "Create User" },
     { id: "user-role-form", title: "Assign Access Role" },
-    { id: "role-form", title: "Role Permission Editor", label: "New Role", host: '[data-view="roles"] .data-card .dash-card-head', page: "roles", action: "create", mode: "create" },
+    { id: "role-form", title: "Role Permission Editor", label: "New Role", host: '[data-view="roles"] .data-card .table-heading-actions', page: "roles", action: "create", mode: "create" },
     { id: "downtime-form", title: "Downtime Entry", label: "Add Downtime", host: '[data-view="downtime"] .downtime-filter-actions', page: "downtime", action: "create", mode: "create" },
-    { id: "chemical-item-form", title: "Chemical Item Registration", label: "Add Item", host: '[aria-labelledby="chemical-item-heading"] .dash-card-head', page: "chemical-registration", action: "create", mode: "create" },
+    { id: "chemical-item-form", title: "Chemical Item Registration", label: "Add Item", host: '[aria-labelledby="chemical-item-heading"] .table-heading-actions', page: "chemical-registration", action: "create", mode: "create" },
     { id: "chemical-rate-form", title: "Chemical Rate Registration", label: "Add Rate", host: '[aria-labelledby="chemical-rate-heading"] .dash-card-head', page: "chemical-registration", action: "create", mode: "create" },
-    { id: "breakdown-form", title: "Downtime Reason Registration", label: "Add Reason", host: '[data-view="breakdown-registration"] .page-heading-actions', page: "breakdown-registration", action: "create", mode: "create" },
-    { id: "chemical-consumption-form", title: "Chemical Consumption Entry", label: "Add Entry", host: '[data-view="chemical-consumption"] .page-heading-actions', page: "chemical-consumption", action: "create", mode: "create", wide: true },
-    { id: "threshold-form", title: "Update Plant Gap Threshold", label: "Update Threshold", host: '.threshold-card .dash-card-head', page: "oee-masters", action: "update" },
+    { id: "breakdown-form", title: "Downtime Reason Registration", label: "Add Reason", host: '[data-view="breakdown-registration"] .table-heading-actions', page: "breakdown-registration", action: "create", mode: "create" },
+    { id: "chemical-consumption-form", title: "Chemical Consumption Entry", label: "Add Entry", host: '[data-view="chemical-consumption"] .table-heading-actions', page: "chemical-consumption", action: "create", mode: "create", wide: true },
+    { id: "threshold-form", title: "Update Plant Gap Threshold", label: "Update Threshold", host: '.threshold-card .table-heading-actions', page: "oee-masters", action: "update" },
     { id: "cycle-form", title: "Cycle-Time Registration", label: "Add Cycle Time", host: '.oee-master-grid .dash-card-head', page: "oee-masters", action: "create", mode: "create" }
   ];
 

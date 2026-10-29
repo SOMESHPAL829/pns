@@ -108,7 +108,7 @@ $oeeLines = oee_known_lines(db());
         <section class="view" data-view="oee-range">
           <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and line.</p></div></div>
           <section class="data-card">
-            <form id="range-form" class="report-filters">
+            <form id="range-form" class="report-filters range-toolbar">
               <label class="date-range-control">From Date<input id="range-from-date" type="date" required></label>
               <label class="date-range-control">To Date<input id="range-to-date" type="date" required></label>
               <label>Machine<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
@@ -240,22 +240,14 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="scada-logs">
-          <div class="page-heading"><div><div class="dash-eyebrow">Operations</div><h1>SCADA Logs</h1><p class="page-lead">Import batches and SCADA synchronization events received by the local OEE app.</p></div><div class="page-heading-actions"><span class="sync-cadence">Expected Sync: Every 10 Minutes</span><button class="btn" id="logs-refresh" type="button">Refresh Logs</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Operations</div><h1>SCADA Logs</h1><p class="page-lead">Import batches and SCADA synchronization events received by the local OEE app.</p></div></div>
           <div id="oee-logs-alert" class="oee-alert" role="status" hidden></div>
-          <div class="oee-log-grid"><section class="data-card"><div class="dash-card-head"><h2>Source Status</h2></div><div id="scada-sync-body" class="oee-sync-list"></div></section><section class="data-card"><div class="dash-card-head"><h2>Import Event Log</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Received</th><th>Source</th><th>Batch</th><th>Report Date</th><th>Rows</th><th>Status</th><th>Error</th></tr></thead><tbody id="scada-logs-body"></tbody></table></div></section></div>
+          <div class="oee-log-grid"><section class="data-card"><div class="dash-card-head"><h2>Source Status</h2><div class="table-heading-actions"><span class="sync-cadence">Expected Sync: Every 10 Minutes</span><button class="btn" id="logs-refresh" type="button">Refresh Logs</button></div></div><div id="scada-sync-body" class="oee-sync-list"></div></section><section class="data-card"><div class="dash-card-head"><h2>Import Event Log</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Received</th><th>Source</th><th>Batch</th><th>Report Date</th><th>Rows</th><th>Status</th><th>Error</th></tr></thead><tbody id="scada-logs-body"></tbody></table></div></section></div>
         </section>
 
         <section class="view" data-view="requests">
-          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Records</h1><p class="page-lead">Search, review, and manage your records.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-modal-open="record-create-form" data-modal-mode="create" data-permission-page="records" data-permission-action="create">+ New Record</button></div></div>
-          <div class="page-toolbar">
-            <form class="page-toolbar-left" id="record-filter-form">
-              <div class="page-search"><input id="records-search" type="search" placeholder="Search Number or Title"></div>
-              <select id="record-type-filter"><option value="">All Types</option><option>Ticket</option><option>Change</option><option>Asset</option><option>Document</option></select>
-              <select id="record-status-filter"><option value="">All Statuses</option><option>Open</option><option value="In review">In Review</option><option>Closed</option></select>
-              <button class="btn" type="submit">Filter</button>
-            </form>
-          </div>
-          <div class="data-card"><div class="dash-card-head"><h2>Record List</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>Number</th><th>Title</th><th>Owner</th><th>Type</th><th>Status</th><th>Created</th><th>Updated</th><th class="r">Actions</th></tr></thead><tbody id="records-body"></tbody></table></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Records</h1><p class="page-lead">Search, review, and manage your records.</p></div></div>
+          <div class="data-card"><div class="dash-card-head"><h2>Record List</h2><div class="table-heading-actions record-heading-actions"><form class="table-heading-filter-form" id="record-filter-form"><input id="records-search" type="search" placeholder="Search Number or Title" aria-label="Search Records"><select id="record-type-filter" aria-label="Filter Record Type"><option value="">All Types</option><option>Ticket</option><option>Change</option><option>Asset</option><option>Document</option></select><select id="record-status-filter" aria-label="Filter Record Status"><option value="">All Statuses</option><option>Open</option><option value="In review">In Review</option><option>Closed</option></select><button class="btn" type="submit">Filter</button></form><button class="btn" type="button" data-modal-open="record-create-form" data-modal-mode="create" data-permission-page="records" data-permission-action="create">+ New Record</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>Number</th><th>Title</th><th>Owner</th><th>Type</th><th>Status</th><th>Created</th><th>Updated</th><th class="r">Actions</th></tr></thead><tbody id="records-body"></tbody></table></div></div>
         </section>
 
         <section class="view" data-view="create">
@@ -281,9 +273,8 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="users">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div><div class="page-heading-actions"><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div>
-          <div class="page-toolbar"><form class="page-toolbar-left" id="user-search-form"><div class="page-search"><input id="users-search" type="search" placeholder="Search Users"></div><button class="btn ghost sm" type="submit">Search</button></form></div>
-          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div></div>
+          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2><div class="table-heading-actions"><form class="table-heading-search-form" id="user-search-form"><input id="users-search" type="search" placeholder="Search Users" aria-label="Search Users"></form><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
           <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div><button class="btn" type="submit">Save Role</button></form>
         </section>
 
@@ -297,9 +288,9 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="roles">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Roles & Permissions</h1><p class="page-lead">Choose which pages and actions each role can use. Assign roles on the Users page.</p></div><button class="btn ghost" id="roles-refresh" type="button">Refresh</button></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Roles & Permissions</h1><p class="page-lead">Choose which pages and actions each role can use. Assign roles on the Users page.</p></div></div>
           <div id="roles-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card"><div class="dash-card-head"><h2>Registered Roles</h2></div><div class="data-scroll"><table class="data-table"><thead><tr><th>Role</th><th>Type</th><th>Assigned Users</th><th>Actions</th></tr></thead><tbody id="roles-body"><tr><td colspan="4">Loading Roles…</td></tr></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Registered Roles</h2><div class="table-heading-actions"><button class="btn ghost" id="roles-refresh" type="button">Refresh</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>Role</th><th>Type</th><th>Assigned Users</th><th>Actions</th></tr></thead><tbody id="roles-body"><tr><td colspan="4">Loading Roles…</td></tr></tbody></table></div></section>
           <form id="role-form" class="data-card role-editor"><div class="dash-card-head"><h2>Role Permission Editor</h2><button id="role-new" type="button" class="btn ghost sm">New Role</button></div><input id="role-id" type="hidden"><div class="master-form"><label for="role-name">Role Name<input id="role-name" maxlength="80" required placeholder="Example: OEE Viewer"></label><button class="btn" id="role-save" type="submit">Create Role</button></div><p class="form-note role-help">View is required for other actions, including Export. Dashes mean the page has no such operation. Role administration is reserved for protected administrators. Existing record ownership restrictions still apply.</p><div class="data-scroll"><table class="data-table permission-table"><thead><tr><th>Page</th><th>View</th><th>Create</th><th>Update</th><th>Delete</th><th>Export</th></tr></thead><tbody id="role-permissions-body"></tbody></table></div></form>
         </section>
 
@@ -314,11 +305,11 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="chemical-registration">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Chemical Registration</h1><p class="page-lead">Register chemical items and maintain effective-dated rates in INR.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemicals-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Chemical Registration</h1><p class="page-lead">Register chemical items and maintain effective-dated rates in INR.</p></div></div>
           <div id="chemicals-alert" class="oee-alert" role="status" hidden></div>
           <div class="chemical-registration-grid">
             <section class="data-card" aria-labelledby="chemical-item-heading">
-              <div class="dash-card-head"><h2 id="chemical-item-heading">Item Registration</h2></div>
+              <div class="dash-card-head"><h2 id="chemical-item-heading">Item Registration</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Chemicals" aria-label="Search Chemical Items" data-table-search="#chemical-items-body"><button class="btn ghost" id="chemicals-refresh" type="button">Refresh</button></div></div>
               <form id="chemical-item-form" class="master-form">
                 <input id="chemical-item-id" type="hidden">
                 <label>Item Code<input id="chemical-item-code" maxlength="80" placeholder="CHEM-001" required></label>
@@ -332,7 +323,7 @@ $oeeLines = oee_known_lines(db());
             </section>
 
             <section class="data-card" aria-labelledby="chemical-rate-heading">
-              <div class="dash-card-head"><h2 id="chemical-rate-heading">INR Rate Registration</h2></div>
+              <div class="dash-card-head"><h2 id="chemical-rate-heading">INR Rate Registration</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Rates" aria-label="Search Chemical Rates" data-table-search="#chemical-rates-body"></div></div>
               <form id="chemical-rate-form" class="master-form">
                 <input id="chemical-rate-id" type="hidden">
                 <label>Chemical Item<select id="chemical-rate-item" required><option value="">Select an Item</option></select></label>
@@ -349,10 +340,10 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="breakdown-registration">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Downtime Registration</h1><p class="page-lead">Maintain planned and unplanned loss reasons used in downtime review.</p></div><div class="page-heading-actions"><button class="btn ghost" id="breakdowns-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Downtime Registration</h1><p class="page-lead">Maintain planned and unplanned loss reasons used in downtime review.</p></div></div>
           <div id="breakdowns-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card breakdown-registration-card" aria-labelledby="breakdown-registration-heading">
-            <div class="dash-card-head"><h2 id="breakdown-registration-heading">Register Downtime Reason</h2></div>
+            <div class="dash-card-head"><h2 id="breakdown-registration-heading">Register Downtime Reason</h2><div class="table-heading-actions"><button class="btn ghost" id="breakdowns-refresh" type="button">Refresh</button></div></div>
             <form id="breakdown-form" class="master-form">
               <input id="breakdown-id" type="hidden">
               <label for="breakdown-loss-type">Loss Type<select id="breakdown-loss-type" required><option value="planned">Planned</option><option value="unplanned">Unplanned</option></select></label>
@@ -366,10 +357,10 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="chemical-consumption">
-          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption</h1><p class="page-lead">Record chemical usage by date, shift, operator, machine, and process.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemical-consumption-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption</h1><p class="page-lead">Record chemical usage by date, shift, operator, machine, and process.</p></div></div>
           <div id="chemical-consumption-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-consumption-card" aria-labelledby="chemical-consumption-entry-heading">
-            <div class="dash-card-head"><h2 id="chemical-consumption-entry-heading">Consumption Entries</h2></div>
+            <div class="dash-card-head"><h2 id="chemical-consumption-entry-heading">Consumption Entries</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Entries" aria-label="Search Chemical Consumption Entries" data-table-search="#chemical-consumption-body"><button class="btn ghost" id="chemical-consumption-refresh" type="button">Refresh</button></div></div>
             <form id="chemical-consumption-form" class="chemical-consumption-form">
               <input id="chemical-consumption-id" type="hidden">
               <label>Date<input id="chemical-consumption-date" type="date" required></label>
@@ -389,10 +380,10 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="chemical-consumption-report">
-          <div class="page-heading chemical-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption Report</h1><p class="page-lead">Review and print chemical consumption entries for a selected date range and machine.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemical-report-print" type="button">Print Report</button></div></div>
+          <div class="page-heading chemical-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption Report</h1><p class="page-lead">Review and print chemical consumption entries for a selected date range and machine.</p></div></div>
           <div id="chemical-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-report-filter-card" aria-labelledby="chemical-report-filter-heading">
-            <div class="dash-card-head"><h2 id="chemical-report-filter-heading">Report Filters</h2></div>
+            <div class="dash-card-head"><h2 id="chemical-report-filter-heading">Report Filters</h2><div class="table-heading-actions"><button class="btn ghost" id="chemical-report-print" type="button">Print Report</button></div></div>
             <form id="chemical-report-filter-form" class="master-form">
               <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
               <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
@@ -406,6 +397,7 @@ $oeeLines = oee_known_lines(db());
               <div><dt>To Date</dt><dd id="chemical-report-to-display">—</dd></div>
               <div><dt>Machine</dt><dd id="chemical-report-machine-display">All Machines</dd></div>
             </dl>
+            <div class="dash-card-head"><h2>Consumption Results</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Results" aria-label="Search Chemical Consumption Results" data-table-search="#chemical-report-body"></div></div>
             <div class="data-scroll"><table class="data-table chemical-report-table" data-export-title="Consumption Results"><thead><tr><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="10">Choose report filters to load entries.</td></tr></tbody></table></div>
           </section>
         </section>
@@ -414,24 +406,20 @@ $oeeLines = oee_known_lines(db());
           <div class="page-heading chemical-cost-report-page-heading">
             <div>
               <div class="dash-eyebrow">Workspace / Cost Intelligence</div>
-              <h1>Chemical Cost Dashboard</h1>
+              <h1>Chemical Cost Analytics</h1>
               <p class="page-lead">Monitor chemical expenses, surface-area productivity and cost efficiency across periods.</p>
-            </div>
-            <div class="page-heading-actions">
-              <span class="chemical-cost-badge" id="chemical-cost-report-scope">● Chemical cost monitoring</span>
-              <button class="btn ghost" id="chemical-cost-report-export" type="button">Export CSV</button>
-              <button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button>
             </div>
           </div>
           <div id="chemical-cost-report-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card chemical-cost-report-filter-card" aria-labelledby="chemical-cost-report-filter-heading">
-            <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2><span class="chemical-cost-mini">Source: live consumption + OEE surface area</span></div>
+          <section class="data-card chemical-cost-report-filter-card" aria-label="Chemical Cost Controls">
             <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
               <label class="date-range-control">From Date<input id="chemical-cost-report-from" type="date" required></label>
               <label class="date-range-control">To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Machine<select id="chemical-cost-report-machine"><option value="ALL">All Machines</option></select></label>
               <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
               <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>
+              <span id="chemical-cost-report-scope" hidden></span>
+              <div class="chemical-cost-toolbar-actions"><button class="btn ghost" id="chemical-cost-report-export" type="button">Export CSV</button><button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button></div>
             </form>
           </section>
           <section class="dash-kpis chemical-cost-kpis" id="chemical-cost-report-kpis" aria-label="Cost summary"></section>
@@ -505,10 +493,10 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="oee-masters">
-          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>OEE Master Data</h1><p class="page-lead">Maintain plant gap thresholds and cycle times used by the OEE calculation.</p></div><div class="page-heading-actions"><button class="btn" id="masters-refresh" type="button">Refresh</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>OEE Master Data</h1><p class="page-lead">Maintain plant gap thresholds and cycle times used by the OEE calculation.</p></div></div>
           <div id="masters-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card threshold-card" aria-labelledby="threshold-heading">
-            <div class="dash-card-head"><h2 id="threshold-heading">Plant Gap Threshold</h2></div>
+            <div class="dash-card-head"><h2 id="threshold-heading">Plant Gap Threshold</h2><div class="table-heading-actions"><button class="btn" id="masters-refresh" type="button">Refresh</button></div></div>
             <p id="threshold-help" class="form-note threshold-help">A loading gap must be greater than this limit to propose downtime. Downtime = gap minus the arriving FB cycle time (minimum zero). Empty-rack detection is separate. Changes apply to historical reports on refresh; tagged events stay unchanged.</p>
             <form id="threshold-form" class="master-form" aria-describedby="threshold-help">
               <label for="threshold-line">Plant / Machine<select id="threshold-line" disabled><?= oee_machine_options_html($oeeLines) ?></select></label>

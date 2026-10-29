@@ -44,7 +44,7 @@
     }
 
     const headings = Array.from(headerRow.cells).map(cell => normalizedHeading(cell.textContent));
-    const state = { page: 1, size: DEFAULT_SIZE, sortIndex: null, sortDirection: "descending", filters: new Map() };
+    const state = { page: 1, size: DEFAULT_SIZE, sortIndex: null, sortDirection: "descending", filters: new Map(), search: "" };
     const pagination = document.createElement("div");
     pagination.className = "table-pagination";
     pagination.setAttribute("aria-label", "Table pagination");
@@ -200,7 +200,9 @@
 
     function applyFilters() {
       prepareRows().forEach(function (row) {
-        const visible = Array.from(state.filters).every(([cellIndex, expected]) => cellValue(row, cellIndex) === expected);
+        const matchesColumns = Array.from(state.filters).every(([cellIndex, expected]) => cellValue(row, cellIndex) === expected);
+        const matchesSearch = !state.search || normalizedValue(row.innerText).toLowerCase().includes(state.search);
+        const visible = matchesColumns && matchesSearch;
         row.classList.toggle("is-column-filtered", !visible);
       });
     }
@@ -266,6 +268,12 @@
         applySort();
         update();
       },
+      search: function (value) {
+        state.search = normalizedValue(value).toLowerCase();
+        state.page = 1;
+        applyFilters();
+        update();
+      },
     };
     prepareRows();
     setupSorting();
@@ -276,6 +284,14 @@
   }
 
   document.querySelectorAll(".data-table").forEach(enhance);
+  document.querySelectorAll("[data-table-search]").forEach(function (input) {
+    const target = document.querySelector(input.dataset.tableSearch || "");
+    const table = target?.closest("table") || (target?.matches("table") ? target : null);
+    if (!table?.__portalPagination) return;
+    input.addEventListener("input", function () {
+      table.__portalPagination.search(input.value);
+    });
+  });
   ["input", "change"].forEach(function (eventName) {
     document.addEventListener(eventName, function (event) {
       const table = event.target.closest("table");
