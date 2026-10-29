@@ -1,10 +1,13 @@
 <?php
 require_once __DIR__ . '/includes/security.php';
 require_once __DIR__ . '/includes/permissions.php';
+require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/includes/oee_settings.php';
 require_authentication();
 $csrfToken = csrf_token();
 $welcomeMessage = is_string($_SESSION['welcome_message'] ?? null) ? $_SESSION['welcome_message'] : '';
 unset($_SESSION['welcome_message']);
+$oeeLines = oee_known_lines(db());
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -37,7 +40,7 @@ unset($_SESSION['welcome_message']);
         <a class="app-sidebar-link" href="#/requests" data-nav="requests" title="Records"><span class="app-sidebar-icon" data-icon="clipboard-document-list"></span><span class="app-sidebar-label">Records</span></a>
         <a class="app-sidebar-link" href="#/chemical-consumption" data-nav="chemical-consumption" title="Chemical Consumption"><span class="app-sidebar-icon" data-icon="scale"></span><span class="app-sidebar-label">Chemical Consumption</span></a>
         <a class="app-sidebar-link" href="#/chemical-consumption-report" data-nav="chemical-consumption-report" title="Chemical Consumption Report"><span class="app-sidebar-icon" data-icon="document-chart-bar"></span><span class="app-sidebar-label">Chemical Consumption Report</span></a>
-        <a class="app-sidebar-link" href="#/chemical-cost-report" data-nav="chemical-cost-report" title="Chemical Cost Report"><span class="app-sidebar-icon" data-icon="currency-rupee"></span><span class="app-sidebar-label">Chemical Cost Report</span></a>
+        <a class="app-sidebar-link" href="#/chemical-cost-report" data-nav="chemical-cost-report" title="Chemical Cost Analytics"><span class="app-sidebar-icon" data-icon="currency-rupee"></span><span class="app-sidebar-label">Chemical Cost Analytics</span></a>
         <div class="app-sidebar-section-label">Administration</div>
         <a class="app-sidebar-link" href="#/roles" data-nav="roles" title="Roles & Permissions"><span class="app-sidebar-icon" data-icon="key"></span><span class="app-sidebar-label">Roles & Permissions</span></a>
         <a class="app-sidebar-link" href="#/users" data-nav="users" title="Users"><span class="app-sidebar-icon" data-icon="user-group"></span><span class="app-sidebar-label">Users</span></a>
@@ -108,7 +111,7 @@ unset($_SESSION['welcome_message']);
             <form id="range-form" class="report-filters">
               <label>From Date<input id="range-from-date" type="date" required></label>
               <label>To Date<input id="range-to-date" type="date" required></label>
-              <label>Machine<select id="range-machine"><option value="ALL">All Machines</option><option value="APP-06">APP-06</option><option value="APP-07">APP-07</option><option value="APP-10">APP-10</option></select></label>
+              <label>Machine<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <label>Daily Window Start<input id="range-start-time" type="time" value="00:00" step="60" disabled></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
@@ -136,19 +139,87 @@ unset($_SESSION['welcome_message']);
           <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div><div class="page-heading-actions"><label class="date-control">Report Date <input id="report-date" type="date"></label><label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label><label class="date-control">Window Start <input id="report-start-time" type="time" value="00:00" step="60" disabled></label><button class="btn" id="report-load" type="button">Load Report</button><button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button></div></div>
           <div id="report-window" class="oee-window-summary" role="status"></div>
           <div id="oee-report-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card oee-report-card"><div class="report-filters"><label>Line / Machine<select id="report-machine-filter"><option value="ALL">All Lines</option><option value="APP-06">APP-06 · OEE Feed</option><option value="APP-07">APP-07 · OEE Feed</option><option value="APP-10">APP-10 · OEE Feed</option></select></label><label>Search<input id="report-search" type="search" placeholder="Sequence, Part, Colour"></label><label>Grade<select id="report-grade-filter"><option value="">All Grades</option></select></label><label>Colour<select id="report-colour-filter"><option value="">All Colours</option></select></label><label>State<select id="report-state-filter"><option value="">All States</option><option value="productive">Productive</option><option value="empty">Empty</option></select></label></div><div class="oee-kpis report-kpis"><article class="oee-kpi"><div class="oee-kpi-label">OEE</div><div class="oee-kpi-value" id="report-oee-value">—</div></article><article class="oee-kpi"><div class="oee-kpi-label">Availability</div><div class="oee-kpi-value" id="report-availability-value">—</div></article><article class="oee-kpi"><div class="oee-kpi-label">Performance</div><div class="oee-kpi-value" id="report-performance-value">—</div></article><article class="oee-kpi"><div class="oee-kpi-label">Quality</div><div class="oee-kpi-value" id="report-quality-value">—</div></article></div><div class="report-summary" id="report-summary"></div><div class="data-scroll"><table class="data-table compact-table" data-export-title="Line Performance Metrics"><thead><tr><th>Line</th><th>OEE</th><th>Availability</th><th>Performance</th><th>Quality</th><th>Window Utilization</th></tr></thead><tbody id="report-line-metrics-body"></tbody></table></div><div class="data-scroll"><table class="data-table oee-report-table" data-export-title="Flight Bar Details"><thead><tr><th>Line</th><th>SI</th><th>Sequence</th><th>Part</th><th>Grade</th><th>Colour</th><th>Loading</th><th>Unloading</th><th>PCS</th><th>Total SA</th><th>State</th></tr></thead><tbody id="oee-report-body"></tbody></table></div></section>
+          <section class="data-card oee-report-card">
+            <div class="report-filters">
+              <label>Line / Machine
+                <select id="report-machine-filter"><?= oee_machine_options_html($oeeLines, true, 'All Lines', ' · OEE Feed') ?></select>
+              </label>
+              <label>Search
+                <input id="report-search" type="search" placeholder="Sequence, Part, Colour">
+              </label>
+              <label>Grade
+                <select id="report-grade-filter"><option value="">All Grades</option></select>
+              </label>
+              <label>Colour
+                <select id="report-colour-filter"><option value="">All Colours</option></select>
+              </label>
+              <label>State
+                <select id="report-state-filter">
+                  <option value="">All States</option>
+                  <option value="productive">Productive</option>
+                  <option value="empty">Empty</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="oee-kpis report-kpis">
+              <article class="oee-kpi">
+                <div class="oee-kpi-label">OEE</div>
+                <div class="oee-kpi-value" id="report-oee-value">—</div>
+              </article>
+              <article class="oee-kpi">
+                <div class="oee-kpi-label">Availability</div>
+                <div class="oee-kpi-value" id="report-availability-value">—</div>
+              </article>
+              <article class="oee-kpi">
+                <div class="oee-kpi-label">Performance</div>
+                <div class="oee-kpi-value" id="report-performance-value">—</div>
+              </article>
+              <article class="oee-kpi">
+                <div class="oee-kpi-label">Quality</div>
+                <div class="oee-kpi-value" id="report-quality-value">—</div>
+              </article>
+            </div>
+
+            <div class="report-summary" id="report-summary"></div>
+
+            <div class="data-scroll">
+              <table class="data-table compact-table" data-export-title="Line Performance Metrics">
+                <thead>
+                  <tr>
+                    <th>Line</th><th>OEE</th><th>Availability</th>
+                    <th>Performance</th><th>Quality</th><th>Window Utilization</th>
+                  </tr>
+                </thead>
+                <tbody id="report-line-metrics-body"></tbody>
+              </table>
+            </div>
+
+            <div class="data-scroll">
+              <table class="data-table oee-report-table" data-export-title="Flight Bar Details">
+                <thead>
+                  <tr>
+                    <th>Line</th><th>SI</th><th>Sequence</th><th>Part</th>
+                    <th>Grade</th><th>Colour</th><th>Loading</th><th>Unloading</th>
+                    <th>PCS</th><th>Total SA</th><th>State</th>
+                  </tr>
+                </thead>
+                <tbody id="oee-report-body"></tbody>
+              </table>
+            </div>
+          </section>
         </section>
 
         <section class="view" data-view="downtime">
           <div class="page-heading"><div><div class="dash-eyebrow">Loss Accounting</div><h1>Downtime Review</h1><p class="page-lead">Tag planned and unplanned stops so OEE can calculate the loss correctly.</p></div><div class="page-heading-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card downtime-card"><div class="report-filters"><label>Machine<select id="downtime-machine"><option value="APP-06">APP-06</option><option value="APP-07">APP-07</option><option value="APP-10">APP-10</option></select></label><label>Date<input id="downtime-date" type="date"></label></div>
+          <section class="data-card downtime-card"><div class="report-filters"><label>Machine<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label></div>
             <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
             <div class="data-scroll"><table class="data-table"><thead><tr><th>Start</th><th>End</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="scada-logs">
-          <div class="page-heading"><div><div class="dash-eyebrow">Operations</div><h1>SCADA Logs</h1><p class="page-lead">Import batches and Unit 1 synchronization events received by the local OEE app.</p></div><div class="page-heading-actions"><span class="sync-cadence">Expected Sync: Every 10 Minutes</span><button class="btn" id="logs-refresh" type="button">Refresh Logs</button></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Operations</div><h1>SCADA Logs</h1><p class="page-lead">Import batches and SCADA synchronization events received by the local OEE app.</p></div><div class="page-heading-actions"><span class="sync-cadence">Expected Sync: Every 10 Minutes</span><button class="btn" id="logs-refresh" type="button">Refresh Logs</button></div></div>
           <div id="oee-logs-alert" class="oee-alert" role="status" hidden></div>
           <div class="oee-log-grid"><section class="data-card"><div class="dash-card-head"><h2>Source Status</h2></div><div id="scada-sync-body" class="oee-sync-list"></div></section><section class="data-card"><div class="dash-card-head"><h2>Import Event Log</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Received</th><th>Source</th><th>Batch</th><th>Report Date</th><th>Rows</th><th>Status</th><th>Error</th></tr></thead><tbody id="scada-logs-body"></tbody></table></div></section></div>
         </section>
@@ -283,7 +354,7 @@ unset($_SESSION['welcome_message']);
               <label>Date<input id="chemical-consumption-date" type="date" required></label>
               <label>Shift<input id="chemical-consumption-shift" maxlength="40" list="chemical-shift-options" placeholder="Shift A" required><datalist id="chemical-shift-options"><option value="Shift A"><option value="Shift B"><option value="Shift C"><option value="General Shift"></datalist></label>
               <label>Operator Name<input id="chemical-consumption-operator" maxlength="120" placeholder="Operator Name" required></label>
-              <label>Machine Code<input id="chemical-consumption-machine" maxlength="80" list="chemical-machine-options" placeholder="APP-06" required><datalist id="chemical-machine-options"><option value="APP-06"><option value="APP-07"><option value="APP-10"></datalist></label>
+              <label>Machine Code<input id="chemical-consumption-machine" maxlength="80" list="chemical-machine-options" placeholder="APP-06" required><datalist id="chemical-machine-options"><?= oee_machine_options_html($oeeLines) ?></datalist></label>
               <label class="chemical-consumption-wide">Process Description<input id="chemical-consumption-process" maxlength="500" placeholder="Process Description" required></label>
               <label>Chemical Name<select id="chemical-consumption-item" required><option value="">Select a Chemical</option></select></label>
               <label>Consume Quantity<span class="chemical-quantity-control"><input id="chemical-consumption-quantity" type="number" min="0.0001" max="9999999999.9999" step="0.0001" required><select id="chemical-consumption-uom" class="chemical-quantity-uom" aria-label="Unit of measure" required><option value="">UOM</option></select></span></label>
@@ -320,29 +391,98 @@ unset($_SESSION['welcome_message']);
         </section>
 
         <section class="view" data-view="chemical-cost-report">
-          <div class="page-heading chemical-cost-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Cost Report</h1><p class="page-lead">Compare chemical cost with processed surface area by week, month, or consolidated period.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button></div></div>
+          <div class="page-heading chemical-cost-report-page-heading">
+            <div>
+              <div class="dash-eyebrow">Workspace / Cost Intelligence</div>
+              <h1>Chemical Cost Dashboard</h1>
+              <p class="page-lead">Monitor chemical expenses, surface-area productivity and cost efficiency across periods.</p>
+            </div>
+            <div class="page-heading-actions">
+              <span class="chemical-cost-badge" id="chemical-cost-report-scope">● Chemical cost monitoring</span>
+              <button class="btn ghost" id="chemical-cost-report-export" type="button">Export CSV</button>
+              <button class="btn ghost" id="chemical-cost-report-print" type="button">Print Report</button>
+            </div>
+          </div>
           <div id="chemical-cost-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-cost-report-filter-card" aria-labelledby="chemical-cost-report-filter-heading">
-            <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2></div>
-            <form id="chemical-cost-report-filter-form" class="master-form">
+            <div class="dash-card-head"><h2 id="chemical-cost-report-filter-heading">Report Filters</h2><span class="chemical-cost-mini">Source: live consumption + OEE surface area</span></div>
+            <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
               <label>From Date<input id="chemical-cost-report-from" type="date" required></label>
               <label>To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Machine<select id="chemical-cost-report-machine"><option value="ALL">All Machines</option></select></label>
-              <label>Report Type<select id="chemical-cost-report-type"><option value="weekly">Weekly Basis</option><option value="monthly">Monthly Basis</option><option value="consolidated">Consolidated</option></select></label>
-              <button class="btn" id="chemical-cost-report-run" type="submit">Generate Report</button>
+              <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
+              <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>
             </form>
           </section>
-          <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
-            <div class="chemical-cost-report-title"><h2 id="chemical-cost-report-table-heading">Chemical Cost Report</h2></div>
-            <dl class="chemical-cost-report-meta">
-              <div><dt>From Date</dt><dd id="chemical-cost-report-from-display">—</dd></div>
-              <div><dt>To Date</dt><dd id="chemical-cost-report-to-display">—</dd></div>
-              <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
-              <div><dt>Report Type</dt><dd id="chemical-cost-report-type-display">Weekly Basis</dd></div>
-            </dl>
-            <div class="data-scroll"><table class="data-table chemical-cost-report-table"><thead><tr><th>SR. No.</th><th>Machine</th><th>Report Period</th><th>Total Surface Area (dm²)</th><th>Total Chemical Cost (INR)</th><th>Chemical Cost per dm² (INR)</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="6">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
-            <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost (INR) / Total Surface Area (dm²)</p>
+          <section class="dash-kpis chemical-cost-kpis" id="chemical-cost-report-kpis" aria-label="Cost summary"></section>
+          <section class="chemical-cost-chart-grid">
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Chemical Cost per dm² · Trend</h2>
+                  <p class="chemical-cost-caption" id="chemical-cost-trend-caption">Weekly unit-cost variation</p>
+                </div>
+                <div class="chemical-cost-tabs" role="tablist" aria-label="Trend view">
+                  <button type="button" data-cost-tab="weekly" class="selected">WoW</button>
+                  <button type="button" data-cost-tab="monthly">MoM</button>
+                </div>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-trend" role="img" aria-label="Chemical cost per dm2 trend"></div>
+            </article>
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Chemical Cost · Period Comparison</h2>
+                  <p class="chemical-cost-caption">₹ expenditure across selected periods</p>
+                </div>
+                <span class="chemical-cost-mini">INR</span>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-cost-chart" role="img" aria-label="Chemical cost by period"></div>
+            </article>
           </section>
+          <section class="chemical-cost-chart-grid equal">
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Surface Area Processed</h2>
+                  <p class="chemical-cost-caption">Total processed surface area, dm²</p>
+                </div>
+                <span class="chemical-cost-mini">dm²</span>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-area-chart" role="img" aria-label="Surface area by period"></div>
+            </article>
+            <article class="data-card chemical-cost-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Cost vs Surface Area</h2>
+                  <p class="chemical-cost-caption">Trend comparison (indexed to first period = 100)</p>
+                </div>
+                <div class="chemical-cost-legend"><span><i class="chemical-cost-dot cost"></i>Cost</span><span><i class="chemical-cost-dot area"></i>Area</span></div>
+              </div>
+              <div class="chemical-cost-chartarea" id="chemical-cost-indexed-chart" role="img" aria-label="Indexed cost versus area"></div>
+            </article>
+          </section>
+          <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
+            <div class="dash-card-head chemical-cost-table-head">
+              <div>
+                <h2 id="chemical-cost-report-table-heading">Detailed Chemical Cost Report</h2>
+                <p class="chemical-cost-caption" id="chemical-cost-table-caption">Period-wise financial and surface-area performance</p>
+              </div>
+              <dl class="chemical-cost-report-meta chemical-cost-report-meta-inline">
+                <div><dt>From</dt><dd id="chemical-cost-report-from-display">—</dd></div>
+                <div><dt>To</dt><dd id="chemical-cost-report-to-display">—</dd></div>
+                <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
+                <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
+              </dl>
+            </div>
+            <div class="chemical-cost-report-title"><h2>Chemical Cost Report</h2></div>
+            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Sr.</th><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="8">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
+            <div class="chemical-cost-report-footer">
+              <span id="chemical-cost-report-row-count">Showing 0 rows</span>
+              <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost ÷ Total Surface Area</p>
+            </div>
+          </section>
+          <div class="chemical-cost-tip" id="chemical-cost-tip" hidden></div>
         </section>
 
         <section class="view" data-view="oee-masters">
@@ -352,14 +492,14 @@ unset($_SESSION['welcome_message']);
             <div class="dash-card-head"><h2 id="threshold-heading">Plant Gap Threshold</h2></div>
             <p id="threshold-help" class="form-note threshold-help">A loading gap must be greater than this limit to propose downtime. Downtime = gap minus the arriving FB cycle time (minimum zero). Empty-rack detection is separate. Changes apply to historical reports on refresh; tagged events stay unchanged.</p>
             <form id="threshold-form" class="master-form" aria-describedby="threshold-help">
-              <label for="threshold-line">Plant / Machine<select id="threshold-line" disabled><option>APP-06</option><option>APP-07</option><option>APP-10</option></select></label>
+              <label for="threshold-line">Plant / Machine<select id="threshold-line" disabled><?= oee_machine_options_html($oeeLines) ?></select></label>
               <label for="threshold-minutes">Gap Threshold (Minutes)<input id="threshold-minutes" type="number" min="0.001" max="1440" step="0.001" required disabled></label>
               <button id="threshold-save" class="btn" type="submit" disabled>Save Threshold</button>
             </form>
             <div class="data-scroll"><table class="data-table"><thead><tr><th>Plant / Machine</th><th>Gap Threshold (Minutes)</th><th>Action</th></tr></thead><tbody id="thresholds-body"><tr><td colspan="3">Loading Plant Thresholds…</td></tr></tbody></table></div>
           </section>
           <div class="oee-master-grid oee-master-grid-single">
-            <section class="data-card"><div class="dash-card-head"><h2>Cycle-Time Registration</h2></div><form id="cycle-form" class="master-form"><input id="cycle-id" type="hidden"><label>Machine<select id="cycle-line"><option>APP-06</option><option>APP-07</option><option>APP-10</option></select></label><label>Colour<input id="cycle-colour" maxlength="120" placeholder="BLACK-1" required></label><label>Minutes / FB<input id="cycle-minutes" type="number" min="0.001" step="0.001" required></label><label>Effective From<input id="cycle-from" type="date" required></label><label>Effective To<input id="cycle-to" type="date"></label><button class="btn" type="submit">Save Cycle Time</button></form><div class="data-scroll"><table class="data-table"><thead><tr><th>Machine</th><th>Colour</th><th>Minutes / FB</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody id="cycles-body"></tbody></table></div></section>
+            <section class="data-card"><div class="dash-card-head"><h2>Cycle-Time Registration</h2></div><form id="cycle-form" class="master-form"><input id="cycle-id" type="hidden"><label>Machine<select id="cycle-line"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Colour<input id="cycle-colour" maxlength="120" placeholder="BLACK-1" required></label><label>Minutes / FB<input id="cycle-minutes" type="number" min="0.001" step="0.001" required></label><label>Effective From<input id="cycle-from" type="date" required></label><label>Effective To<input id="cycle-to" type="date"></label><button class="btn" type="submit">Save Cycle Time</button></form><div class="data-scroll"><table class="data-table"><thead><tr><th>Machine</th><th>Colour</th><th>Minutes / FB</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody id="cycles-body"></tbody></table></div></section>
           </div>
         </section>
       </main>

@@ -12,7 +12,7 @@ function portal_permission_catalog(): array
         'records' => ['label'=>'Records','actions'=>['view','create','update','delete']],
         'chemical-consumption' => ['label'=>'Chemical Consumption','actions'=>['view','create','update']],
         'chemical-consumption-report' => ['label'=>'Chemical Consumption Report','actions'=>['view']],
-        'chemical-cost-report' => ['label'=>'Chemical Cost Report','actions'=>['view']],
+        'chemical-cost-report' => ['label'=>'Chemical Cost Analytics','actions'=>['view']],
         'users' => ['label'=>'Users (Deactivate = Update)','actions'=>['view','create','update']],
         'oee-masters' => ['label'=>'OEE Master Data','actions'=>['view','create','update']],
         'chemical-registration' => ['label'=>'Chemical Registration','actions'=>['view','create','update']],

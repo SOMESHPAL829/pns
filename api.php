@@ -77,8 +77,8 @@ function oee_machine_line(string $machine): string
 
 function oee_requested_machine(): string
 {
-    $machine = strtoupper(trim((string) ($_GET['machine'] ?? 'APP-06')));
-    if (!in_array($machine, ['ALL', 'APP-06', 'APP-07', 'APP-10'], true)) {
+    $machine = strtoupper(trim((string) ($_GET['machine'] ?? 'ALL')));
+    if ($machine !== 'ALL' && !oee_line_code_ok($machine)) {
         json_response(['error' => 'Unknown OEE machine.'], 422);
     }
     return $machine;
@@ -115,7 +115,22 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06', int 
         unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
         return $report;
     }
-    $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [oee_machine_line($machine)];
+    $knownLines = oee_known_lines($pdo);
+    $lines = $machine === 'ALL' ? $knownLines : [oee_machine_line($machine)];
+    if ($lines === []) {
+        return [
+            'available' => true,
+            'window' => $window,
+            'date' => $date,
+            'machine' => $machine,
+            'line_code' => $machine === 'ALL' ? 'ALL' : $machine,
+            'machines' => $knownLines,
+            'metrics' => ['total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0],
+            'oee' => null,
+            'sync' => [],
+            'imports' => [],
+        ];
+    }
     // Cycle-time and downtime masters affect the stored snapshot. Recalculate
     // before reading it so dashboard refreshes always reflect the latest data.
     foreach ($lines as $line) {
@@ -146,6 +161,7 @@ function oee_dashboard(PDO $pdo, ?string $date, string $machine = 'APP-06', int 
         'date' => $date,
         'machine' => $machine,
         'line_code' => $machine === 'ALL' ? 'ALL' : $lines[0],
+        'machines' => $knownLines,
         'metrics' => array_merge([
             'total_fb' => 0, 'productive_fb' => 0, 'empty_fb' => 0, 'pcs' => 0, 'total_surface_area' => 0,
         ], $metrics),
@@ -166,7 +182,7 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06', int $du
     if (!$dashboard['available']) {
         return $dashboard;
     }
-    $lines = $machine === 'ALL' ? ['APP-06', 'APP-07', 'APP-10'] : [$dashboard['line_code']];
+    $lines = $machine === 'ALL' ? oee_known_lines($pdo) : [$dashboard['line_code']];
     $placeholders = implode(',', array_fill(0, count($lines), '?'));
     $rows = $pdo->prepare(
         'SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code IN (' . $placeholders . ') AND report_date = ? ORDER BY line_code, si_no ASC'
@@ -219,7 +235,7 @@ function oee_downtime(PDO $pdo, string $date, string $machine): array
 function oee_downtime_save(PDO $pdo, array $data): void
 {
     $machine = strtoupper(api_text($data, 'machine', 20));
-    if (!in_array($machine, ['APP-06', 'APP-07', 'APP-10'], true)) {
+    if (!oee_line_code_ok($machine)) {
         json_response(['error' => 'Unknown OEE machine.'], 422);
     }
     $date = oee_validate_date(api_text($data, 'report_date', 10));
@@ -266,7 +282,7 @@ function oee_masters(PDO $pdo): array
     foreach (oee_gap_thresholds($pdo) as $line => $minutes) {
         $thresholds[] = ['line_code' => $line, 'gap_threshold_minutes' => $minutes];
     }
-    return ['available' => true, 'reasons' => $reasons, 'cycles' => $cycles, 'thresholds' => $thresholds];
+    return ['available' => true, 'machines' => oee_known_lines($pdo), 'reasons' => $reasons, 'cycles' => $cycles, 'thresholds' => $thresholds];
 }
 
 function oee_master_save(PDO $pdo, array $data, array $user): void
@@ -288,7 +304,7 @@ function oee_master_save(PDO $pdo, array $data, array $user): void
         $minutes = filter_var($data['minutes_per_fb'] ?? null, FILTER_VALIDATE_FLOAT);
         $from = oee_validate_date(api_text($data, 'effective_from', 10));
         $to = api_text($data, 'effective_to', 10);
-        if (!in_array($line, ['APP-06', 'APP-07', 'APP-10'], true) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid machine, colour, and positive cycle time.'], 422);
+        if (!oee_line_code_ok($line) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid machine, colour, and positive cycle time.'], 422);
         $to = $to === '' ? null : oee_validate_date($to);
         if ($to !== null && $to < $from) json_response(['error' => 'Effective end date cannot be before the start date.'], 422);
         if ($id) {

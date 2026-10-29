@@ -54,7 +54,7 @@ must use distinct icons that communicate their individual purpose.
 - `#/chemical-registration` — permission-controlled chemical items and effective-dated INR rates
 - `#/chemical-consumption` — daily chemical consumption entries by operator, machine, and process
 - `#/chemical-consumption-report` — printable date-range and machine-filtered chemical consumption report
-- `#/chemical-cost-report` — weekly, monthly, or consolidated chemical cost per dm² report
+- `#/chemical-cost-report` — chemical cost analytics dashboard (KPIs, charts, weekly/monthly/consolidated cost per dm²)
 - `#/profile` — update profile and change password
 
 ## Chemical Registration

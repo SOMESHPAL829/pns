@@ -2,7 +2,7 @@
   <div class="page-heading oee-page-heading">
     <div><div class="dash-eyebrow">Production Intelligence</div><h1>PNS OEE</h1><p class="page-lead">Production, Batches, Downtime and Line performance in one view.</p></div>
     <div class="page-heading-actions">
-      <label class="date-control">Machine<select id="dashboard-machine"><option value="ALL">All Machines</option><option>APP-06</option><option>APP-07</option><option>APP-10</option></select></label>
+      <label class="date-control">Machine<select id="dashboard-machine"><?= oee_machine_options_html($oeeLines ?? [], true) ?></select></label>
       <label class="date-control">Report Date<input id="dashboard-date" type="date"></label>
       <label class="date-control">Calculation Duration<select id="dashboard-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
       <label class="date-control">Window Start<input id="dashboard-start-time" type="time" value="00:00" step="60" disabled></label>
@@ -12,7 +12,7 @@
   <div id="dashboard-window" class="oee-window-summary" role="status"></div>
   <div id="dashboard-loading" class="pns-loading" role="status" hidden>Updating Selected Reporting Window…</div>
   <div id="oee-dashboard-alert" class="oee-alert" role="status" hidden></div>
-  <div class="oee-status-strip"><span class="status-dot" id="oee-status-dot"></span><span id="oee-status-text">Checking Unit 1 Sync…</span><span class="oee-status-meta" id="oee-last-sync">—</span></div>
+  <div class="oee-status-strip"><span class="status-dot" id="oee-status-dot"></span><span id="oee-status-text">Checking SCADA Sync…</span><span class="oee-status-meta" id="oee-last-sync">—</span></div>
   <div class="oee-kpis">
     <article class="oee-kpi"><h2 class="oee-kpi-label">OEE</h2><div class="oee-kpi-value" id="oee-value">—</div><div class="oee-kpi-note">Availability × Performance × Quality</div><div class="pns-kpi-detail" id="dashboard-oee-detail">Selected Reporting Window</div></article>
     <article class="oee-kpi"><h2 class="oee-kpi-label">Availability</h2><div class="oee-kpi-value" id="availability-value">—</div><div class="oee-kpi-note">Run Time / Planned Time</div><div class="pns-kpi-detail" id="dashboard-availability-detail">—</div></article>
