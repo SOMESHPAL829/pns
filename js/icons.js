@@ -35,6 +35,10 @@
     "chevron-left": svg('<path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>'),
     "bars-3": svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/>'),
     "arrow-up-tray": svg('<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-4.5-10.5L12 2.25m0 0L7.5 6.75M12 2.25v13.5"/>'),
+    "arrow-right": svg('<path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/>'),
+    eye: svg('<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .638C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>'),
+    "eye-slash": svg('<path stroke-linecap="round" stroke-linejoin="round" d="m3.98 8.223-1.934-1.934m19.908 11.422-1.934-1.934M6.228 6.228A9.755 9.755 0 0 1 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .638a9.77 9.77 0 0 1-2.307 3.846M6.228 6.228 3.98 3.98m2.248 2.248 3.65 3.65m9.778 6.284 2.364 2.364M14.12 14.12l-4.242-4.242M14.12 14.12a3 3 0 0 1-4.242-4.242m4.242 4.242 3.65 3.65M9.88 9.88l-3.65-3.65m0 0a9.776 9.776 0 0 0-4.193 5.453 1.012 1.012 0 0 0 0 .639C3.423 16.49 7.36 19.5 12 19.5a9.76 9.76 0 0 0 4.772-1.228"/>'),
+    tag: svg('<path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3.057A1.5 1.5 0 0 1 10.629 2.6h7.77a3 3 0 0 1 3 3v7.77a1.5 1.5 0 0 1-.44 1.06l-6.53 6.53a1.5 1.5 0 0 1-2.121 0L3.04 11.692a1.5 1.5 0 0 1 0-2.121l6.528-6.514Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15.9 7.1h.008v.008H15.9V7.1Z"/>'),
     "x-mark": svg('<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>'),
   };
 

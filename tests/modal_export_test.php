@@ -25,8 +25,9 @@ workflow_check(str_contains($export,'data-icon="arrow-up-tray"')&&!str_contains(
 workflow_check(str_contains($export,'/^(action|actions)$/i'),'Excel export must omit action controls.');
 workflow_check(str_contains($export,'headingHost(table, title).appendChild(button)')&&str_contains($export,'table-heading-actions'),'Excel export must share the table heading row.');
 workflow_check(str_contains($pagination,'const DEFAULT_SIZE = 15')&&str_contains($pagination,'table-pagination-summary'),'Professional default-15 table pagination is missing.');
-workflow_check(str_contains($pagination,'serialHeader.textContent = "SR. No."')&&str_contains($pagination,'table-serial-cell'),'Automatic SR. No. columns are missing.');
-workflow_check(str_contains($pagination,'const heading = serialHeader')&&str_contains($pagination,'sortDirection: "descending"')&&str_contains($pagination,'latest first by default'),'SR. No.-only latest-first sorting is missing.');
+workflow_check(str_contains($pagination,'serialIndex')&&!str_contains($pagination,'table-serial-cell'),'Serial number columns are not removed consistently.');
+workflow_check(str_contains($pagination,'setupSorting')&&str_contains($pagination,'LATEST_PRIORITY')&&str_contains($pagination,'sortDirection: "descending"'),'Business-column sorting or latest-first defaults are missing.');
+workflow_check(str_contains($pagination,'FILTERABLE')&&str_contains($pagination,'table-heading-filter')&&str_contains($pagination,'isFilterableHeading(headings[headingIndex])')&&!str_contains($pagination,'filterRow'),'Clickable heading filters, their sort exclusion, or single-row layout is incomplete.');
 workflow_check(str_contains($pagination,'cleanActionCells')&&str_contains($pagination,'Node.TEXT_NODE'),'Unnecessary Action-column placeholders are not removed.');
 workflow_check(str_contains($styles,'.portal-form-modal::backdrop')&&str_contains($styles,'.table-export-toolbar'),'Premium modal or table export styling is missing.');
 workflow_check(str_contains($styles,'.portal-form-modal .btn[type="submit"]')&&str_contains($styles,'padding: 0.68rem 1.3rem'),'Modal submit button padding is inconsistent.');

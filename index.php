@@ -127,7 +127,7 @@ $csrf = csrf_token();
         </div>
         <div>
           <label class="form-label" for="password">Password</label>
-          <input class="form-input" id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required>
+          <div class="password-input-wrap"><input class="form-input" id="password" name="password" type="password" placeholder="Enter your password" autocomplete="current-password" required><button class="password-toggle" type="button" data-password-toggle="password" aria-label="Show password" aria-pressed="false" title="Show password"><span data-icon="eye"></span></button></div>
         </div>
         <button type="submit" class="login-submit">Sign In</button>
         <a class="auth-link" href="password.php">Forgot Your Password?</a>
@@ -135,6 +135,7 @@ $csrf = csrf_token();
     </section>
   </main>
   <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Signing In…</strong><span id="page-transition-note">Verifying your account securely.</span></div></div></div>
+  <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
   <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>

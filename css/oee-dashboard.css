@@ -62,7 +62,7 @@
 .pns-dashboard-footer { margin: 1.25rem 0 0; color: var(--mut); font-size: 0.7rem; }
 .pns-empty { color: var(--mut); margin: 0; padding: 1rem; font-size: 0.8rem; }
 .pns-loading { margin: 0.5rem 0; color: var(--accent-deep); font-size: 0.8rem; }
-.pns-dashboard .pns-tag-action { display: block; margin-top: 0.5rem; padding: 0.25rem 0; white-space: nowrap; }
+.pns-dashboard .pns-tag-action { display: inline-flex; margin: 0; padding: 0; white-space: nowrap; }
 .pns-tag-dialog { width: min(36rem,calc(100% - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: auto; padding: 1.25rem; box-sizing: border-box; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--card); color: var(--ink); }
 .pns-tag-dialog::backdrop { background: rgb(15 30 50 / 55%); }
 .pns-tag-dialog h2 { margin: 0 0 0.75rem; color: var(--accent-deep); font-size: 1.2rem; }

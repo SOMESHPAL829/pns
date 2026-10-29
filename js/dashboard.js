@@ -141,7 +141,7 @@
     if (!reasons.children.length) {
       const p = document.createElement("p");
       p.className = "pns-empty";
-      p.textContent = "No counted downtime in this reporting window.";
+      p.textContent = "No counted downtime for this calculation.";
       reasons.appendChild(p);
     }
     const batches = node("dashboard-batches-body");
@@ -166,7 +166,7 @@
       batches.appendChild(row);
     });
     if (!batches.children.length)
-      empty(batches, 5, "No batches in this reporting window.");
+      empty(batches, 5, "No batches in this calculation.");
     const stops = node("dashboard-stops-body");
     stops.replaceChildren();
     stopEvents = data.recent_downtime || [];
@@ -193,26 +193,30 @@
       if (item.id && window.PortalAccess.can("downtime", "update")) {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "link pns-tag-action";
-        button.textContent =
-          item.status === "proposed" ? "Tag Reason" : "Edit Reason";
+        button.className = "action-icon-button pns-tag-action";
+        const actionLabel = item.status === "proposed" ? "Tag Reason" : "Edit Reason";
+        const icon = document.createElement("span");
+        icon.dataset.icon = "tag";
+        button.appendChild(icon);
         button.dataset.dashboardTag = String(item.id);
         button.dataset.permissionPage = "downtime";
         button.dataset.permissionAction = "update";
         button.setAttribute(
           "aria-label",
-          button.textContent +
+          actionLabel +
             " for " +
             item.line_code +
             " ending " +
             item.ends_at,
         );
+        button.title = actionLabel;
         statusCell.appendChild(button);
+        window.ThemeIcons?.mount(button);
       }
       stops.appendChild(row);
     });
     if (!stops.children.length)
-      empty(stops, 4, "No downtime events in this reporting window.");
+      empty(stops, 4, "No downtime events in this calculation.");
     node("dashboard-detail-message").hidden =
       window.PortalAccess.can("oee-report") ||
       window.PortalAccess.can("downtime");
@@ -259,7 +263,7 @@
     text("dashboard-reasons", "Downtime reasons unavailable.");
     text("oee-sync-list", "Synchronization data unavailable.");
     empty(node("oee-imports-body"), 5, "Import history unavailable.");
-    text("dashboard-window", "Reporting window could not be loaded.");
+    text("dashboard-window", "Calculation details could not be loaded.");
   }
   function tagError(message) {
     text("dashboard-tag-error", message);
@@ -408,7 +412,6 @@
         node("report-date").value = date;
         node("report-machine-filter").value = node("dashboard-machine").value;
         node("report-duration").value = node("dashboard-duration").value;
-        node("report-start-time").value = node("dashboard-start-time").value;
       } else {
         node("downtime-date").value = date;
         if (node("dashboard-machine").value !== "ALL")

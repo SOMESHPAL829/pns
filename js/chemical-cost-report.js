@@ -457,7 +457,7 @@
     let missingRateEntries = 0;
     const lastRateByMachine = new Map();
 
-    rows.forEach((item, index) => {
+    rows.forEach((item) => {
       const row = document.createElement("tr");
       const missingRates = Number(item.unpriced_entries || 0);
       missingRateEntries += missingRates;
@@ -472,7 +472,6 @@
           : null;
       if (rate != null) lastRateByMachine.set(item.machine_code, rate);
 
-      cell(row, index + 1, "chemical-report-serial");
       cell(row, item.machine_code, "mono");
       cell(row, item.report_period);
       cell(row, decimal(item.total_surface_area, 2), "r");
@@ -512,7 +511,7 @@
         row,
         "No production or chemical consumption data matches the selected filters.",
       );
-      empty.colSpan = 8;
+      empty.colSpan = 7;
       body.appendChild(row);
     }
 

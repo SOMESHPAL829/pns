@@ -4,7 +4,7 @@ declare(strict_types=1);
 function oee_excel_datetime(string $text): float
 {
     $value = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $text, new DateTimeZone('UTC'));
-    if (!$value || $value->format('Y-m-d H:i:s') !== $text) throw new InvalidArgumentException('Invalid Excel window/event timestamp');
+    if (!$value || $value->format('Y-m-d H:i:s') !== $text) throw new InvalidArgumentException('Invalid Excel calculation/event timestamp');
     return $value->getTimestamp() / 86400 + 25569;
 }
 
@@ -23,7 +23,7 @@ function oee_export_source_header(array $headers): string
 /** Build auditable event/quality worksheets and their cached calculation inputs. */
 function oee_export_sources(array $report): array
 {
-    $eventsRows = [oee_export_source_header(['Line', 'Start', 'End', 'Type', 'Status', 'Source', 'Reason / notes', 'Window start', 'Window end', 'Clipped start', 'Clipped end', 'Elapsed min (may overlap)', 'Included'])];
+    $eventsRows = [oee_export_source_header(['Line', 'Start', 'End', 'Type', 'Status', 'Source', 'Reason / notes', 'Start Time', 'End Time', 'Clipped start', 'Clipped end', 'Elapsed min (may overlap)', 'Included'])];
     $segmentRows = [oee_export_source_header(['Line', 'Start boundary', 'End boundary', 'Active unplanned', 'Active planned', 'Unplanned min', 'Planned min', 'Calculation row'])];
     $qualityRows = [oee_export_source_header(['Line', 'Shift', 'Rejected FB', 'Reworked FB', 'Notes', 'Calculation row', 'Reporting date'])];
     $prepared = [];
@@ -32,7 +32,7 @@ function oee_export_sources(array $report): array
         $mainRow = 13 + $index;
         $start = oee_excel_datetime($line['window_start'] ?? '');
         $end = oee_excel_datetime($line['window_end'] ?? '');
-        if ($end <= $start) throw new InvalidArgumentException('Excel window end must follow start');
+        if ($end <= $start) throw new InvalidArgumentException('Excel End Time must follow Start Time');
         $qStart = count($qualityRows) + 1;
         $rejected = $reworked = 0;
         foreach ($report['quality_entries'] ?? [] as $entry) {
@@ -50,7 +50,7 @@ function oee_export_sources(array $report): array
         }
         // Include a window boundary row so there is a complete boundary range
         // even when no downtime exists. This row never counts as an event.
-        $lineEvents = [['starts_at' => $line['window_start'], 'ends_at' => $line['window_end'], 'event_type' => 'window', 'status' => 'boundary', 'source' => 'window', 'reason_code' => 'Window boundaries']];
+        $lineEvents = [['starts_at' => $line['window_start'], 'ends_at' => $line['window_end'], 'event_type' => 'window', 'status' => 'boundary', 'source' => 'window', 'reason_code' => 'Calculation boundaries']];
         foreach ($report['downtime_events'] ?? [] as $event) {
             if ($event['line_code'] === $code && (!isset($event['window_date']) || $event['window_date'] === ($line['report_date'] ?? ''))) $lineEvents[] = $event;
         }
@@ -72,7 +72,7 @@ function oee_export_sources(array $report): array
                 oee_xlsx_cell("A$r", $code),
                 oee_xlsx_cell("B$r", $rawStart, 6, $window ? "'OEE Report'!P$mainRow" : null),
                 oee_xlsx_cell("C$r", $rawEnd, 6, $window ? "'OEE Report'!Q$mainRow" : null),
-                oee_xlsx_cell("D$r", $event['event_type']), oee_xlsx_cell("E$r", $event['status']), oee_xlsx_cell("F$r", $event['source']),
+                oee_xlsx_cell("D$r", $window ? 'calculation' : $event['event_type']), oee_xlsx_cell("E$r", $event['status']), oee_xlsx_cell("F$r", $window ? 'calculation' : $event['source']),
                 oee_xlsx_cell("G$r", trim(($event['reason_code'] ?? '') . ' ' . ($event['notes'] ?? ''))),
                 oee_xlsx_cell("H$r", $start, 6, "'OEE Report'!P$mainRow"), oee_xlsx_cell("I$r", $end, 6, "'OEE Report'!Q$mainRow"),
                 oee_xlsx_cell("J$r", $clippedStart, 6, "MAX(H$r,MIN(I$r,B$r))"), oee_xlsx_cell("K$r", $clippedEnd, 6, "MAX(H$r,MIN(I$r,C$r))"),

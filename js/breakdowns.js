@@ -48,9 +48,8 @@
   function render() {
     const body = byId("breakdowns-body");
     body.replaceChildren();
-    state.breakdowns.forEach((item, index) => {
+    state.breakdowns.forEach((item) => {
       const row = document.createElement("tr");
-      cell(row, index + 1);
       cell(row, item.loss_type === "planned" ? "Planned" : "Unplanned");
       cell(row, item.label);
       cell(row, Number(item.is_active) === 1 ? "Active" : "Inactive");
@@ -65,7 +64,7 @@
     if (!state.breakdowns.length) {
       const row = document.createElement("tr");
       const empty = cell(row, "No breakdown reasons are registered yet.");
-      empty.colSpan = 5;
+      empty.colSpan = 4;
       body.appendChild(row);
     }
     applyControls();

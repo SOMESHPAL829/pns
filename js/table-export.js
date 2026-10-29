@@ -58,7 +58,9 @@
     const sourceHeaders = Array.from(headerRow.cells);
     const indexes = sourceHeaders.map((cell, index) => ({ cell, index })).filter(item => !/^(action|actions)$/i.test(item.cell.textContent.trim()) && item.cell.offsetParent !== null).map(item => item.index);
     const headers = indexes.map(index => sourceHeaders[index].innerText.replace(/\s+/g, " ").trim());
-    const rows = Array.from(table.tBodies).flatMap(body => Array.from(body.rows)).filter(row => !row.hidden).map(function (row) {
+    const rows = Array.from(table.tBodies).flatMap(body => Array.from(body.rows)).filter(function (row) {
+      return !row.hidden && !row.classList.contains("is-column-filtered") && !Array.from(row.cells).some(cell => Number(cell.colSpan) > 1);
+    }).map(function (row) {
       return indexes.map(function (index) {
         const cell = row.cells[index];
         if (!cell) return "";
@@ -147,7 +149,7 @@
 
   document.querySelectorAll(".data-table").forEach(function (table, index) {
     const scroll = table.closest(".data-scroll");
-    if (!scroll || table.dataset.exportEnhanced === "true") return;
+    if (!scroll || table.dataset.exportEnhanced === "true" || table.hasAttribute("data-no-table-export")) return;
     table.dataset.exportEnhanced = "true";
     const title = titleFor(table, index);
     const button = document.createElement("button");

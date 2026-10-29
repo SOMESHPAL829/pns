@@ -52,9 +52,8 @@
     byId("chemical-report-machine-display").textContent = data.machine === "ALL" ? "All Machines" : data.machine;
     const body = byId("chemical-report-body");
     body.replaceChildren();
-    (data.rows || []).forEach((entry, index) => {
+    (data.rows || []).forEach((entry) => {
       const row = document.createElement("tr");
-      cell(row, index + 1, "chemical-report-serial");
       cell(row, displayDate(entry.entry_date));
       cell(row, entry.shift_name);
       cell(row, entry.machine_code, "mono");
@@ -70,7 +69,7 @@
     if (!(data.rows || []).length) {
       const row = document.createElement("tr");
       const empty = cell(row, "No chemical consumption entries match the selected filters.");
-      empty.colSpan = 11;
+      empty.colSpan = 10;
       body.appendChild(row);
     }
     state.loaded = true;

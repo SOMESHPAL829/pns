@@ -3,6 +3,37 @@
   const message = document.getElementById("page-transition-message");
   const note = document.getElementById("page-transition-note");
 
+  function setPasswordVisibility(button, visible) {
+    const input = document.getElementById(button.dataset.passwordToggle || "");
+    if (!input) return;
+    const subject = button.dataset.passwordSubject || "password";
+    input.type = visible ? "text" : "password";
+    button.setAttribute("aria-pressed", String(visible));
+    button.setAttribute("aria-label", (visible ? "Hide " : "Show ") + subject);
+    button.title = (visible ? "Hide " : "Show ") + subject;
+    const icon = button.querySelector("[data-icon]");
+    if (icon) icon.dataset.icon = visible ? "eye-slash" : "eye";
+    window.ThemeIcons?.mount(button);
+  }
+
+  document.querySelectorAll("[data-password-toggle]").forEach(function (button) {
+    const initialLabel = button.getAttribute("aria-label") || "Show password";
+    button.dataset.passwordSubject = initialLabel.replace(/^Show\s+/i, "");
+    button.addEventListener("click", function () {
+      setPasswordVisibility(button, button.getAttribute("aria-pressed") !== "true");
+    });
+  });
+
+  document.querySelectorAll("form").forEach(function (form) {
+    form.addEventListener("reset", function () {
+      window.setTimeout(function () {
+        form.querySelectorAll("[data-password-toggle]").forEach(function (button) {
+          setPasswordVisibility(button, false);
+        });
+      }, 0);
+    });
+  });
+
   function showLoading(text, detail) {
     if (!overlay) return;
     if (message) message.textContent = text;

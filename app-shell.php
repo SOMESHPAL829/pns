@@ -63,7 +63,7 @@ $oeeLines = oee_known_lines(db());
         <div class="app-topbar-inner">
           <div style="display:flex;align-items:center;gap:12px;min-width:0">
             <button type="button" id="sidebar-mobile-toggle" class="app-sidebar-mobile-toggle" aria-label="Open navigation"><span data-icon="bars-3"></span></button>
-            <div class="app-topbar-title" id="page-title">Dashboard</div>
+            <strong class="app-topbar-title" id="page-title" aria-live="polite">PNS OEE</strong>
           </div>
           <div class="app-topbar-actions">
             <div class="app-header-menu app-appearance-menu" data-header-menu>
@@ -113,7 +113,6 @@ $oeeLines = oee_known_lines(db());
               <label>To Date<input id="range-to-date" type="date" required></label>
               <label>Machine<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
-              <label>Daily Window Start<input id="range-start-time" type="time" value="00:00" step="60" disabled></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
               <button class="btn ghost" type="button" id="range-export" data-permission-page="oee-range" data-permission-action="export" hidden>Export Excel</button>
             </form>
@@ -129,14 +128,14 @@ $oeeLines = oee_known_lines(db());
           </div>
           <div class="oee-grid oee-grid-main">
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Production Summary</h2></div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="range-total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="range-productive-fb">—</strong></div><div><span class="oee-stat-label">Empty Racks</span><strong id="range-empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="range-pcs">—</strong></div><div><span class="oee-stat-label">Surface Area</span><strong id="range-area">—</strong></div><div><span class="oee-stat-label">Days Selected</span><strong id="range-days">—</strong></div></div></section>
-            <section class="dash-card oee-card"><div class="dash-card-head"><h2>Time Accounting</h2></div><div class="oee-loss-list"><div><span>Selected Window Time</span><strong id="range-calendar">—</strong></div><div><span>Planned Stops</span><strong id="range-planned-stop">—</strong></div><div><span>Planned Production Time</span><strong id="range-planned">—</strong></div><div><span>Unplanned Downtime</span><strong id="range-unplanned">—</strong></div><div><span>Run Time</span><strong id="range-run">—</strong></div><div><span>Window Utilization</span><strong id="range-utilization">—</strong></div></div></section>
+            <section class="dash-card oee-card"><div class="dash-card-head"><h2>Time Accounting</h2></div><div class="oee-loss-list"><div><span>Calculation Time</span><strong id="range-calendar">—</strong></div><div><span>Planned Stops</span><strong id="range-planned-stop">—</strong></div><div><span>Planned Production Time</span><strong id="range-planned">—</strong></div><div><span>Unplanned Downtime</span><strong id="range-unplanned">—</strong></div><div><span>Run Time</span><strong id="range-run">—</strong></div><div><span id="range-utilization-label">Utilization</span><strong id="range-utilization">—</strong></div></div></section>
           </div>
-          <section class="data-card"><div class="dash-card-head"><h2>Line-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th>Window Utilization</th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
-          <section class="data-card"><div class="dash-card-head"><h2>Daily Line Breakdown</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting Date</th><th>Line</th><th>Window Start</th><th>Window End</th><th>Productive FB</th><th>Run (Min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Line-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th><span id="range-table-utilization-heading">Utilization</span></th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Daily Line Breakdown</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting Date</th><th>Line</th><th>End Time</th><th>Productive FB</th><th>Run (Min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="oee-report">
-          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div><div class="page-heading-actions"><label class="date-control">Report Date <input id="report-date" type="date"></label><label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label><label class="date-control">Window Start <input id="report-start-time" type="time" value="00:00" step="60" disabled></label><button class="btn" id="report-load" type="button">Load Report</button><button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button></div></div>
+          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div><div class="page-heading-actions"><label class="date-control">Report Date <input id="report-date" type="date"></label><label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label><button class="btn" id="report-load" type="button">Load Report</button><button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button></div></div>
           <div id="report-window" class="oee-window-summary" role="status"></div>
           <div id="oee-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card oee-report-card">
@@ -188,7 +187,7 @@ $oeeLines = oee_known_lines(db());
                 <thead>
                   <tr>
                     <th>Line</th><th>OEE</th><th>Availability</th>
-                    <th>Performance</th><th>Quality</th><th>Window Utilization</th>
+                    <th>Performance</th><th>Quality</th><th><span id="report-utilization-heading">Utilization</span></th>
                   </tr>
                 </thead>
                 <tbody id="report-line-metrics-body"></tbody>
@@ -215,7 +214,7 @@ $oeeLines = oee_known_lines(db());
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card downtime-card"><div class="report-filters"><label>Machine<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label></div>
             <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
-            <div class="data-scroll"><table class="data-table"><thead><tr><th>Start</th><th>End</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
+            <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="scada-logs">
@@ -288,7 +287,7 @@ $oeeLines = oee_known_lines(db());
             <section class="form-card profile-settings-card" aria-labelledby="profile-details-heading"><h2 class="form-card-title" id="profile-details-heading">Profile Details</h2><p class="form-note">Update the name shown across the portal. Username and email are managed by an administrator.</p><form id="profile-form" class="form-stack" method="post" action="app.php">
               <div><label class="form-label" for="profile-username">Username</label><input class="form-input" id="profile-username" readonly></div><div><label class="form-label" for="profile-name">Full Name</label><input class="form-input" id="profile-name" name="full_name" maxlength="160" required></div><div><label class="form-label" for="profile-email">Email</label><input class="form-input" id="profile-email" type="email" readonly><p class="form-note">Contact an administrator to change your account email.</p></div><div class="form-footer"><button class="btn" form="profile-form" type="submit">Save Profile</button></div>
             </form></section>
-            <section class="form-card profile-settings-card" aria-labelledby="change-password-heading"><h2 class="form-card-title" id="change-password-heading">Change Password</h2><p class="form-note">Use at least 12 characters and keep your password private.</p><form id="password-form" class="form-stack" method="post" action="app.php"><div><label class="form-label" for="current-password">Current Password</label><input class="form-input" id="current-password" name="current_password" type="password" autocomplete="current-password" required></div><div><label class="form-label" for="new-password">New Password</label><input class="form-input" id="new-password" name="new_password" type="password" minlength="12" autocomplete="new-password" required></div><div class="form-footer"><button class="btn" type="submit">Update Password</button></div></form></section>
+            <section class="form-card profile-settings-card" aria-labelledby="change-password-heading"><h2 class="form-card-title" id="change-password-heading">Change Password</h2><p class="form-note">Use at least 12 characters and keep your password private.</p><form id="password-form" class="form-stack" method="post" action="app.php"><div><label class="form-label" for="current-password">Current Password</label><div class="password-input-wrap"><input class="form-input" id="current-password" name="current_password" type="password" autocomplete="current-password" required><button class="password-toggle" type="button" data-password-toggle="current-password" aria-label="Show current password" aria-pressed="false" title="Show current password"><span data-icon="eye"></span></button></div></div><div><label class="form-label" for="new-password">New Password</label><div class="password-input-wrap"><input class="form-input" id="new-password" name="new_password" type="password" minlength="12" autocomplete="new-password" required><button class="password-toggle" type="button" data-password-toggle="new-password" aria-label="Show new password" aria-pressed="false" title="Show new password"><span data-icon="eye"></span></button></div></div><div class="form-footer"><button class="btn" type="submit">Update Password</button></div></form></section>
           </div>
         </section>
 
@@ -340,7 +339,7 @@ $oeeLines = oee_known_lines(db());
               <button id="breakdown-save" class="btn" type="submit">Save</button>
               <button id="breakdown-cancel" class="btn ghost" type="button" hidden>Cancel Edit</button>
             </form>
-            <div class="data-scroll"><table class="data-table"><thead><tr><th>SRNO</th><th>Type</th><th>Loss Name</th><th>Status</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="5">Loading downtime reasons…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table" data-export-title="Registered Downtime Reasons"><thead><tr><th>Type</th><th>Loss Name</th><th>Status</th><th>Actions</th></tr></thead><tbody id="breakdowns-body"><tr><td colspan="4">Loading downtime reasons…</td></tr></tbody></table></div>
           </section>
         </section>
 
@@ -348,7 +347,7 @@ $oeeLines = oee_known_lines(db());
           <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption</h1><p class="page-lead">Record chemical usage by date, shift, operator, machine, and process.</p></div><div class="page-heading-actions"><button class="btn ghost" id="chemical-consumption-refresh" type="button">Refresh</button></div></div>
           <div id="chemical-consumption-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-consumption-card" aria-labelledby="chemical-consumption-entry-heading">
-            <div class="dash-card-head"><h2 id="chemical-consumption-entry-heading">Consumption Entry</h2></div>
+            <div class="dash-card-head"><h2 id="chemical-consumption-entry-heading">Consumption Entries</h2></div>
             <form id="chemical-consumption-form" class="chemical-consumption-form">
               <input id="chemical-consumption-id" type="hidden">
               <label>Date<input id="chemical-consumption-date" type="date" required></label>
@@ -379,14 +378,13 @@ $oeeLines = oee_known_lines(db());
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
             </form>
           </section>
-          <section class="data-card chemical-consumption-report-card" id="chemical-consumption-report-print" aria-labelledby="chemical-report-table-heading">
-            <div class="chemical-report-title"><h2 id="chemical-report-table-heading">Chemical Consumption Report</h2></div>
+          <section class="data-card chemical-consumption-report-card" id="chemical-consumption-report-print" aria-label="Chemical Consumption Results">
             <dl class="chemical-report-meta">
               <div><dt>From Date</dt><dd id="chemical-report-from-display">—</dd></div>
               <div><dt>To Date</dt><dd id="chemical-report-to-display">—</dd></div>
               <div><dt>Machine</dt><dd id="chemical-report-machine-display">All Machines</dd></div>
             </dl>
-            <div class="data-scroll"><table class="data-table chemical-report-table"><thead><tr><th>SR. No.</th><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="11">Choose report filters to load entries.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-report-table" data-export-title="Consumption Results"><thead><tr><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="10">Choose report filters to load entries.</td></tr></tbody></table></div>
           </section>
         </section>
 
@@ -475,8 +473,7 @@ $oeeLines = oee_known_lines(db());
                 <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
               </dl>
             </div>
-            <div class="chemical-cost-report-title"><h2>Chemical Cost Report</h2></div>
-            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Sr.</th><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="8">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="7">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
             <div class="chemical-cost-report-footer">
               <span id="chemical-cost-report-row-count">Showing 0 rows</span>
               <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost ÷ Total Surface Area</p>

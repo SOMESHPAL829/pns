@@ -6,6 +6,7 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/oee_ingest.php';
 require_once __DIR__ . '/includes/oee_calculator.php';
 require_once __DIR__ . '/includes/oee_window.php';
+require_once __DIR__ . '/includes/oee_duration_settings.php';
 require_once __DIR__ . '/includes/oee_export.php';
 require_once __DIR__ . '/includes/permissions.php';
 require_once __DIR__ . '/includes/oee_dashboard_view.php';
@@ -393,6 +394,9 @@ try {
             if ($action === 'dashboard') {
                 json_response(oee_dashboard_view($pdo,oee_dashboard($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime),$user['access']['permissions']));
             }
+            if ($action === 'duration-setting') {
+                json_response(oee_duration_setting($pdo, $requestedDate));
+            }
             if ($action === 'report') {
                 json_response(oee_report($pdo, $requestedDate, $requestedMachine, $durationHours, $startTime));
             }
@@ -511,6 +515,13 @@ try {
 
     if ($resource === 'oee' && $action === 'downtime-tag' && $method === 'POST') {
         json_response(oee_tag_downtime($pdo, $data, $user['access']['permissions']));
+    }
+    if ($resource === 'oee' && $action === 'duration-setting-save' && $method === 'POST') {
+        try {
+            json_response(oee_save_duration_setting($pdo, $data, (int) $user['id']));
+        } catch (InvalidArgumentException $exception) {
+            json_response(['error' => $exception->getMessage()], 422);
+        }
     }
     if ($resource === 'appearance' && $action === 'save' && $method === 'POST') {
         $theme = $data['theme'] ?? null;

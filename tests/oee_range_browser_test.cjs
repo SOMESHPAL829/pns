@@ -21,6 +21,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
         requests.push(Object.fromEntries(q));
         if (q.get('resource') === 'bootstrap') return route.fulfill({ json: { csrf_token: 'test', access: { permissions: fullPermissions }, user: { full_name: 'Test Operator', username: 'operator' }, records: [], is_admin: false, user_count: 1 } });
         if (q.get('resource') === 'users') return route.fulfill({ json: { users: [], assignable_roles: [] } });
+        if (q.get('action') === 'duration-setting') return route.fulfill({ json: { date: q.get('date') || '2026-10-22', configured: false, duration_minutes: 1440, updated_at: null } });
         if (q.get('action') === 'range-export') return route.fulfill({ contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: Buffer.from([80, 75, 3, 4]) });
         const days = (Date.parse(q.get('to_date')) - Date.parse(q.get('from_date'))) / 86400000 + 1 || 1;
         const minutes = Number(q.get('duration_minutes') || 1440);
@@ -43,8 +44,6 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.locator('#range-from-date').fill('2026-10-21');
     await page.locator('#range-to-date').fill('2026-10-22');
     await page.locator('#range-duration').selectOption('720');
-    assert(!(await page.locator('#range-start-time').isDisabled()));
-    await page.locator('#range-start-time').fill('18:00');
     await page.locator('#range-load').click();
     await page.waitForFunction(() => document.getElementById('range-days').textContent === '2');
     assert((await page.locator('#range-window').textContent()).includes('2 Day(s) × 720 Min'));
@@ -54,9 +53,9 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#range-export').click();
     const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), 'pns-oee-2026-10-21-to-2026-10-22-ALL-720min-1800.xlsx');
+    assert.equal(download.suggestedFilename(), 'pns-oee-2026-10-21-to-2026-10-22-ALL-720min-0000.xlsx');
     const exported = requests.find(r => r.action === 'range-export');
-    assert.equal(exported.from_date, '2026-10-21'); assert.equal(exported.to_date, '2026-10-22'); assert.equal(exported.start_time, '18:00');
+    assert.equal(exported.from_date, '2026-10-21'); assert.equal(exported.to_date, '2026-10-22'); assert.equal(exported.start_time, '00:00');
     await page.locator('#range-from-date').fill('2026-10-23');
     const before = requests.filter(r => r.action === 'range-dashboard').length;
     await page.locator('#range-load').click();
@@ -69,7 +68,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.waitForFunction(() => document.getElementById('range-window').textContent.includes('APP-07'));
     for (const width of [1440, 1024, 768, 320]) {
       await page.setViewportSize({ width, height: 1000 }); await page.waitForTimeout(250);
-      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-duration', 'range-start-time', 'range-load', 'range-export']) {
+      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-duration', 'range-load', 'range-export']) {
         const box = await page.locator('#' + id).boundingBox();
         assert(box && box.x >= 0 && box.x + box.width <= width + 1, id + ' overflows at ' + width);
       }

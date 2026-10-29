@@ -52,6 +52,26 @@
     });
   }
 
+  function syncTopbar(key) {
+    document.querySelectorAll(".page-heading.topbar-synced").forEach(function (heading) {
+      heading.classList.remove("topbar-synced", "page-heading-copy-only");
+    });
+
+    const activeView = Array.from(views).find(function (view) {
+      return view.getAttribute("data-view") === key;
+    });
+    const heading = activeView ? activeView.querySelector(":scope > .page-heading") : null;
+    const copy = heading ? heading.firstElementChild : null;
+    const title = copy ? copy.querySelector("h1") : null;
+    if (pageTitle) pageTitle.textContent = title?.textContent.trim() || titles[key] || "PNS OEE";
+    if (!heading || !copy) return;
+    const hasActions = Array.from(heading.children).slice(1).some(function (child) {
+      return !child.hidden && child.textContent.trim() !== "";
+    });
+    heading.classList.add("topbar-synced");
+    heading.classList.toggle("page-heading-copy-only", !hasActions);
+  }
+
   function setView(name) {
     const routeParts = name.split("/");
     const routeName = routeParts[0].split("?")[0];
@@ -69,7 +89,7 @@
       link.classList.toggle("active", on);
       link.classList.toggle("is-active", on);
     });
-    if (pageTitle) pageTitle.textContent = titles[key];
+    syncTopbar(key);
     const routeHash =
       requestedKey === "detail" && routeParts[1]
         ? "#/detail/" + encodeURIComponent(routeParts[1])

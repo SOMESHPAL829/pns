@@ -80,12 +80,13 @@ function portal_api_requirement(string $resource, string $action, string $method
         if($resource==='breakdowns'&&$action==='list')return ['breakdown-registration','view'];
         if($resource==='breakdowns'&&$action==='by-type')return ['downtime','view'];
         if($resource==='oee'){
-            $pages=['dashboard'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'];
+            $pages=['dashboard'=>'dashboard','duration-setting'=>'dashboard','range-dashboard'=>'oee-range','range-export'=>'oee-range','report'=>'oee-report','export'=>'oee-report','logs'=>'scada-logs','downtime'=>'downtime','masters'=>'oee-masters'];
             if(isset($pages[$action]))return [$pages[$action],in_array($action,['export','range-export'],true)?'export':'view'];
         }
     }
     if($method==='POST'){
         if($resource==='appearance'&&$action==='save')return null;
+        if($resource==='oee'&&$action==='duration-setting-save')return ['dashboard','view'];
         if($resource==='oee'&&$action==='downtime-tag')return ['downtime','update'];
         if($resource==='oee'&&$action==='downtime-save')return ['downtime',filter_var($data['event_id']??null,FILTER_VALIDATE_INT)?'update':'create'];
         if($resource==='oee'&&$action==='master-save')return ['oee-masters',($data['master_type']??null)==='threshold'||filter_var($data['id']??null,FILTER_VALIDATE_INT)?'update':'create'];

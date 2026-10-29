@@ -12,6 +12,7 @@
     downtimeEditId: null,
     durationMinutes: "1440",
     windowStart: "00:00",
+    savedDuration: null,
     dashboardRequest: 0,
     reportRequest: 0,
     appearance: { theme: "light", brightness: 100 },
@@ -191,23 +192,67 @@
     app.durationMinutes =
       document.getElementById(prefix + "-duration")?.value ||
       app.durationMinutes;
-    app.windowStart =
-      app.durationMinutes === "1440"
-        ? "00:00"
-        : document.getElementById(prefix + "-start-time")?.value || "00:00";
+    app.windowStart = "00:00";
     ["dashboard", "report"].forEach(function (name) {
       const duration = document.getElementById(name + "-duration");
-      const start = document.getElementById(name + "-start-time");
       if (duration) duration.value = app.durationMinutes;
-      if (start) {
-        start.value = app.windowStart;
-        start.disabled = app.durationMinutes === "1440";
-      }
     });
     return {
       duration_minutes: app.durationMinutes,
       start_time: app.windowStart,
     };
+  }
+
+  function updateDurationSaveButton() {
+    const button = document.getElementById("dashboard-duration-save");
+    const date = document.getElementById("dashboard-date")?.value || "";
+    const duration = Number(
+      document.getElementById("dashboard-duration")?.value || 1440,
+    );
+    if (!button) return;
+    const matches =
+      app.savedDuration?.configured === true &&
+      app.savedDuration.date === date &&
+      app.savedDuration.duration_minutes === duration;
+    button.disabled = matches || !date;
+    button.textContent = matches
+      ? "Saved"
+      : app.savedDuration?.configured && app.savedDuration.date === date
+        ? "Update Duration"
+        : "Save Duration";
+  }
+
+  async function loadDailyDurationSetting() {
+    const dateControl = document.getElementById("dashboard-date");
+    const setting = await request("oee", "duration-setting", {
+      query: dateControl?.value ? { date: dateControl.value } : {},
+    });
+    if (dateControl) dateControl.value = setting.date;
+    const duration = document.getElementById("dashboard-duration");
+    if (duration) duration.value = String(setting.duration_minutes);
+    app.durationMinutes = String(setting.duration_minutes);
+    app.savedDuration = setting;
+    updateDurationSaveButton();
+  }
+
+  async function saveDailyDurationSetting() {
+    const button = document.getElementById("dashboard-duration-save");
+    const date = document.getElementById("dashboard-date")?.value || "";
+    const duration = document.getElementById("dashboard-duration")?.value || "";
+    if (!date || !duration || button?.disabled) return;
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      app.savedDuration = await request("oee", "duration-setting-save", {
+        method: "POST",
+        body: { date: date, duration_minutes: duration },
+      });
+      toast("Calculation duration saved for " + date, "ok");
+    } catch (error) {
+      toast(error.message || "Calculation duration could not be saved.", "crit");
+    } finally {
+      updateDurationSaveButton();
+    }
   }
 
   function renderOeeWindow(prefix, data) {
@@ -218,9 +263,9 @@
         ? window.duration_minutes +
             " min (" +
             window.duration_hours +
-            "h) · " +
+            "h) · Start Time: " +
             readableDateTime(window.window_start) +
-            " → " +
+            " · End Time: " +
             readableDateTime(window.window_end)
         : "",
     );
@@ -236,7 +281,7 @@
       }
     }
     return flags.shift_quality_not_entered
-      ? "Window-specific quality is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to partial windows."
+      ? "Quality data is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to partial calculation durations."
       : "";
   }
 
@@ -561,6 +606,10 @@
     );
     setText("report-performance-value", percent((data.oee || {}).performance));
     setText("report-quality-value", percent((data.oee || {}).quality));
+    setText(
+      "report-utilization-heading",
+      (data.window?.duration_hours || 24) + "h Utilization",
+    );
     const lineBody = document.getElementById("report-line-metrics-body");
     if (lineBody) {
       lineBody.replaceChildren();
@@ -734,7 +783,7 @@
     window.PnsDashboard.loading(true);
     setText(
       "dashboard-window",
-      "Calculating " + query.duration_minutes + " min window…",
+      "Calculating " + query.duration_minutes + " min duration…",
     );
     try {
       const data = await request("oee", "dashboard", {
@@ -752,6 +801,17 @@
     }
   }
 
+  async function loadDashboardForDate() {
+    if (!can("dashboard")) return;
+    try {
+      await loadDailyDurationSetting();
+      await loadOeeDashboard();
+    } catch (error) {
+      showOeeAlert("oee-dashboard-alert", error.message, true);
+      window.PnsDashboard.loading(false);
+    }
+  }
+
   async function loadOeeReport() {
     if (!can("oee-report")) return;
     const date =
@@ -764,7 +824,7 @@
     const requestId = ++app.reportRequest;
     setText(
       "report-window",
-      "Calculating " + query.duration_minutes + " min window…",
+      "Calculating " + query.duration_minutes + " min duration…",
     );
     try {
       const data = await request("oee", "report", {
@@ -794,10 +854,7 @@
       to_date: to,
       machine: document.getElementById("range-machine").value,
       duration_minutes: minutes,
-      start_time:
-        minutes === "1440"
-          ? "00:00"
-          : document.getElementById("range-start-time").value,
+      start_time: "00:00",
     };
   }
 
@@ -839,6 +896,14 @@
     });
     setText("range-utilization", percent(oee.utilization_window));
     setText(
+      "range-utilization-label",
+      (window.duration_hours || Number(window.duration_minutes || 1440) / 60) + "h Utilization",
+    );
+    setText(
+      "range-table-utilization-heading",
+      (window.duration_hours || Number(window.duration_minutes || 1440) / 60) + "h Utilization",
+    );
+    setText(
       "range-window",
       data.from_date +
         " → " +
@@ -847,9 +912,7 @@
         window.day_count +
         " Day(s) × " +
         window.duration_minutes +
-        " Min per Line · Daily Start " +
-        window.start_time +
-        " · " +
+        " Min per Line · " +
         (data.machine === "ALL" ? "All Machines" : data.machine),
     );
     const flags = oee.calculation_flags || {},
@@ -861,7 +924,7 @@
       );
     if (flags.performance_above_100)
       warnings.push(
-        "Performance exceeds 100% in one or more windows; verify cycle time and downtime.",
+        "Performance exceeds 100% in one or more selected periods; verify cycle time and downtime.",
       );
     if (oeeQualityWarning(oee)) warnings.push(oeeQualityWarning(oee));
     if (!metrics.total_fb)
@@ -895,7 +958,6 @@
       [
         line.report_date,
         line.line_code,
-        readableDateTime(line.window_start),
         readableDateTime(line.window_end),
         line.productive_fb,
         Number(line.run_minutes).toFixed(1),
@@ -1013,15 +1075,23 @@
       if (item.status === "proposed" || item.status === "confirmed") {
         const tag = document.createElement("button");
         tag.type = "button";
-        tag.className = "link";
-        tag.textContent = item.status === "proposed" ? "Tag" : "Edit";
+        tag.className = "action-icon-button";
+        const actionLabel = item.status === "proposed" ? "Tag Reason" : "Edit Reason";
+        const icon = document.createElement("span");
+        icon.dataset.icon = "tag";
+        tag.appendChild(icon);
+        tag.title = actionLabel;
+        tag.setAttribute("aria-label", actionLabel);
         tag.dataset.tagDowntime = String(item.id);
         tag.dataset.startsAt = item.starts_at || "";
         tag.dataset.endsAt = item.ends_at || "";
         tag.dataset.eventType = item.event_type || "unplanned";
         tag.dataset.reasonCode = item.reason_code || "UNK";
         tag.dataset.notes = item.notes || "";
-        if (can("downtime", "update")) actionCell.appendChild(tag);
+        if (can("downtime", "update")) {
+          actionCell.appendChild(tag);
+          window.ThemeIcons?.mount(tag);
+        }
       }
       body.appendChild(row);
     });
@@ -1601,10 +1671,6 @@
     });
     rangeForm.addEventListener("change", function () {
       rangeRequest++;
-      const start = document.getElementById("range-start-time");
-      start.disabled =
-        document.getElementById("range-duration").value === "1440";
-      if (start.disabled) start.value = "00:00";
       setText(
         "range-window",
         "Selection changed. Click Calculate OEE to update the results.",
@@ -1638,6 +1704,9 @@
     ?.addEventListener("click", exportRangeExcel);
   if (dashboardRefresh)
     dashboardRefresh.addEventListener("click", loadOeeDashboard);
+  document
+    .getElementById("dashboard-duration-save")
+    ?.addEventListener("click", saveDailyDurationSetting);
   window.addEventListener("pns-downtime-tagged", function () {
     if (
       document
@@ -1647,20 +1716,21 @@
       loadOeeDashboard();
   });
   const dashboardDate = document.getElementById("dashboard-date");
-  if (dashboardDate) dashboardDate.addEventListener("change", loadOeeDashboard);
+  if (dashboardDate)
+    dashboardDate.addEventListener("change", loadDashboardForDate);
   const dashboardMachine = document.getElementById("dashboard-machine");
   if (dashboardMachine)
     dashboardMachine.addEventListener("change", loadOeeDashboard);
   ["dashboard", "report"].forEach(function (prefix) {
-    ["duration", "start-time"].forEach(function (suffix) {
-      const control = document.getElementById(prefix + "-" + suffix);
-      if (control)
-        control.addEventListener("change", function () {
-          oeeWindowQuery(prefix);
-          if (prefix === "dashboard") loadOeeDashboard();
-          else loadOeeReport();
-        });
-    });
+    const control = document.getElementById(prefix + "-duration");
+    if (control)
+      control.addEventListener("change", function () {
+        oeeWindowQuery(prefix);
+        if (prefix === "dashboard") {
+          updateDurationSaveButton();
+          loadOeeDashboard();
+        } else loadOeeReport();
+      });
   });
   const reportLoad = document.getElementById("report-load");
   if (reportLoad) reportLoad.addEventListener("click", loadOeeReport);
@@ -1860,7 +1930,7 @@
   if (logsRefresh) logsRefresh.addEventListener("click", loadScadaLogs);
   window.addEventListener("portal-view-changed", function (event) {
     const route = event.detail.route;
-    if (route === "dashboard") loadOeeDashboard();
+    if (route === "dashboard") loadDashboardForDate();
     if (route === "oee-range") loadRangeDashboard();
     if (route === "oee-report") loadOeeReport();
     if (route === "scada-logs") loadScadaLogs();
