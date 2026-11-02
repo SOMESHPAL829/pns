@@ -32,6 +32,9 @@ function oee_known_lines(PDO $pdo): array
         }
         foreach ($rows as $line) {
             $code = strtoupper(trim((string) $line));
+            if ($code === 'CED') {
+                continue;
+            }
             if (oee_line_code_ok($code)) {
                 $clean[$code] = $code;
             }
