@@ -1551,6 +1551,32 @@ table.data tbody tr:hover {
 .chemical-cost-chartarea svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .chemical-cost-gridline { opacity: 0.35; }
 .chemical-cost-axis { fill: currentColor; font-size: 11px; }
+.chemical-combo-axis-title { font-size: 10px; font-weight: 750; }
+.chemical-combo-bar {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: chemical-combo-bar-grow 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.chemical-combo-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chemical-combo-line-draw 900ms 140ms ease-out forwards;
+}
+.chemical-combo-point {
+  opacity: 0;
+  animation: chemical-combo-point-in 220ms 850ms ease-out forwards;
+}
+@keyframes chemical-combo-bar-grow {
+  from { transform: scaleY(0); opacity: 0.25; }
+  to { transform: scaleY(1); opacity: 0.88; }
+}
+@keyframes chemical-combo-line-draw { to { stroke-dashoffset: 0; } }
+@keyframes chemical-combo-point-in { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .chemical-combo-bar,
+  .chemical-combo-line,
+  .chemical-combo-point { animation: none; opacity: 1; stroke-dashoffset: 0; }
+}
 .chemical-cost-empty {
   display: grid;
   place-items: center;
@@ -1704,7 +1730,6 @@ table.data tbody tr:hover {
 .role-controls select { max-width: 12rem; min-height: 2rem; }
 #roles-body .link + .link { margin-left: 0.75rem; }
 .threshold-card h2 { margin: 0; font: inherit; }
-.threshold-help { padding: 0.9rem 0.9rem 0; margin: 0; }
 .threshold-card .master-form label { min-width: 0; }
 .threshold-card .master-form input, .threshold-card .master-form select { width: 100%; max-width: 100%; box-sizing: border-box; }
 .threshold-card .master-form button:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -2762,10 +2787,17 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 }
 
 /* Compact report toolbars keep all peer controls equal and exports at the far right. */
-[data-view="oee-range"] .range-toolbar { flex-wrap: nowrap; }
+[data-view="oee-range"] .range-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(8rem, 1fr)) max-content max-content;
+  align-items: end;
+  gap: 0.65rem;
+  width: 100%;
+  flex-wrap: nowrap;
+}
 [data-view="oee-range"] .range-toolbar > label {
-  flex: 0 0 10.5rem;
-  width: 10.5rem;
+  width: 100%;
+  min-width: 0;
 }
 [data-view="oee-range"] .range-toolbar > .date-range-control {
   min-width: 0;
@@ -2779,7 +2811,19 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 [data-view="oee-range"] .range-toolbar select { width: 100%; min-height: 2.5rem; }
 [data-view="oee-range"] #range-load,
 [data-view="oee-range"] #range-export { min-height: 2.5rem; white-space: nowrap; }
-[data-view="oee-range"] #range-export { margin-left: auto; }
+[data-view="oee-range"] #range-export { margin-left: 0; }
+
+@media (max-width: 900px) {
+  [data-view="oee-range"] .range-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-view="oee-range"] #range-load,
+  [data-view="oee-range"] #range-export { width: 100%; }
+}
+
+@media (max-width: 560px) {
+  [data-view="oee-range"] .range-toolbar { grid-template-columns: 1fr; }
+}
 
 .chemical-cost-filters {
   display: flex;
@@ -2930,4 +2974,285 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 #dashboard-stops-body .action-icon-button { margin-left: 0.45rem; }
 @media (max-width: 760px) {
   .page-heading.topbar-synced { align-items: stretch; }
+}
+
+/* Keep cards and their action rows aligned on compact laptop viewports. */
+@media (max-width: 1400px) {
+  .view:not(.pns-dashboard) .data-card,
+  .view:not(.pns-dashboard) .dash-card,
+  .view:not(.pns-dashboard) .form-card,
+  .view:not(.pns-dashboard) .chemical-cost-chart-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .view:not(.pns-dashboard) .dash-card-head {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .view:not(.pns-dashboard) .dash-card-head > h2,
+  .view:not(.pns-dashboard) .dash-card-head > h3,
+  .view:not(.pns-dashboard) .dash-card-head > div:first-child {
+    min-width: 0;
+  }
+
+  .view:not(.pns-dashboard) .table-heading-actions {
+    min-width: 0;
+    max-width: 100%;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  .chemical-cost-chart-grid,
+  .chemical-cost-chart-grid.equal {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .chemical-cost-chart-card { height: 100%; }
+  .chemical-cost-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1100px) {
+  .view:not(.pns-dashboard) .dash-card-head > .table-heading-actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+/* Records: keep the title, filters and table actions on one aligned toolbar. */
+[data-view="requests"] .dash-card-head {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+[data-view="requests"] .dash-card-head > h2 {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+[data-view="requests"] .dash-card-head > .record-heading-actions {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+[data-view="requests"] .table-heading-filter-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+[data-view="requests"] .table-heading-filter-form input {
+  flex: 1 1 13rem;
+  width: auto;
+  min-width: 9rem;
+}
+[data-view="requests"] .table-heading-filter-form select {
+  flex: 0 1 10rem;
+  width: 10rem;
+  min-width: 7.5rem;
+}
+[data-view="requests"] .record-heading-actions .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  [data-view="requests"] .dash-card-head {
+    flex-wrap: wrap;
+  }
+  [data-view="requests"] .dash-card-head > .record-heading-actions {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  [data-view="requests"] .record-heading-actions,
+  [data-view="requests"] .table-heading-filter-form {
+    flex-wrap: wrap;
+  }
+}
+
+/* Search belongs beside the table title; table actions remain grouped at the right. */
+.dash-card-head:has(> .table-heading-actions > .table-heading-search),
+.dash-card-head:has(> .table-heading-actions > .table-heading-search-form) {
+  flex-wrap: nowrap;
+}
+.dash-card-head > .table-heading-actions:has(> .table-heading-search),
+.dash-card-head > .table-heading-actions:has(> .table-heading-search-form) {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin-left: 0.75rem;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.table-heading-actions > .table-heading-search + .btn,
+.table-heading-actions > .table-heading-search-form + .btn {
+  margin-left: auto;
+}
+.table-heading-actions > .btn + .portal-modal-launcher {
+  margin-left: 0;
+}
+.table-heading-actions > .table-export-button:last-child {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .dash-card-head:has(> .table-heading-actions > .table-heading-search),
+  .dash-card-head:has(> .table-heading-actions > .table-heading-search-form) {
+    flex-wrap: wrap;
+  }
+  .dash-card-head > .table-heading-actions:has(> .table-heading-search),
+  .dash-card-head > .table-heading-actions:has(> .table-heading-search-form) {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+}
+
+/* Chemical cost controls: one complete desktop row without clipped actions. */
+[data-view="chemical-cost-report"] .chemical-cost-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(7.5rem, 1fr)) max-content max-content;
+  align-items: end;
+  gap: 0.65rem;
+  width: 100%;
+}
+[data-view="chemical-cost-report"] .chemical-cost-filters > label {
+  width: 100%;
+  min-width: 0;
+}
+[data-view="chemical-cost-report"] .chemical-cost-toolbar-actions {
+  margin-left: 0;
+  flex-wrap: nowrap;
+}
+[data-view="chemical-cost-report"] .chemical-cost-table-head {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+[data-view="chemical-cost-report"] .chemical-cost-table-head > .table-heading-actions {
+  flex: 0 0 auto;
+  width: auto;
+  margin-left: auto;
+}
+[data-view="chemical-cost-report"] .chemical-cost-report-meta-inline {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--card);
+  overflow: hidden;
+}
+[data-view="chemical-cost-report"] .chemical-cost-report-meta-inline > div {
+  min-width: 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+[data-view="chemical-cost-report"] .chemical-cost-report-meta-inline > div:last-child {
+  border-right: 0;
+}
+
+@media (max-width: 980px) {
+  [data-view="chemical-cost-report"] .chemical-cost-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-view="chemical-cost-report"] .chemical-cost-filters > .btn,
+  [data-view="chemical-cost-report"] .chemical-cost-toolbar-actions { width: 100%; }
+  [data-view="chemical-cost-report"] .chemical-cost-toolbar-actions .btn { flex: 1 1 auto; }
+}
+
+@media (max-width: 600px) {
+  [data-view="chemical-cost-report"] .chemical-cost-filters { grid-template-columns: 1fr; }
+  [data-view="chemical-cost-report"] .chemical-cost-table-head { flex-wrap: wrap; }
+  [data-view="chemical-cost-report"] .chemical-cost-table-head > .table-heading-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  [data-view="chemical-cost-report"] .chemical-cost-report-meta-inline { grid-template-columns: 1fr; }
+  [data-view="chemical-cost-report"] .chemical-cost-report-meta-inline > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+/* Keep the Users status filter label readable beside its native select arrow. */
+[data-view="users"] .data-table th:nth-child(6),
+[data-view="users"] .data-table td:nth-child(6) {
+  min-width: 7.5rem;
+}
+
+/* Keep compact OEE filter headings readable instead of compressing their labels. */
+[data-view="oee-range"] .range-lines-table {
+  min-width: 71rem;
+}
+[data-view="oee-range"] .range-lines-table th:first-child,
+[data-view="oee-range"] .range-lines-table td:first-child {
+  min-width: 6.75rem;
+}
+[data-view="oee-range"] .range-lines-table th:nth-child(6),
+[data-view="oee-range"] .range-lines-table td:nth-child(6) {
+  min-width: 9.25rem;
+}
+[data-view="oee-report"] .oee-report-table {
+  min-width: 78rem;
+}
+[data-view="oee-report"] .oee-report-table th:first-child,
+[data-view="oee-report"] .oee-report-table td:first-child,
+[data-view="oee-report"] .oee-report-table th:nth-child(5),
+[data-view="oee-report"] .oee-report-table td:nth-child(5),
+[data-view="oee-report"] .oee-report-table th:nth-child(6),
+[data-view="oee-report"] .oee-report-table td:nth-child(6),
+[data-view="oee-report"] .oee-report-table th:nth-child(11),
+[data-view="oee-report"] .oee-report-table td:nth-child(11) {
+  min-width: 7.5rem;
+}
+
+/* Production report controls use two compact, fully aligned rows. */
+[data-view="oee-report"] .oee-report-card > .report-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.85rem;
+}
+[data-view="oee-report"] .oee-report-card > .report-filters > label {
+  width: 100%;
+  min-width: 0;
+}
+[data-view="oee-report"] .oee-report-card > .report-filters > label input,
+[data-view="oee-report"] .oee-report-card > .report-filters > label select {
+  width: 100%;
+  min-width: 0;
+}
+[data-view="oee-report"] .report-primary-controls {
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  padding: 0.85rem 0 0;
+  border-top: 1px solid var(--line);
+  border-left: 0;
+}
+[data-view="oee-report"] .report-primary-controls #report-export {
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  [data-view="oee-report"] .oee-report-card > .report-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  [data-view="oee-report"] .report-primary-controls { flex-wrap: wrap; }
+}
+
+@media (max-width: 600px) {
+  [data-view="oee-report"] .oee-report-card > .report-filters { grid-template-columns: 1fr; }
+  [data-view="oee-report"] .report-primary-controls > * { flex: 1 1 100%; }
+  [data-view="oee-report"] .report-primary-controls #report-export { margin-left: 0; }
 }

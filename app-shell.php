@@ -116,7 +116,6 @@ $oeeLines = oee_known_lines(db());
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
               <button class="btn ghost" type="button" id="range-export" data-permission-page="oee-range" data-permission-action="export" hidden>Export Excel</button>
             </form>
-            <p class="report-summary">Both dates included · Maximum 93 days · Percentages use combined totals, not daily averages.</p>
           </section>
           <div id="range-window" class="oee-window-summary" role="status" aria-live="polite"></div>
           <div id="range-alert" class="oee-alert" role="status" hidden></div>
@@ -146,13 +145,13 @@ $oeeLines = oee_known_lines(db());
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Production Summary</h2></div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="range-total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="range-productive-fb">—</strong></div><div><span class="oee-stat-label">Empty Racks</span><strong id="range-empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="range-pcs">—</strong></div><div><span class="oee-stat-label">Surface Area</span><strong id="range-area">—</strong></div><div><span class="oee-stat-label">Days Selected</span><strong id="range-days">—</strong></div></div></section>
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Time Accounting</h2></div><div class="oee-loss-list"><div><span>Calculation Time</span><strong id="range-calendar">—</strong></div><div><span>Planned Stops</span><strong id="range-planned-stop">—</strong></div><div><span>Planned Production Time</span><strong id="range-planned">—</strong></div><div><span>Unplanned Downtime</span><strong id="range-unplanned">—</strong></div><div><span>Run Time</span><strong id="range-run">—</strong></div><div><span id="range-utilization-label">Utilization</span><strong id="range-utilization">—</strong></div></div></section>
           </div>
-          <section class="data-card"><div class="dash-card-head"><h2>Line-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th><span id="range-table-utilization-heading">Utilization</span></th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Line-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table range-lines-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th><span id="range-table-utilization-heading">Utilization</span></th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
           <section class="data-card"><div class="dash-card-head"><h2>Daily Line Breakdown</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting Date</th><th>Line</th><th>End Time</th><th>Productive FB</th><th>Run (Min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="oee-report">
           <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div></div>
-          <div id="report-window" class="oee-window-summary" role="status"></div>
+          <div id="report-window" class="oee-window-summary" role="status" hidden></div>
           <div id="oee-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card oee-report-card">
             <div class="report-filters">
@@ -463,7 +462,7 @@ $oeeLines = oee_known_lines(db());
               <div class="dash-card-head">
                 <div>
                   <h2>Cost vs Surface Area</h2>
-                  <p class="chemical-cost-caption">Trend comparison (indexed to first period = 100)</p>
+                  <p class="chemical-cost-caption">Chemical cost and processed surface area by period</p>
                 </div>
                 <div class="chemical-cost-legend"><span><i class="chemical-cost-dot cost"></i>Cost</span><span><i class="chemical-cost-dot area"></i>Area</span></div>
               </div>
@@ -476,13 +475,14 @@ $oeeLines = oee_known_lines(db());
                 <h2 id="chemical-cost-report-table-heading">Detailed Chemical Cost Report</h2>
                 <p class="chemical-cost-caption" id="chemical-cost-table-caption">Period-wise financial and surface-area performance</p>
               </div>
-              <dl class="chemical-cost-report-meta chemical-cost-report-meta-inline">
-                <div><dt>From</dt><dd id="chemical-cost-report-from-display">—</dd></div>
-                <div><dt>To</dt><dd id="chemical-cost-report-to-display">—</dd></div>
-                <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
-                <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
-              </dl>
+              <div class="table-heading-actions"></div>
             </div>
+            <dl class="chemical-cost-report-meta chemical-cost-report-meta-inline">
+              <div><dt>From</dt><dd id="chemical-cost-report-from-display">—</dd></div>
+              <div><dt>To</dt><dd id="chemical-cost-report-to-display">—</dd></div>
+              <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
+              <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
+            </dl>
             <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="7">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
             <div class="chemical-cost-report-footer">
               <span id="chemical-cost-report-row-count">Showing 0 rows</span>
@@ -497,8 +497,7 @@ $oeeLines = oee_known_lines(db());
           <div id="masters-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card threshold-card" aria-labelledby="threshold-heading">
             <div class="dash-card-head"><h2 id="threshold-heading">Plant Gap Threshold</h2><div class="table-heading-actions"><button class="btn" id="masters-refresh" type="button">Refresh</button></div></div>
-            <p id="threshold-help" class="form-note threshold-help">A loading gap must be greater than this limit to propose downtime. Downtime = gap minus the arriving FB cycle time (minimum zero). Empty-rack detection is separate. Changes apply to historical reports on refresh; tagged events stay unchanged.</p>
-            <form id="threshold-form" class="master-form" aria-describedby="threshold-help">
+            <form id="threshold-form" class="master-form">
               <label for="threshold-line">Plant / Machine<select id="threshold-line" disabled><?= oee_machine_options_html($oeeLines) ?></select></label>
               <label for="threshold-minutes">Gap Threshold (Minutes)<input id="threshold-minutes" type="number" min="0.001" max="1440" step="0.001" required disabled></label>
               <button id="threshold-save" class="btn" type="submit" disabled>Save Threshold</button>

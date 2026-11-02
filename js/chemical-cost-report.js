@@ -412,6 +412,144 @@
     });
   }
 
+  function comboChart(el, values) {
+    const root = byId(el);
+    const usable = values.filter(
+      (row) => row.cost != null && !Number.isNaN(row.cost) && !Number.isNaN(row.area),
+    );
+    if (!usable.length) {
+      root.innerHTML =
+        '<div class="chemical-cost-empty">No chartable data in selected range</div>';
+      return;
+    }
+
+    const W = 750;
+    const H = 286;
+    const left = 68;
+    const right = 68;
+    const top = 25;
+    const bottom = 44;
+    const plotW = W - left - right;
+    const plotH = H - top - bottom;
+    const maxCost = Math.max(...usable.map((row) => Number(row.cost) || 0), 0) * 1.15 || 1;
+    const maxArea = Math.max(...usable.map((row) => Number(row.area) || 0), 0) * 1.15 || 1;
+    const x = (index) => left + ((index + 0.5) * plotW) / usable.length;
+    const costY = (value) => top + plotH - ((Number(value) || 0) / maxCost) * plotH;
+    const areaY = (value) => top + plotH - ((Number(value) || 0) / maxArea) * plotH;
+    const barWidth = Math.min(46, (plotW / usable.length) * 0.5);
+    const areaPath = usable
+      .map(
+        (row, index) =>
+          (index ? "L" : "M") + x(index).toFixed(1) + " " + areaY(row.area).toFixed(1),
+      )
+      .join(" ");
+
+    let out =
+      '<svg viewBox="0 0 ' +
+      W +
+      " " +
+      H +
+      '" preserveAspectRatio="none" role="img" aria-label="Chemical cost bars with processed surface area trend">';
+    out +=
+      '<text x="' +
+      left +
+      '" y="12" text-anchor="start" class="chemical-cost-axis chemical-combo-axis-title">Cost (INR)</text>';
+    out +=
+      '<text x="' +
+      (W - right) +
+      '" y="12" text-anchor="end" class="chemical-cost-axis chemical-combo-axis-title">Surface Area (dm²)</text>';
+
+    for (let step = 0; step < 5; step += 1) {
+      const fraction = (4 - step) / 4;
+      const gy = top + (step * plotH) / 4;
+      out +=
+        '<line x1="' +
+        left +
+        '" y1="' +
+        gy +
+        '" x2="' +
+        (W - right) +
+        '" y2="' +
+        gy +
+        '" stroke="currentColor" class="chemical-cost-gridline" stroke-dasharray="3 4"/>';
+      out +=
+        '<text x="' +
+        (left - 9) +
+        '" y="' +
+        (gy + 4) +
+        '" text-anchor="end" class="chemical-cost-axis">₹' +
+        fmtShort(maxCost * fraction) +
+        "</text>";
+      out +=
+        '<text x="' +
+        (W - right + 9) +
+        '" y="' +
+        (gy + 4) +
+        '" text-anchor="start" class="chemical-cost-axis">' +
+        fmtShort(maxArea * fraction) +
+        "</text>";
+    }
+
+    usable.forEach((row, index) => {
+      const xx = x(index);
+      const yy = costY(row.cost);
+      out +=
+        '<rect class="chemical-cost-mark chemical-combo-bar" data-i="' +
+        index +
+        '" x="' +
+        (xx - barWidth / 2) +
+        '" y="' +
+        yy +
+        '" width="' +
+        barWidth +
+        '" height="' +
+        (top + plotH - yy) +
+        '" rx="4" fill="#315f8f" opacity=".88"/>';
+      out +=
+        '<text x="' +
+        xx +
+        '" y="' +
+        (H - 10) +
+        '" text-anchor="middle" class="chemical-cost-axis">' +
+        row.label +
+        "</text>";
+    });
+
+    out +=
+      '<path class="chemical-combo-line" d="' +
+      areaPath +
+      '" pathLength="1" stroke="#17a18f" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    usable.forEach((row, index) => {
+      out +=
+        '<circle class="chemical-cost-mark chemical-combo-point" data-i="' +
+        index +
+        '" cx="' +
+        x(index) +
+        '" cy="' +
+        areaY(row.area) +
+        '" r="5" fill="white" stroke="#17a18f" stroke-width="3"/>';
+    });
+    out += "</svg>";
+    root.innerHTML = out;
+
+    root.querySelectorAll(".chemical-cost-mark").forEach((mark) => {
+      mark.addEventListener("pointermove", (event) => {
+        const row = usable[Number(mark.dataset.i)];
+        tipShow(
+          event,
+          "<b>" +
+            row.period +
+            "</b><br>Chemical Cost: " +
+            money(row.cost, 0) +
+            "<br>Surface Area: " +
+            decimal(row.area, 2) +
+            " dm²",
+        );
+      });
+      mark.addEventListener("pointerleave", tipHide);
+    });
+  }
+
   function renderCharts(series, reportType) {
     const typeLabel =
       reportType === "weekly"
@@ -438,17 +576,7 @@
       kind: "bar",
       colors: ["#1aa193"],
     });
-    const baseCost = series.find((row) => row.cost != null)?.cost || 1;
-    const baseArea = series.find((row) => row.area > 0)?.area || 1;
-    svgChart(
-      "chemical-cost-indexed-chart",
-      series.map((row) => ({
-        ...row,
-        costIndex: row.cost == null ? null : (row.cost / baseCost) * 100,
-        areaIndex: (row.area / baseArea) * 100,
-      })),
-      { keys: ["costIndex", "areaIndex"], percent: true },
-    );
+    comboChart("chemical-cost-indexed-chart", series);
   }
 
   function renderTable(rows) {

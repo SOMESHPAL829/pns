@@ -109,6 +109,7 @@
   }
 
   function headingHost(table, title) {
+    if (table.__portalHeadingActions?.isConnected) return table.__portalHeadingActions;
     const scroll = table.closest(".data-scroll");
     const card = table.closest(".data-card, .dash-card, .form-card");
     const tables = card ? Array.from(card.querySelectorAll(".data-table")) : [];
@@ -132,6 +133,7 @@
       Array.from(heading.children).filter(child => !/^H[1-6]$/.test(child.tagName) && child !== actions).forEach(child => actions.appendChild(child));
       heading.appendChild(actions);
     }
+    table.__portalHeadingActions = actions;
     return actions;
   }
 
@@ -152,6 +154,18 @@
     if (!scroll || table.dataset.exportEnhanced === "true" || table.hasAttribute("data-no-table-export")) return;
     table.dataset.exportEnhanced = "true";
     const title = titleFor(table, index);
+    const actions = headingHost(table, title);
+    const isDashboardTable = Boolean(table.closest(".pns-dashboard"));
+    if (!isDashboardTable && !actions.querySelector('input[type="search"]')) {
+      if (!table.id) table.id = "portal-search-table-" + (index + 1);
+      const search = document.createElement("input");
+      search.type = "search";
+      search.className = "table-heading-search";
+      search.placeholder = "Search Table";
+      search.setAttribute("aria-label", "Search " + title);
+      search.dataset.tableSearch = "#" + table.id;
+      actions.prepend(search);
+    }
     const button = document.createElement("button");
     button.type = "button";
     button.className = "btn ghost sm table-export-button";
