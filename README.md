@@ -17,7 +17,7 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
 6. Run `php migrate-permissions.php`, then `php migrate-export-permissions.php` to install page-level roles and permissions.
 7. Run `php migrate-chemicals.php` to install chemical items and effective-dated INR rates.
-8. Run `php migrate-chemical-consumption.php` to install the chemical consumption ledger.
+8. Run `php migrate-chemical-consumption.php`, then `php migrate-chemical-consumption-entry-uom.php` to install the chemical consumption ledger and preserve each entry's recorded unit.
 9. Run `php migrate-breakdowns.php` to refresh the downtime reason catalogue and archive referenced legacy reasons without deleting downtime history.
 10. Run `php migrate-user-appearance.php` to enable per-user theme and brightness preferences.
 

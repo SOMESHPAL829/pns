@@ -20,8 +20,8 @@ function chemical_consumption_list(PDO $pdo, string $defaultOperator = ''): arra
     }
     $entries = $pdo->query(
         'SELECT e.id,e.entry_date,e.shift_name,e.operator_name,e.machine_code,e.process_description,e.chemical_item_id,' .
-        'e.consume_quantity,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
-        'i.item_code,i.description AS chemical_name,i.uom,i.status AS chemical_status ' .
+        'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
+        'i.item_code,i.description AS chemical_name,i.status AS chemical_status ' .
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
         'ORDER BY e.entry_date DESC,e.id DESC LIMIT 1000'
     )->fetchAll();
@@ -44,7 +44,7 @@ function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue,
     }
 
     $sql = 'SELECT e.id,e.entry_date,e.shift_name,e.operator_name,e.machine_code,e.process_description,' .
-        'e.consume_quantity,e.used_for,e.recommended_by,e.remarks,i.item_code,i.description AS chemical_name,i.uom ' .
+        'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,i.item_code,i.description AS chemical_name ' .
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
         'WHERE e.entry_date BETWEEN ? AND ?';
     $parameters = [$from, $to];
@@ -228,10 +228,12 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     if (mb_strlen($remarks, 'UTF-8') > 1000) throw new InvalidArgumentException('Remarks is too long.');
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Machine Code.');
 
-    $item = $pdo->prepare('SELECT id,status FROM chemical_items WHERE id=?');
+    $item = $pdo->prepare('SELECT id,status,uom FROM chemical_items WHERE id=?');
     $item->execute([$chemicalId]);
     $chemical = $item->fetch();
     if (!$chemical) throw new DomainException('Chemical item not found.', 404);
+    $uom = strtoupper(chemical_text($data['uom'] ?? $chemical['uom'], 'UOM', 40));
+    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $uom)) throw new InvalidArgumentException('Enter a valid UOM.');
     if ($chemical['status'] !== 'active') {
         if ($id === null) throw new DomainException('Inactive chemical items cannot be used for new entries.', 409);
         $existing = $pdo->prepare('SELECT chemical_item_id FROM chemical_consumption_entries WHERE id=?');
@@ -246,9 +248,9 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     if ($id !== null) {
         $query = $pdo->prepare(
             'UPDATE chemical_consumption_entries SET entry_date=?,shift_name=?,operator_name=?,machine_code=?,process_description=?,' .
-            'chemical_item_id=?,consume_quantity=?,used_for=?,recommended_by=?,remarks=?,updated_by=? WHERE id=?'
+            'chemical_item_id=?,consume_quantity=?,uom=?,used_for=?,recommended_by=?,remarks=?,updated_by=? WHERE id=?'
         );
-        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $id]);
+        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $uom, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $id]);
         if ($query->rowCount() < 1) {
             $exists = $pdo->prepare('SELECT id FROM chemical_consumption_entries WHERE id=?');
             $exists->execute([$id]);
@@ -257,9 +259,9 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     } else {
         $query = $pdo->prepare(
             'INSERT INTO chemical_consumption_entries(entry_date,shift_name,operator_name,machine_code,process_description,' .
-            'chemical_item_id,consume_quantity,used_for,recommended_by,remarks,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+            'chemical_item_id,consume_quantity,uom,used_for,recommended_by,remarks,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
-        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $actorId]);
+        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $uom, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $actorId]);
         $id = (int) $pdo->lastInsertId();
     }
     return ['ok' => true, 'id' => $id];

@@ -51,7 +51,7 @@
     const item = selectedItem();
     const unit = item?.uom || "";
     const currentValue = uomSelect.value || unit;
-    const options = [...new Set(state.items.map(item => item.uom).filter(Boolean))];
+    const options = [...new Set(["KG", "LTR", "ML", "GM", "NOS", ...state.items.map(item => item.uom).filter(Boolean)])];
     if (unit && !options.includes(unit)) options.push(unit);
     uomSelect.replaceChildren(new Option("UOM", ""));
     options.sort((left, right) => left.localeCompare(right));
@@ -180,6 +180,7 @@
         process_description: byId("chemical-consumption-process").value,
         chemical_item_id: byId("chemical-consumption-item").value,
         consume_quantity: byId("chemical-consumption-quantity").value,
+        uom: byId("chemical-consumption-uom").value,
         used_for: byId("chemical-consumption-used-for").value,
         recommended_by: byId("chemical-consumption-recommended-by").value,
         remarks: byId("chemical-consumption-remarks").value
@@ -219,6 +220,7 @@
     byId("chemical-consumption-save").textContent = "Update Entry";
     byId("chemical-consumption-cancel").hidden = false;
     updateUom();
+    byId("chemical-consumption-uom").value = entry.uom || selectedItem()?.uom || "";
     applyControls();
     byId("chemical-consumption-date").focus();
   });
