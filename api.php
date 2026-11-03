@@ -80,7 +80,7 @@ function oee_requested_machine(): string
 {
     $machine = strtoupper(trim((string) ($_GET['machine'] ?? 'ALL')));
     if ($machine !== 'ALL' && !oee_line_code_ok($machine)) {
-        json_response(['error' => 'Unknown OEE machine.'], 422);
+        json_response(['error' => 'Unknown OEE plant.'], 422);
     }
     return $machine;
 }
@@ -221,7 +221,7 @@ function oee_logs(PDO $pdo): array
 
 function oee_downtime(PDO $pdo, string $date, string $machine): array
 {
-    if ($machine === 'ALL') json_response(['error' => 'Select one machine to review downtime.'], 422);
+    if ($machine === 'ALL') json_response(['error' => 'Select one plant to review downtime.'], 422);
     $lineCode = oee_machine_line($machine);
     oee_calculate_daily($pdo, $lineCode, $date);
     $dayStart = $date . ' 00:00:00';
@@ -237,7 +237,7 @@ function oee_downtime_save(PDO $pdo, array $data): void
 {
     $machine = strtoupper(api_text($data, 'machine', 20));
     if (!oee_line_code_ok($machine)) {
-        json_response(['error' => 'Unknown OEE machine.'], 422);
+        json_response(['error' => 'Unknown OEE plant.'], 422);
     }
     $date = oee_validate_date(api_text($data, 'report_date', 10));
     $start = api_text($data, 'starts_at', 32);
@@ -264,7 +264,7 @@ function oee_downtime_save(PDO $pdo, array $data): void
         $dayEnd = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
         $update->execute([$eventType, $reason, $notes, $startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s'), $eventId, oee_machine_line($machine), $dayEnd, $date . ' 00:00:00']);
         if ($update->rowCount() < 1) {
-            json_response(['error' => 'Downtime event not found for this machine and date.'], 404);
+            json_response(['error' => 'Downtime event not found for this plant and date.'], 404);
         }
         json_response(['ok' => true, 'event_id' => (int) $eventId, 'updated' => true]);
     }
@@ -305,7 +305,7 @@ function oee_master_save(PDO $pdo, array $data, array $user): void
         $minutes = filter_var($data['minutes_per_fb'] ?? null, FILTER_VALIDATE_FLOAT);
         $from = oee_validate_date(api_text($data, 'effective_from', 10));
         $to = api_text($data, 'effective_to', 10);
-        if (!oee_line_code_ok($line) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid machine, colour, and positive cycle time.'], 422);
+        if (!oee_line_code_ok($line) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid plant, colour, and positive cycle time.'], 422);
         $to = $to === '' ? null : oee_validate_date($to);
         if ($to !== null && $to < $from) json_response(['error' => 'Effective end date cannot be before the start date.'], 422);
         if ($id) {

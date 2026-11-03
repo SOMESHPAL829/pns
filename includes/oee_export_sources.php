@@ -23,9 +23,9 @@ function oee_export_source_header(array $headers): string
 /** Build auditable event/quality worksheets and their cached calculation inputs. */
 function oee_export_sources(array $report): array
 {
-    $eventsRows = [oee_export_source_header(['Line', 'Start', 'End', 'Type', 'Status', 'Source', 'Reason / notes', 'Start Time', 'End Time', 'Clipped start', 'Clipped end', 'Elapsed min (may overlap)', 'Included'])];
-    $segmentRows = [oee_export_source_header(['Line', 'Start boundary', 'End boundary', 'Active unplanned', 'Active planned', 'Unplanned min', 'Planned min', 'Calculation row'])];
-    $qualityRows = [oee_export_source_header(['Line', 'Shift', 'Rejected FB', 'Reworked FB', 'Notes', 'Calculation row', 'Reporting date'])];
+    $eventsRows = [oee_export_source_header(['Plant', 'Start', 'End', 'Type', 'Status', 'Source', 'Reason / notes', 'Start Time', 'End Time', 'Clipped start', 'Clipped end', 'Elapsed min (may overlap)', 'Included'])];
+    $segmentRows = [oee_export_source_header(['Plant', 'Start boundary', 'End boundary', 'Active unplanned', 'Active planned', 'Unplanned min', 'Planned min', 'Calculation row'])];
+    $qualityRows = [oee_export_source_header(['Plant', 'Shift', 'Rejected FB', 'Reworked FB', 'Notes', 'Calculation row', 'Reporting date'])];
     $prepared = [];
     foreach ($report['line_metrics'] ?? [] as $index => $line) {
         $code = $line['line_code'];

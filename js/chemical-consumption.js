@@ -95,6 +95,7 @@
       }
     }
     updateUom();
+    window.PortalSearchableSelect?.refresh(byId("chemical-consumption-item"));
     applyControls();
   }
 
@@ -108,6 +109,7 @@
     });
     if (selectedId != null) select.value = String(selectedId);
     updateUom();
+    window.PortalSearchableSelect?.refresh(select);
   }
 
   function renderEntries() {
@@ -221,6 +223,7 @@
     byId("chemical-consumption-cancel").hidden = false;
     updateUom();
     byId("chemical-consumption-uom").value = entry.uom || selectedItem()?.uom || "";
+    window.PortalSearchableSelect?.refresh(byId("chemical-consumption-item"));
     applyControls();
     byId("chemical-consumption-date").focus();
   });

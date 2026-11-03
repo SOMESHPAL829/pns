@@ -2085,6 +2085,108 @@ table.data tbody tr:hover {
   outline: 0;
 }
 
+/* Searchable selects used by long modal option lists. */
+.searchable-select {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+.searchable-select-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.searchable-select-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.5rem 0.5rem 0.65rem !important;
+  border: 1px solid #d7dde5;
+  border-radius: 0.5rem;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  cursor: text;
+}
+.searchable-select-input::-webkit-search-cancel-button { display: none; }
+.searchable-select-toggle {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  right: 0.2rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.searchable-select-toggle span {
+  width: 0.48rem;
+  height: 0.48rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-0.12rem) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.searchable-select.is-open .searchable-select-toggle span { transform: translateY(0.12rem) rotate(225deg); }
+.searchable-select-list {
+  position: absolute;
+  z-index: 100000;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0.3rem;
+  border: 1px solid #cbd8e5;
+  border-radius: 0.55rem;
+  background: var(--card);
+  box-shadow: 0 16px 36px rgb(15 30 50 / 22%);
+  overscroll-behavior: contain;
+}
+.searchable-select-list[hidden] { display: none; }
+.searchable-select-option {
+  display: block;
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.48rem 0.6rem;
+  border: 0;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.searchable-select-option:hover,
+.searchable-select-option.is-active { background: var(--accent-sft); color: var(--accent-deep); }
+.searchable-select-option.is-selected { font-weight: 750; }
+.searchable-select-option.is-selected::after { content: " ✓"; color: var(--accent); }
+.searchable-select-empty { margin: 0; padding: 0.7rem; color: var(--mut); font-size: 0.78rem; text-align: center; }
+.searchable-select.is-disabled { opacity: 0.65; }
+.searchable-select.is-disabled .searchable-select-input,
+.searchable-select.is-disabled .searchable-select-toggle { cursor: not-allowed; }
+.searchable-select-input:focus {
+  border-color: var(--accent) !important;
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--focus-ring) !important;
+}
+.searchable-select-input[aria-invalid="true"]:not(:focus):not(:placeholder-shown) { border-color: var(--crit); }
+html[data-theme="dark"] .searchable-select-list { border-color: var(--line); }
+
 .oee-kpi,
 .dash-kpi,
 .kpi {
@@ -2168,7 +2270,7 @@ table.data tbody tr:hover {
   border-radius: 1rem;
   background: transparent;
   color: var(--ink);
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 28px 70px rgb(15 30 50 / 30%);
 }
 
@@ -2177,7 +2279,7 @@ table.data tbody tr:hover {
 .portal-form-modal[open] { animation: portal-modal-in 0.2s ease-out both; }
 @keyframes portal-modal-in { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
 
-.portal-form-modal-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: calc(100dvh - 2rem); background: var(--card); }
+.portal-form-modal-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: calc(100dvh - 2rem); border-radius: 1rem; overflow: hidden; background: var(--card); }
 .portal-form-modal-head {
   display: flex;
   align-items: center;

@@ -40,7 +40,7 @@
 
   function renderMachines(machines, selected) {
     const select = byId("chemical-report-machine");
-    select.replaceChildren(new Option("All Machines", "ALL"));
+    select.replaceChildren(new Option("All Plants", "ALL"));
     (machines || []).forEach(machine => select.add(new Option(machine, machine)));
     select.value = (machines || []).includes(selected) ? selected : "ALL";
   }
@@ -49,7 +49,7 @@
     renderMachines(data.machines, data.machine);
     byId("chemical-report-from-display").textContent = displayDate(data.from_date);
     byId("chemical-report-to-display").textContent = displayDate(data.to_date);
-    byId("chemical-report-machine-display").textContent = data.machine === "ALL" ? "All Machines" : data.machine;
+    byId("chemical-report-machine-display").textContent = data.machine === "ALL" ? "All Plants" : data.machine;
     const body = byId("chemical-report-body");
     body.replaceChildren();
     (data.rows || []).forEach((entry) => {
@@ -74,7 +74,7 @@
     }
     state.loaded = true;
     byId("chemical-report-print").disabled = false;
-    showAlert(data.truncated ? "The report contains more than 5,000 entries. Refine the date range or machine to view all records." : "");
+    showAlert(data.truncated ? "The report contains more than 5,000 entries. Refine the date range or plant to view all records." : "");
   }
 
   async function load() {

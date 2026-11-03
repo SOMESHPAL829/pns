@@ -51,7 +51,7 @@ function oee_is_known_line(PDO $pdo, string $line): bool
 }
 
 /** Build <option> markup for machine selectors from a dynamic line list. */
-function oee_machine_options_html(array $lines, bool $includeAll = false, string $allLabel = 'All Machines', string $labelSuffix = ''): string
+function oee_machine_options_html(array $lines, bool $includeAll = false, string $allLabel = 'All Plants', string $labelSuffix = ''): string
 {
     $html = $includeAll
         ? '<option value="ALL">' . htmlspecialchars($allLabel, ENT_QUOTES, 'UTF-8') . '</option>'
@@ -102,7 +102,7 @@ function oee_save_gap_threshold(PDO $pdo, string $line, mixed $value, int $userI
 {
     $line = strtoupper(trim($line));
     if ($line === 'ALL' || !oee_line_code_ok($line)) {
-        throw new InvalidArgumentException('Enter a valid plant / machine code for the gap threshold.');
+        throw new InvalidArgumentException('Enter a valid plant code for the gap threshold.');
     }
     $minutes = oee_validate_gap_threshold($value);
     $sql = 'INSERT INTO oee_line_settings (line_code, gap_threshold_minutes, updated_by) VALUES (?, ?, ?) ';

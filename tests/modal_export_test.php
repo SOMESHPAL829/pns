@@ -11,14 +11,17 @@ $shell=file_get_contents($root.'/app-shell.php');
 $modal=file_get_contents($root.'/js/modal-forms.js');
 $export=file_get_contents($root.'/js/table-export.js');
 $pagination=file_get_contents($root.'/js/table-pagination.js');
+$searchable=file_get_contents($root.'/js/searchable-select.js');
 $styles=file_get_contents($root.'/css/portal.css');
 
-workflow_check(is_string($shell)&&is_string($modal)&&is_string($export)&&is_string($pagination)&&is_string($styles),'Workflow source files could not be read.');
+workflow_check(is_string($shell)&&is_string($modal)&&is_string($export)&&is_string($pagination)&&is_string($searchable)&&is_string($styles),'Workflow source files could not be read.');
 foreach(['record-create-form','record-edit-form','user-create-form','user-role-form','role-form','downtime-form','chemical-item-form','chemical-rate-form','breakdown-form','chemical-consumption-form','threshold-form','cycle-form'] as $formId){
     workflow_check(str_contains($modal,'id: "'.$formId.'"'),'Modal workflow missing for '.$formId);
 }
 workflow_check(str_contains($shell,'js/modal-forms.js')&&str_contains($shell,'js/table-export.js'),'Modal or Excel workflow script is not loaded.');
 workflow_check(str_contains($shell,'js/table-pagination.js'),'Table pagination script is not loaded.');
+workflow_check(str_contains($shell,'js/searchable-select.js')&&substr_count($shell,'data-searchable-select')>=2,'Searchable chemical and downtime selects are not loaded.');
+workflow_check(str_contains($searchable,'role", "combobox')&&str_contains($searchable,'role", "listbox')&&str_contains($searchable,'MutationObserver')&&str_contains($searchable,'dialog.appendChild(list)'),'Accessible dynamic searchable-select dropdown behavior is incomplete.');
 workflow_check(str_contains($modal,'window.PortalModalForms')&&str_contains($modal,'dialog.showModal()'),'Reusable modal controller is incomplete.');
 workflow_check(str_contains($export,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')&&str_contains($export,'.xlsx'),'Export must create a genuine XLSX download.');
 workflow_check(str_contains($export,'data-icon="arrow-up-tray"')&&!str_contains($export,'arrow-down-tray'),'Excel export icon must point upward.');

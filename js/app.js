@@ -281,7 +281,7 @@
       }
     }
     return flags.shift_quality_not_entered
-      ? "Quality data is missing for one or more selected lines; zero quality losses are assumed. Daily quality totals are not applied to partial calculation durations."
+      ? "Quality data is missing for one or more selected plants; zero quality losses are assumed. Daily quality totals are not applied to partial calculation durations."
       : "";
   }
 
@@ -320,19 +320,19 @@
       {
         id: "dashboard-machine",
         includeAll: true,
-        allLabel: "All Machines",
+        allLabel: "All Plants",
         suffix: "",
       },
       {
         id: "range-machine",
         includeAll: true,
-        allLabel: "All Machines",
+        allLabel: "All Plants",
         suffix: "",
       },
       {
         id: "report-machine-filter",
         includeAll: true,
-        allLabel: "All Lines",
+        allLabel: "All Plants",
         suffix: " · OEE Feed",
       },
       { id: "downtime-machine", includeAll: false, allLabel: "", suffix: "" },
@@ -550,7 +550,7 @@
       "report-summary",
       (app.reportDate || document.getElementById("report-date")?.value || "") +
         " · " +
-        (data.machine === "ALL" ? "All Lines" : data.machine || "") +
+        (data.machine === "ALL" ? "All Plants" : data.machine || "") +
         " · " +
         filtered.length +
         " of " +
@@ -912,8 +912,8 @@
         window.day_count +
         " Day(s) × " +
         window.duration_minutes +
-        " Min per Line · " +
-        (data.machine === "ALL" ? "All Machines" : data.machine),
+        " Min per Plant · " +
+        (data.machine === "ALL" ? "All Plants" : data.machine),
     );
     const flags = oee.calculation_flags || {},
       warnings = [];
@@ -1099,7 +1099,7 @@
       const row = document.createElement("tr");
       const cell = makeCell(
         row,
-        "No downtime tagged for this machine and date yet.",
+        "No downtime tagged for this plant and date yet.",
       );
       cell.colSpan = 8;
       body.appendChild(row);
@@ -1133,6 +1133,7 @@
       })
         ? selectedReason
         : "";
+      window.PortalSearchableSelect?.refresh(select);
       if (!data.breakdowns?.length)
         showOeeAlert(
           "downtime-alert",
@@ -1148,7 +1149,10 @@
         showOeeAlert("downtime-alert", error.message, true);
       }
     } finally {
-      if (requestId === downtimeReasonRequest) select.disabled = false;
+      if (requestId === downtimeReasonRequest) {
+        select.disabled = false;
+        window.PortalSearchableSelect?.refresh(select);
+      }
     }
   }
 

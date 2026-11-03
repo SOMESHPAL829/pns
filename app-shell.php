@@ -106,12 +106,12 @@ $oeeLines = oee_known_lines(db());
         <?php require __DIR__ . '/includes/dashboard.php'; ?>
 
         <section class="view" data-view="oee-range">
-          <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and line.</p></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and plant.</p></div></div>
           <section class="data-card">
             <form id="range-form" class="report-filters range-toolbar">
               <label class="date-range-control">From Date<input id="range-from-date" type="date" required></label>
               <label class="date-range-control">To Date<input id="range-to-date" type="date" required></label>
-              <label>Machine<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
+              <label>Plant<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
               <button class="btn ghost" type="button" id="range-export" data-permission-page="oee-range" data-permission-action="export" hidden>Export Excel</button>
@@ -145,18 +145,18 @@ $oeeLines = oee_known_lines(db());
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Production Summary</h2></div><div class="oee-production-grid"><div><span class="oee-stat-label">Total FB</span><strong id="range-total-fb">—</strong></div><div><span class="oee-stat-label">Productive FB</span><strong id="range-productive-fb">—</strong></div><div><span class="oee-stat-label">Empty Racks</span><strong id="range-empty-fb">—</strong></div><div><span class="oee-stat-label">Pieces</span><strong id="range-pcs">—</strong></div><div><span class="oee-stat-label">Surface Area</span><strong id="range-area">—</strong></div><div><span class="oee-stat-label">Days Selected</span><strong id="range-days">—</strong></div></div></section>
             <section class="dash-card oee-card"><div class="dash-card-head"><h2>Time Accounting</h2></div><div class="oee-loss-list"><div><span>Calculation Time</span><strong id="range-calendar">—</strong></div><div><span>Planned Stops</span><strong id="range-planned-stop">—</strong></div><div><span>Planned Production Time</span><strong id="range-planned">—</strong></div><div><span>Unplanned Downtime</span><strong id="range-unplanned">—</strong></div><div><span>Run Time</span><strong id="range-run">—</strong></div><div><span id="range-utilization-label">Utilization</span><strong id="range-utilization">—</strong></div></div></section>
           </div>
-          <section class="data-card"><div class="dash-card-head"><h2>Line-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table range-lines-table"><thead><tr><th>Line</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th><span id="range-table-utilization-heading">Utilization</span></th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
-          <section class="data-card"><div class="dash-card-head"><h2>Daily Line Breakdown</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting Date</th><th>Line</th><th>End Time</th><th>Productive FB</th><th>Run (Min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Plant-Wise OEE · Selected Period</h2></div><div class="data-scroll"><table class="data-table compact-table range-lines-table"><thead><tr><th>Plant</th><th>Productive FB</th><th>Run (Min)</th><th>Ideal Output (Min)</th><th>Availability</th><th>Performance</th><th>Quality</th><th>OEE</th><th><span id="range-table-utilization-heading">Utilization</span></th></tr></thead><tbody id="range-lines-body"></tbody></table></div></section>
+          <section class="data-card"><div class="dash-card-head"><h2>Daily Plant Breakdown</h2></div><div class="data-scroll"><table class="data-table compact-table"><thead><tr><th>Reporting Date</th><th>Plant</th><th>End Time</th><th>Productive FB</th><th>Run (Min)</th><th>OEE</th></tr></thead><tbody id="range-days-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="oee-report">
-          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Line-wise flight-bar data with historical date export.</p></div></div>
+          <div class="page-heading oee-page-heading"><div><div class="dash-eyebrow">Traceable Production Data</div><h1>Production Report</h1><p class="page-lead">Plant-wise flight-bar data with historical date export.</p></div></div>
           <div id="report-window" class="oee-window-summary" role="status" hidden></div>
           <div id="oee-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card oee-report-card">
             <div class="report-filters">
-              <label>Line / Machine
-                <select id="report-machine-filter"><?= oee_machine_options_html($oeeLines, true, 'All Lines', ' · OEE Feed') ?></select>
+              <label>Plant
+                <select id="report-machine-filter"><?= oee_machine_options_html($oeeLines, true, 'All Plants', ' · OEE Feed') ?></select>
               </label>
               <label>Search
                 <input id="report-search" type="search" placeholder="Sequence, Part, Colour">
@@ -204,10 +204,10 @@ $oeeLines = oee_known_lines(db());
             <div class="report-summary" id="report-summary"></div>
 
             <div class="data-scroll">
-              <table class="data-table compact-table" data-export-title="Line Performance Metrics">
+              <table class="data-table compact-table" data-export-title="Plant Performance Metrics">
                 <thead>
                   <tr>
-                    <th>Line</th><th>OEE</th><th>Availability</th>
+                    <th>Plant</th><th>OEE</th><th>Availability</th>
                     <th>Performance</th><th>Quality</th><th><span id="report-utilization-heading">Utilization</span></th>
                   </tr>
                 </thead>
@@ -219,7 +219,7 @@ $oeeLines = oee_known_lines(db());
               <table class="data-table oee-report-table" data-export-title="Flight Bar Details">
                 <thead>
                   <tr>
-                    <th>Line</th><th>SI</th><th>Sequence</th><th>Part</th>
+                    <th>Plant</th><th>SI</th><th>Sequence</th><th>Part</th>
                     <th>Grade</th><th>Colour</th><th>Loading</th><th>Unloading</th>
                     <th>PCS</th><th>Total SA</th><th>State</th>
                   </tr>
@@ -233,8 +233,8 @@ $oeeLines = oee_known_lines(db());
         <section class="view" data-view="downtime">
           <div class="page-heading"><div><div class="dash-eyebrow">Loss Accounting</div><h1>Downtime Review</h1><p class="page-lead">Tag planned and unplanned stops so OEE can calculate the loss correctly.</p></div></div>
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
-          <section class="data-card downtime-card"><div class="report-filters downtime-filter-bar"><label>Machine<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label><div class="downtime-filter-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
-            <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
+          <section class="data-card downtime-card"><div class="report-filters downtime-filter-bar"><label>Plant<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label><div class="downtime-filter-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
+            <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" data-searchable-select data-search-placeholder="Search downtime reasons" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
             <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
 
@@ -356,7 +356,7 @@ $oeeLines = oee_known_lines(db());
         </section>
 
         <section class="view" data-view="chemical-consumption">
-          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption</h1><p class="page-lead">Record chemical usage by date, shift, operator, machine, and process.</p></div></div>
+          <div class="page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption</h1><p class="page-lead">Record chemical usage by date, shift, operator, plant, and process.</p></div></div>
           <div id="chemical-consumption-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-consumption-card" aria-labelledby="chemical-consumption-entry-heading">
             <div class="dash-card-head"><h2 id="chemical-consumption-entry-heading">Consumption Entries</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Entries" aria-label="Search Chemical Consumption Entries" data-table-search="#chemical-consumption-body"><button class="btn ghost" id="chemical-consumption-refresh" type="button">Refresh</button></div></div>
@@ -365,27 +365,27 @@ $oeeLines = oee_known_lines(db());
               <label>Date<input id="chemical-consumption-date" type="date" required></label>
               <label>Shift<input id="chemical-consumption-shift" maxlength="40" list="chemical-shift-options" placeholder="Shift A" required><datalist id="chemical-shift-options"><option value="Shift A"><option value="Shift B"><option value="Shift C"><option value="General Shift"></datalist></label>
               <label>Operator Name<input id="chemical-consumption-operator" maxlength="120" placeholder="Operator Name" required></label>
-              <label>Machine Code<input id="chemical-consumption-machine" maxlength="80" list="chemical-machine-options" placeholder="APP-06" required><datalist id="chemical-machine-options"><?= oee_machine_options_html($oeeLines) ?></datalist></label>
+              <label>Plant Code<input id="chemical-consumption-machine" maxlength="80" list="chemical-machine-options" placeholder="APP-06" required><datalist id="chemical-machine-options"><?= oee_machine_options_html($oeeLines) ?></datalist></label>
               <label class="chemical-consumption-wide">Process Description<input id="chemical-consumption-process" maxlength="500" placeholder="Process Description" required></label>
-              <label>Chemical Name<select id="chemical-consumption-item" required><option value="">Select a Chemical</option></select></label>
+              <label>Chemical Name<select id="chemical-consumption-item" data-searchable-select data-search-placeholder="Search chemical name or code" required><option value="">Select a Chemical</option></select></label>
               <label>Consume Quantity<span class="chemical-quantity-control"><input id="chemical-consumption-quantity" type="number" min="0.0001" max="9999999999.9999" step="0.0001" required><select id="chemical-consumption-uom" class="chemical-quantity-uom" aria-label="Unit of measure" required><option value="">UOM</option></select></span></label>
               <label class="chemical-consumption-wide">Used For<select id="chemical-consumption-used-for" required><option value="">Select a Usage</option><option value="Fresh Makeup">Fresh Makeup</option><option value="Top-Up">Top-Up</option></select></label>
               <label>Recommended By<input id="chemical-consumption-recommended-by" maxlength="120" placeholder="Recommender Name" required></label>
               <label class="chemical-consumption-remarks">Remarks<textarea id="chemical-consumption-remarks" maxlength="1000" rows="2" placeholder="Optional Remarks"></textarea></label>
               <div class="chemical-consumption-actions"><button class="btn" id="chemical-consumption-save" type="submit">Save Entry</button><button class="btn ghost" id="chemical-consumption-cancel" type="button" hidden>Cancel Edit</button></div>
             </form>
-            <div class="data-scroll"><table class="data-table chemical-consumption-table"><thead><tr><th>Date</th><th>Shift</th><th>Operator Name</th><th>Machine Code</th><th>Process Description</th><th>Chemical Name</th><th>Consume Quantity</th><th>Used For</th><th>Recommended By</th><th>Remarks</th><th>Action</th></tr></thead><tbody id="chemical-consumption-body"><tr><td colspan="11">Loading Chemical Consumption Entries…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-consumption-table"><thead><tr><th>Date</th><th>Shift</th><th>Operator Name</th><th>Plant Code</th><th>Process Description</th><th>Chemical Name</th><th>Consume Quantity</th><th>Used For</th><th>Recommended By</th><th>Remarks</th><th>Action</th></tr></thead><tbody id="chemical-consumption-body"><tr><td colspan="11">Loading Chemical Consumption Entries…</td></tr></tbody></table></div>
           </section>
         </section>
 
         <section class="view" data-view="chemical-consumption-report">
-          <div class="page-heading chemical-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption Report</h1><p class="page-lead">Review and print chemical consumption entries for a selected date range and machine.</p></div></div>
+          <div class="page-heading chemical-report-page-heading"><div><div class="dash-eyebrow">Workspace</div><h1>Chemical Consumption Report</h1><p class="page-lead">Review and print chemical consumption entries for a selected date range and plant.</p></div></div>
           <div id="chemical-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-report-filter-card" aria-label="Chemical Consumption Report Controls">
             <form id="chemical-report-filter-form" class="master-form chemical-report-toolbar">
               <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
               <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
-              <label>Machine<select id="chemical-report-machine"><option value="ALL">All Machines</option></select></label>
+              <label>Plant<select id="chemical-report-machine"><option value="ALL">All Plants</option></select></label>
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
               <button class="btn ghost" id="chemical-report-print" type="button">Print Report</button>
             </form>
@@ -394,10 +394,10 @@ $oeeLines = oee_known_lines(db());
             <dl class="chemical-report-meta">
               <div><dt>From Date</dt><dd id="chemical-report-from-display">—</dd></div>
               <div><dt>To Date</dt><dd id="chemical-report-to-display">—</dd></div>
-              <div><dt>Machine</dt><dd id="chemical-report-machine-display">All Machines</dd></div>
+              <div><dt>Plant</dt><dd id="chemical-report-machine-display">All Plants</dd></div>
             </dl>
             <div class="dash-card-head"><h2>Consumption Results</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Results" aria-label="Search Chemical Consumption Results" data-table-search="#chemical-report-body"></div></div>
-            <div class="data-scroll"><table class="data-table chemical-report-table" data-export-title="Consumption Results"><thead><tr><th>Date</th><th>Shift</th><th>Machine</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="10">Choose report filters to load entries.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-report-table" data-export-title="Consumption Results"><thead><tr><th>Date</th><th>Shift</th><th>Plant</th><th>Name of Operator</th><th>Process Description</th><th>Chemical Name &amp; Code</th><th>Consumed Qty.</th><th>Used For<br><span>(Fresh Makeup / Top-Up)</span></th><th>Recommended By<br><span>(QC Manager / Production Manager)</span></th><th>Remarks</th></tr></thead><tbody id="chemical-report-body"><tr><td colspan="10">Choose report filters to load entries.</td></tr></tbody></table></div>
           </section>
         </section>
 
@@ -414,7 +414,7 @@ $oeeLines = oee_known_lines(db());
             <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
               <label class="date-range-control">From Date<input id="chemical-cost-report-from" type="date" required></label>
               <label class="date-range-control">To Date<input id="chemical-cost-report-to" type="date" required></label>
-              <label>Machine<select id="chemical-cost-report-machine"><option value="ALL">All Machines</option></select></label>
+              <label>Plant<select id="chemical-cost-report-machine"><option value="ALL">All Plants</option></select></label>
               <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
               <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>
               <span id="chemical-cost-report-scope" hidden></span>
@@ -480,10 +480,10 @@ $oeeLines = oee_known_lines(db());
             <dl class="chemical-cost-report-meta chemical-cost-report-meta-inline">
               <div><dt>From</dt><dd id="chemical-cost-report-from-display">—</dd></div>
               <div><dt>To</dt><dd id="chemical-cost-report-to-display">—</dd></div>
-              <div><dt>Machine</dt><dd id="chemical-cost-report-machine-display">All Machines</dd></div>
+              <div><dt>Plant</dt><dd id="chemical-cost-report-machine-display">All Plants</dd></div>
               <div><dt>View</dt><dd id="chemical-cost-report-type-display">Week on Week</dd></div>
             </dl>
-            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Machine</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="7">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-cost-report-table" id="chemical-cost-report-table"><thead><tr><th>Plant</th><th>Report Period</th><th class="r">Total Surface Area (dm²)</th><th class="r">Total Chemical Cost (₹)</th><th class="r">Chemical Cost per dm² (₹)</th><th class="r">Vs Previous</th><th>Performance</th></tr></thead><tbody id="chemical-cost-report-body"><tr><td colspan="7">Choose report filters to load the cost summary.</td></tr></tbody></table></div>
             <div class="chemical-cost-report-footer">
               <span id="chemical-cost-report-row-count">Showing 0 rows</span>
               <p class="chemical-cost-report-formula"><strong>Formula:</strong> Chemical Cost per dm² = Total Chemical Cost ÷ Total Surface Area</p>
@@ -498,14 +498,14 @@ $oeeLines = oee_known_lines(db());
           <section class="data-card threshold-card" aria-labelledby="threshold-heading">
             <div class="dash-card-head"><h2 id="threshold-heading">Plant Gap Threshold</h2><div class="table-heading-actions"><button class="btn" id="masters-refresh" type="button">Refresh</button></div></div>
             <form id="threshold-form" class="master-form">
-              <label for="threshold-line">Plant / Machine<select id="threshold-line" disabled><?= oee_machine_options_html($oeeLines) ?></select></label>
+              <label for="threshold-line">Plant<select id="threshold-line" disabled><?= oee_machine_options_html($oeeLines) ?></select></label>
               <label for="threshold-minutes">Gap Threshold (Minutes)<input id="threshold-minutes" type="number" min="0.001" max="1440" step="0.001" required disabled></label>
               <button id="threshold-save" class="btn" type="submit" disabled>Save Threshold</button>
             </form>
-            <div class="data-scroll"><table class="data-table"><thead><tr><th>Plant / Machine</th><th>Gap Threshold (Minutes)</th><th>Action</th></tr></thead><tbody id="thresholds-body"><tr><td colspan="3">Loading Plant Thresholds…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table"><thead><tr><th>Plant</th><th>Gap Threshold (Minutes)</th><th>Action</th></tr></thead><tbody id="thresholds-body"><tr><td colspan="3">Loading Plant Thresholds…</td></tr></tbody></table></div>
           </section>
           <div class="oee-master-grid oee-master-grid-single">
-            <section class="data-card"><div class="dash-card-head"><h2>Cycle-Time Registration</h2></div><form id="cycle-form" class="master-form"><input id="cycle-id" type="hidden"><label>Machine<select id="cycle-line"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Colour<input id="cycle-colour" maxlength="120" placeholder="BLACK-1" required></label><label>Minutes / FB<input id="cycle-minutes" type="number" min="0.001" step="0.001" required></label><label>Effective From<input id="cycle-from" type="date" required></label><label>Effective To<input id="cycle-to" type="date"></label><button class="btn" type="submit">Save Cycle Time</button></form><div class="data-scroll"><table class="data-table"><thead><tr><th>Machine</th><th>Colour</th><th>Minutes / FB</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody id="cycles-body"></tbody></table></div></section>
+            <section class="data-card"><div class="dash-card-head"><h2>Cycle-Time Registration</h2></div><form id="cycle-form" class="master-form"><input id="cycle-id" type="hidden"><label>Plant<select id="cycle-line"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Colour<input id="cycle-colour" maxlength="120" placeholder="BLACK-1" required></label><label>Minutes / FB<input id="cycle-minutes" type="number" min="0.001" step="0.001" required></label><label>Effective From<input id="cycle-from" type="date" required></label><label>Effective To<input id="cycle-to" type="date"></label><button class="btn" type="submit">Save Cycle Time</button></form><div class="data-scroll"><table class="data-table"><thead><tr><th>Plant</th><th>Colour</th><th>Minutes / FB</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody id="cycles-body"></tbody></table></div></section>
           </div>
         </section>
       </main>
@@ -518,6 +518,7 @@ $oeeLines = oee_known_lines(db());
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
+  <script src="js/searchable-select.js?v=<?= filemtime(__DIR__ . '/js/searchable-select.js') ?>"></script>
   <script src="js/dashboard.js?v=<?= filemtime(__DIR__ . '/js/dashboard.js') ?>"></script>
   <script src="js/app.js?v=<?= filemtime(__DIR__ . '/js/app.js') ?>"></script>
   <script src="js/roles.js?v=<?= filemtime(__DIR__ . '/js/roles.js') ?>"></script>

@@ -72,7 +72,7 @@ function oee_export_xlsx(array $report): string
     $summaryRows = [
         1 => [oee_xlsx_cell('A1', 'PNS OEE report', 1), oee_xlsx_cell('H1', 'Calculation inputs', 1), oee_xlsx_cell('I1', 'Value', 1)],
         2 => [oee_xlsx_cell('A2', isset($report['from_date']) ? 'From / to dates (inclusive)' : 'Report date'), oee_xlsx_cell('B2', isset($report['from_date']) ? $report['from_date'] . ' to ' . $report['to_date'] : ($report['date'] ?? '')), oee_xlsx_cell('D2', 'Daily duration (min)'), oee_xlsx_cell('E2', (int) ($report['window']['duration_minutes'] ?? 1440)), oee_xlsx_cell('F2', 'Start: ' . ($report['window']['start_time'] ?? '00:00'))],
-        3 => [oee_xlsx_cell('A3', 'Line / machine'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All lines' : ($report['machine'] ?? ''))],
+        3 => [oee_xlsx_cell('A3', 'Plant'), oee_xlsx_cell('B3', ($report['machine'] ?? '') === 'ALL' ? 'All Plants' : ($report['machine'] ?? ''))],
         4 => [oee_xlsx_cell('A4', 'Blue values = database inputs. Black values = Excel calculations.')],
         5 => [oee_xlsx_cell('A5', 'Aggregate calculation', 1), oee_xlsx_cell('B5', 'Value', 1), oee_xlsx_cell('C5', 'Formula', 1)],
         6 => [oee_xlsx_cell('A6', 'Availability'), oee_xlsx_cell('B6', $availability, 2, 'IF(I2>0,I4/I2,0)'), oee_xlsx_cell('C6', 'Run time / planned production time')],
@@ -100,7 +100,7 @@ function oee_export_xlsx(array $report): string
     }
     ksort($summaryRows);
     foreach ($summaryRows as $number => $cells) $sheetRows[] = oee_xlsx_row($number, $cells);
-    $lineHeaders = ['Line-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', 'Utilization', 'Calculation time (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Start Time', 'End Time', 'Rejected FB', 'Reworked FB', 'Reporting date'];
+    $lineHeaders = ['Plant-wise OEE', 'Availability', 'Performance', 'Quality', 'OEE', 'Utilization', 'Calculation time (min)', 'Planned stop (min)', 'Planned production (min)', 'Unplanned (min)', 'Run time (min)', 'Ideal output (min)', 'Productive FB', 'Good FB', 'Calendar (min)', 'Start Time', 'End Time', 'Rejected FB', 'Reworked FB', 'Reporting date'];
     $headerCells = [];
     foreach ($lineHeaders as $index => $label) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . '12', $label, 1);
     $sheetRows[] = oee_xlsx_row(12, $headerCells);
@@ -141,7 +141,7 @@ function oee_export_xlsx(array $report): string
         $lineRow++;
     }
     $detailHeader = $lineRow + 2;
-    $headers = ['Line', 'SI', 'Sequence', 'Part', 'Grade', 'Colour', 'Loading', 'Unloading', 'PCS', 'Total SA', 'State', 'Applied cycle min / FB', 'Productive flag', 'Ideal output min', 'Cycle-time notes'];
+    $headers = ['Plant', 'SI', 'Sequence', 'Part', 'Grade', 'Colour', 'Loading', 'Unloading', 'PCS', 'Total SA', 'State', 'Applied cycle min / FB', 'Productive flag', 'Ideal output min', 'Cycle-time notes'];
     if (isset($report['from_date'])) $headers[] = 'Loading timestamp (Excel)';
     $headerCells = [];
     foreach ($headers as $index => $header) $headerCells[] = oee_xlsx_cell(chr(65 + $index) . $detailHeader, $header, 1);

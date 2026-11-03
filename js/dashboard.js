@@ -62,11 +62,11 @@
     text(
       "dashboard-oee-detail",
       (data.machine === "ALL"
-        ? "All Machines"
-        : data.machine || "Selected Machine") +
+        ? "All Plants"
+        : data.machine || "Selected Plant") +
         " · " +
         (data.window?.duration_minutes || 1440) +
-        " Min per Line",
+        " Min per Plant",
     );
     const lineCount = Array.isArray(data.machines)
       ? data.machines.length
@@ -80,8 +80,8 @@
         : minutes(run) +
             " Across " +
             (data.machine === "ALL"
-              ? lineCount + " Line" + (lineCount === 1 ? "" : "s")
-              : "1 Line"),
+              ? lineCount + " Plant" + (lineCount === 1 ? "" : "s")
+              : "1 Plant"),
     );
     text(
       "dashboard-performance-detail",
@@ -298,6 +298,7 @@
         ? selectedReason
         : "";
       select.disabled = false;
+      window.PortalSearchableSelect?.refresh(select);
       node("dashboard-tag-save").disabled = select.options.length <= 1;
       if (select.options.length <= 1)
         tagError("No active " + type + " breakdown reasons are registered.");
@@ -310,8 +311,10 @@
       )
         tagError(error.message);
     } finally {
-      if (requestId === tagRequest && reasonRequest === tagReasonRequest)
+      if (requestId === tagRequest && reasonRequest === tagReasonRequest) {
         select.disabled = false;
+        window.PortalSearchableSelect?.refresh(select);
+      }
     }
   }
   async function openTag(id) {
@@ -340,7 +343,7 @@
     dialog.showModal();
     await loadTagReasons(item.event_type, item.reason_code, requestId);
     if (requestId === tagRequest && dialog.open)
-      node("dashboard-tag-reason").focus();
+      window.PortalSearchableSelect?.open(node("dashboard-tag-reason"));
   }
   const tagDialog = node("dashboard-tag-dialog");
   tagDialog.addEventListener("close", function () {
@@ -351,6 +354,9 @@
     if (savingTag) event.preventDefault();
   });
   node("dashboard-tag-cancel").addEventListener("click", function () {
+    if (!savingTag) tagDialog.close();
+  });
+  node("dashboard-tag-close").addEventListener("click", function () {
     if (!savingTag) tagDialog.close();
   });
   node("dashboard-tag-form").addEventListener("submit", async function (event) {
@@ -366,6 +372,7 @@
     node("dashboard-tag-form").setAttribute("aria-busy", "true");
     node("dashboard-tag-save").disabled = true;
     node("dashboard-tag-cancel").disabled = true;
+    node("dashboard-tag-close").disabled = true;
     try {
       await window.PortalRequest("oee", "downtime-tag", {
         method: "POST",
@@ -387,6 +394,7 @@
       node("dashboard-tag-form").setAttribute("aria-busy", "false");
       node("dashboard-tag-save").disabled = false;
       node("dashboard-tag-cancel").disabled = false;
+      node("dashboard-tag-close").disabled = false;
     }
   });
   node("dashboard-tag-type").addEventListener("change", function () {

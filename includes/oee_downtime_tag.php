@@ -16,7 +16,7 @@ function oee_tag_downtime(PDO $pdo,array $data,array $permissions): array
         $fields[$key]=trim($value);
     }
     $machine=strtoupper($fields['machine']);$reason=strtoupper($fields['reason_code']);
-    if(!oee_line_code_ok($machine))throw new InvalidArgumentException('Choose one valid machine.');
+    if(!oee_line_code_ok($machine))throw new InvalidArgumentException('Choose one valid plant.');
     if(!in_array($fields['event_type'],['planned','unplanned'],true))throw new InvalidArgumentException('Choose planned or unplanned downtime.');
     $q=$pdo->prepare('SELECT code FROM oee_reason_codes WHERE code=? AND loss_type=? AND is_active=1');$q->execute([$reason,$fields['event_type']]);
     if($q->fetchColumn()===false)throw new InvalidArgumentException('Choose an active registered downtime reason.');
@@ -24,7 +24,7 @@ function oee_tag_downtime(PDO $pdo,array $data,array $permissions): array
     try{
         $q=$pdo->prepare('SELECT id FROM oee_downtime_events WHERE id=? AND line_code=?'.($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':''));
         $q->execute([$id,$machine]);
-        if(!$q->fetchColumn())throw new DomainException('Downtime event not found for this machine.',404);
+        if(!$q->fetchColumn())throw new DomainException('Downtime event not found for this plant.',404);
         $pdo->prepare("UPDATE oee_downtime_events SET event_type=?,reason_code=?,notes=?,status=CASE WHEN status='proposed' THEN 'confirmed' ELSE status END,updated_at=CURRENT_TIMESTAMP WHERE id=? AND line_code=?")
             ->execute([$fields['event_type'],$reason,$fields['notes'],$id,$machine]);
         if($own)$pdo->commit();

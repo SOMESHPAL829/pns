@@ -40,7 +40,7 @@ function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue,
     $machine = strtoupper(trim(is_string($machineValue) ? $machineValue : 'ALL'));
     if ($machine === '') $machine = 'ALL';
     if ($machine !== 'ALL' && !preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]{0,79}$/', $machine)) {
-        throw new InvalidArgumentException('Choose a valid Machine.');
+        throw new InvalidArgumentException('Choose a valid Plant.');
     }
 
     $sql = 'SELECT e.id,e.entry_date,e.shift_name,e.operator_name,e.machine_code,e.process_description,' .
@@ -110,7 +110,7 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
     $machine = strtoupper(trim(is_string($machineValue) ? $machineValue : 'ALL'));
     if ($machine === '') $machine = 'ALL';
     if ($machine !== 'ALL' && !preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]{0,79}$/', $machine)) {
-        throw new InvalidArgumentException('Choose a valid Machine.');
+        throw new InvalidArgumentException('Choose a valid Plant.');
     }
     $type = strtolower(trim(is_string($typeValue) ? $typeValue : 'weekly'));
     if (!in_array($type, ['weekly', 'monthly', 'consolidated'], true)) {
@@ -212,7 +212,7 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     $entryDate = chemical_date($data['entry_date'] ?? null, 'Date');
     $shift = chemical_text($data['shift_name'] ?? null, 'Shift', 40);
     $operator = chemical_text($data['operator_name'] ?? null, 'Operator Name', 120);
-    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Machine Code', 80));
+    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Plant Code', 80));
     $process = chemical_text($data['process_description'] ?? null, 'Process Description', 500);
     $chemicalId = filter_var($data['chemical_item_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if (!$chemicalId) throw new InvalidArgumentException('Choose a Chemical Name.');
@@ -226,7 +226,7 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     if (!is_string($remarksRaw)) throw new InvalidArgumentException('Remarks must be text.');
     $remarks = trim($remarksRaw);
     if (mb_strlen($remarks, 'UTF-8') > 1000) throw new InvalidArgumentException('Remarks is too long.');
-    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Machine Code.');
+    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Plant Code.');
 
     $item = $pdo->prepare('SELECT id,status,uom FROM chemical_items WHERE id=?');
     $item->execute([$chemicalId]);

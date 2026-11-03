@@ -127,14 +127,20 @@
 .pns-empty { color: var(--mut); margin: 0; padding: 1rem; font-size: 0.8rem; }
 .pns-loading { margin: 0.5rem 0; color: var(--accent-deep); font-size: 0.8rem; }
 .pns-dashboard .pns-tag-action { display: inline-flex; margin: 0; padding: 0; white-space: nowrap; }
-.pns-tag-dialog { width: min(36rem,calc(100% - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: auto; padding: 1.25rem; box-sizing: border-box; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--card); color: var(--ink); }
+.pns-tag-dialog { position: relative; width: min(36rem,calc(100% - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); overflow: visible; padding: 1.25rem; box-sizing: border-box; border: 1px solid var(--line); border-radius: 0.75rem; background: var(--card); color: var(--ink); }
 .pns-tag-dialog::backdrop { background: rgb(15 30 50 / 55%); }
-.pns-tag-dialog h2 { margin: 0 0 0.75rem; color: var(--accent-deep); font-size: 1.2rem; }
+.pns-tag-dialog form { position: relative; max-height: calc(100dvh - 4.5rem); overflow: auto; }
+.pns-tag-dialog h2 { margin: 0 0 0.75rem; padding-right: 2.75rem; color: var(--accent-deep); font-size: 1.2rem; }
+.pns-tag-close { position: absolute; z-index: 2; top: 0; right: 0; display: inline-grid; width: 2.1rem; height: 2.1rem; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 0.5rem; background: var(--card); color: var(--accent-deep); cursor: pointer; }
+.pns-tag-close:hover:not(:disabled),.pns-tag-close:focus-visible { border-color: var(--accent); background: var(--accent-sft); outline: 0; }
+.pns-tag-close:disabled { opacity: 0.5; cursor: not-allowed; }
+.pns-tag-close svg { width: 1.1rem; height: 1.1rem; }
 .pns-tag-context { font-size: 0.85rem; overflow-wrap: anywhere; }
 .pns-tag-help { font-size: 0.8rem; color: var(--mut); line-height: 1.5; }
 .pns-tag-fields { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,13rem),1fr)); gap: 1rem; margin-top: 1rem; }
 .pns-tag-fields label { margin: 0; min-width: 0; }
 .pns-tag-fields select,.pns-tag-fields textarea { display: block; width: 100%; margin-top: 0.4rem; }
+.pns-tag-fields .searchable-select { margin-top: 0.4rem; }
 .pns-tag-notes { grid-column: 1 / -1; }
 .pns-tag-actions { display: flex; justify-content: end; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
 @media(max-width:1400px) {
