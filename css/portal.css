@@ -3358,3 +3358,9 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   [data-view="oee-report"] .report-primary-controls > * { flex: 1 1 100%; }
   [data-view="oee-report"] .report-primary-controls #report-export { margin-left: 0; }
 }
+.plant-picker{border:1px solid var(--border,#dbe3ec);border-radius:10px;padding:14px;margin:12px 0;background:var(--surface,#fff)}
+.plant-picker legend{font-weight:700;color:var(--navy,#183b68);padding:0 6px}
+.plant-picker-options{display:flex;flex-wrap:wrap;gap:9px;margin-top:10px}
+.plant-picker-option{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid var(--border,#dbe3ec);border-radius:8px;background:var(--surface,#fff);cursor:pointer;white-space:nowrap}
+.plant-picker-option:has(input:disabled){opacity:.65;cursor:not-allowed}
+.plant-picker-option input{accent-color:#1f4c7e}

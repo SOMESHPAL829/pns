@@ -12,7 +12,12 @@ function oee_line_code_ok(string $line): bool
  * New lines appear automatically after the first successful Unit 1 ingest
  * (or after a cycle/threshold/downtime row is saved for that line).
  */
-function oee_known_lines(PDO $pdo): array
+function oee_set_visible_lines(?array $lines): void
+{
+    $GLOBALS['portal_visible_oee_lines']=$lines===null?null:array_values(array_unique(array_map(static fn($v):string=>strtoupper(trim((string)$v)),$lines)));
+}
+
+function oee_all_known_lines(PDO $pdo): array
 {
     $clean = [];
     foreach ([
@@ -42,6 +47,15 @@ function oee_known_lines(PDO $pdo): array
     }
     $lines = array_values($clean);
     sort($lines);
+    return $lines;
+}
+
+function oee_known_lines(PDO $pdo): array
+{
+    $lines=oee_all_known_lines($pdo);
+    if(array_key_exists('portal_visible_oee_lines',$GLOBALS) && is_array($GLOBALS['portal_visible_oee_lines'])){
+        $lines=array_values(array_intersect($lines,$GLOBALS['portal_visible_oee_lines']));
+    }
     return $lines;
 }
 
@@ -86,7 +100,7 @@ function oee_gap_thresholds(PDO $pdo): array
     try {
         foreach ($pdo->query('SELECT line_code, gap_threshold_minutes FROM oee_line_settings')->fetchAll() as $row) {
             $code = strtoupper(trim((string) $row['line_code']));
-            if ($code === '') {
+            if ($code === '' || !array_key_exists($code,$limits)) {
                 continue;
             }
             $limits[$code] = oee_validate_gap_threshold($row['gap_threshold_minutes']);

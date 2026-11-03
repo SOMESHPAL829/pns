@@ -1392,6 +1392,7 @@
           ? "Standard User"
           : user.access_role_name || titleLabel(user.role),
       );
+      makeCell(row, user.all_plants ? "All Plants" : (user.plants || []).join(", ") || "No Plants");
       makeCell(row, Number(user.is_active) === 1 ? "Active" : "Inactive");
       makeCell(row, readableDate(user.created_at), "muted");
       const actions = makeCell(row, "", "user-actions-cell");
@@ -1425,9 +1426,23 @@
     if (visibleUsers.length === 0) {
       const row = document.createElement("tr");
       const cell = makeCell(row, "No users match this search.");
-      cell.colSpan = 8;
+      cell.colSpan = 9;
       body.appendChild(row);
     }
+  }
+
+  function renderExtraPlantPicker(id, selected) {
+    const container = document.getElementById(id); if (!container) return;
+    const chosen = new Set(selected || []); container.replaceChildren();
+    (app.availablePlants || []).forEach(function (plant) {
+      const label = document.createElement("label"); label.className = "plant-picker-option";
+      const input = document.createElement("input"); input.type = "checkbox"; input.value = plant; input.checked = chosen.has(plant);
+      label.append(input, document.createTextNode(plant)); container.appendChild(label);
+    });
+  }
+
+  function selectedExtraPlants(id) {
+    return [...(document.getElementById(id)?.querySelectorAll('input[type="checkbox"]:checked') || [])].map(input => input.value);
   }
 
   function setDetail(record) {
@@ -1509,13 +1524,17 @@
       const users = await request("users", "", {});
       app.users = users.users;
       app.assignableRoles = users.assignable_roles || [];
+      app.availablePlants = users.plants || [];
+      renderExtraPlantPicker("new-user-plants", []);
+      renderExtraPlantPicker("user-role-plants", []);
       const roleSelect = document.getElementById("new-user-role");
       if (roleSelect) {
         roleSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
+          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           roleSelect.add(
             new Option(
-              role.name === "Standard user" ? "Standard User" : role.name,
+              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
               role.id,
             ),
           );
@@ -1525,9 +1544,10 @@
       if (assignmentSelect) {
         assignmentSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
+          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           assignmentSelect.add(
             new Option(
-              role.name === "Standard user" ? "Standard User" : role.name,
+              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
               role.id,
             ),
           );
@@ -1609,15 +1629,11 @@
 
   const userForm = document.getElementById("user-create-form");
   if (userForm)
-    userForm.addEventListener("submit", function (event) {
+    userForm.addEventListener("submit", async function (event) {
       event.preventDefault();
-      submitForm(
-        userForm,
-        "user-create",
-        ["username", "email", "full_name", "password", "role_id"],
-        "User created",
-        "users",
-      );
+      const button=document.querySelector('[form="user-create-form"][type="submit"]');
+      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:selectedExtraPlants("new-user-plants")}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
+      catch(error){toast(error.message,"crit");} finally {if(button)button.disabled=false;}
     });
 
   const recordFilter = document.getElementById("record-filter-form");
@@ -1969,6 +1985,7 @@
             (role) => Number(role.is_builtin) === 1,
           )?.id;
         roleSelect.value = String(assigned || "");
+        renderExtraPlantPicker("user-role-plants", selectedUser.extra_plants || []);
         window.PortalModalForms?.open(
           "user-role-form",
           "Assign Role to " + selectedUser.full_name,
@@ -2033,6 +2050,7 @@
           body: {
             id: Number(document.getElementById("user-role-user-id").value),
             role_id: Number(document.getElementById("user-role-select").value),
+            extra_plants: selectedExtraPlants("user-role-plants"),
           },
         });
         toast(

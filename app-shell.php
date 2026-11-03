@@ -7,7 +7,11 @@ require_authentication();
 $csrfToken = csrf_token();
 $welcomeMessage = is_string($_SESSION['welcome_message'] ?? null) ? $_SESSION['welcome_message'] : '';
 unset($_SESSION['welcome_message']);
-$oeeLines = oee_known_lines(db());
+$shellPdo=db();
+$shellUserQuery=$shellPdo->prepare('SELECT id,role FROM portal_users WHERE id=?');$shellUserQuery->execute([current_user_id()]);$shellUser=$shellUserQuery->fetch();
+$shellAccess=$shellUser?portal_user_access($shellPdo,$shellUser):['all_plants'=>false,'plants'=>[]];
+oee_set_visible_lines($shellAccess['all_plants']?null:$shellAccess['plants']);
+$oeeLines = oee_known_lines($shellPdo);
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -273,8 +277,8 @@ $oeeLines = oee_known_lines(db());
 
         <section class="view" data-view="users">
           <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div></div>
-          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2><div class="table-heading-actions"><form class="table-heading-search-form" id="user-search-form"><input id="users-search" type="search" placeholder="Search Users" aria-label="Search Users"></form><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
-          <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div><button class="btn" type="submit">Save Role</button></form>
+          <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2><div class="table-heading-actions"><form class="table-heading-search-form" id="user-search-form"><input id="users-search" type="search" placeholder="Search Users" aria-label="Search Users"></form><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Plant Access</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
+          <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div><fieldset class="plant-picker"><legend>Additional Plant Access</legend><p class="form-note">Optional plants added specifically for this user, in addition to the selected role.</p><div id="user-role-plants" class="plant-picker-options"></div></fieldset><button class="btn" type="submit">Save Access</button></form>
         </section>
 
         <section class="view" data-view="user-create">
@@ -283,6 +287,7 @@ $oeeLines = oee_known_lines(db());
             <div class="form-grid-2"><div><label class="form-label" for="new-user-email">Email <span class="req">*</span></label><input class="form-input" id="new-user-email" name="email" type="email" required></div><div><label class="form-label" for="new-user-username">Username <span class="req">*</span></label><input class="form-input" id="new-user-username" name="username" minlength="3" maxlength="80" required></div></div>
             <div><label class="form-label" for="new-user-name">Full Name <span class="req">*</span></label><input class="form-input" id="new-user-name" name="full_name" maxlength="160" required></div><div><label class="form-label" for="new-user-password">Temporary Password <span class="req">*</span></label><input class="form-input" id="new-user-password" name="password" type="password" minlength="12" required></div><p class="form-note">The user can change this password in their profile.</p>
             <div><label class="form-label" for="new-user-role">Access Role</label><select class="form-select" id="new-user-role" name="role_id" required></select></div>
+            <fieldset class="plant-picker"><legend>Additional Plant Access</legend><p class="form-note">Optional. The user automatically inherits the plants assigned to the role.</p><div id="new-user-plants" class="plant-picker-options"></div></fieldset>
           </form></div>
         </section>
 
