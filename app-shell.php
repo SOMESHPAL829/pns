@@ -12,6 +12,8 @@ $shellUserQuery=$shellPdo->prepare('SELECT id,role FROM portal_users WHERE id=?'
 $shellAccess=$shellUser?portal_user_access($shellPdo,$shellUser):['all_plants'=>false,'plants'=>[]];
 oee_set_visible_lines($shellAccess['all_plants']?null:$shellAccess['plants']);
 $oeeLines = oee_known_lines($shellPdo);
+$downtimeReasonCatalog=[];
+try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oee_reason_codes WHERE code<>'UNK' AND is_active=1 AND is_archived=0 ORDER BY loss_type,label")->fetchAll();}catch(Throwable){}
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -520,6 +522,8 @@ $oeeLines = oee_known_lines($shellPdo);
   <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Please Wait…</strong><span id="page-transition-note">Completing your request securely.</span></div></div></div>
   <script id="welcome-message" type="application/json"><?= json_encode($welcomeMessage, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script id="permission-catalog" type="application/json"><?= json_encode(portal_permission_catalog(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+  <script id="downtime-reason-catalog" type="application/json"><?= json_encode($downtimeReasonCatalog, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+  <script>window.PortalDowntimeReasons=JSON.parse(document.getElementById('downtime-reason-catalog').textContent||'[]');</script>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>

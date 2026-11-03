@@ -1111,6 +1111,18 @@
     const requestId = ++downtimeReasonRequest;
     const select = document.getElementById("downtime-reason");
     if (!select) return;
+    const cachedReasons = (window.PortalDowntimeReasons || []).filter(function (item) {
+      return item.loss_type === lossType;
+    });
+    if (cachedReasons.length) {
+      select.replaceChildren(new Option("Select a reason", ""));
+      cachedReasons.forEach(function (item) { select.appendChild(new Option(item.label, item.code)); });
+      select.value = cachedReasons.some(function (item) { return item.code === selectedReason; }) ? selectedReason : "";
+      select.disabled = false;
+      window.PortalSearchableSelect?.refresh(select);
+      showOeeAlert("downtime-alert", "", false);
+      return;
+    }
     select.replaceChildren(new Option("Loading reasons…", ""));
     select.disabled = true;
     try {
@@ -1166,16 +1178,17 @@
     const date = dateControl?.value || "";
     const machine =
       document.getElementById("downtime-machine")?.value || "APP-06";
+    const reasonsReady = loadDowntimeReasons(
+      document.getElementById("downtime-type").value,
+      document.getElementById("downtime-reason").value,
+    );
     try {
       renderDowntime(
         await request("oee", "downtime", {
           query: { machine: machine, ...(date ? { date: date } : {}) },
         }),
       );
-      await loadDowntimeReasons(
-        document.getElementById("downtime-type").value,
-        document.getElementById("downtime-reason").value,
-      );
+      await reasonsReady;
     } catch (error) {
       showOeeAlert("downtime-alert", error.message, true);
     }

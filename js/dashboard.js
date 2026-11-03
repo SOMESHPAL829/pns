@@ -272,6 +272,23 @@
   async function loadTagReasons(type, selectedReason, requestId) {
     const reasonRequest = ++tagReasonRequest;
     const select = node("dashboard-tag-reason");
+    const cachedReasons = (window.PortalDowntimeReasons || []).filter(
+      (reason) => reason.loss_type === type,
+    );
+    if (cachedReasons.length) {
+      select.replaceChildren(new Option("Select a reason", ""));
+      cachedReasons.forEach((reason) =>
+        select.appendChild(new Option(reason.label, reason.code)),
+      );
+      select.value = cachedReasons.some((reason) => reason.code === selectedReason)
+        ? selectedReason
+        : "";
+      select.disabled = false;
+      window.PortalSearchableSelect?.refresh(select);
+      node("dashboard-tag-save").disabled = false;
+      tagError("");
+      return;
+    }
     select.replaceChildren(new Option("Loading reasons…", ""));
     select.disabled = true;
     node("dashboard-tag-save").disabled = true;
