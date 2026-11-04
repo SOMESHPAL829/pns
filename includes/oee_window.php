@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/oee_settings.php';
+require_once __DIR__ . '/oee_time.php';
 
 function oee_supported_window_hours(): array
 {
@@ -14,7 +15,7 @@ function oee_window_definition(string $date, int $hours = 24, string $startTime 
     if (!$day || $day->format('Y-m-d') !== $date || !in_array($hours, oee_supported_window_hours(), true) || !preg_match('/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/D', $startTime) || ($hours === 24 && $startTime !== '00:00')) {
         throw new InvalidArgumentException('Choose a supported duration (480, 600, 720, 960, or 1440 minutes) and a valid start time (24h starts at 00:00).');
     }
-    $start = new DateTimeImmutable($date . ' ' . $startTime . ':00');
+    $start = oee_wall_datetime($date . ' ' . $startTime . ':00');
     return ['duration_hours' => $hours, 'duration_minutes' => $hours * 60, 'start_time' => $startTime, 'date' => $date,
         'window_start' => $start->format('Y-m-d H:i:s'), 'window_end' => $start->modify('+' . $hours . ' hours')->format('Y-m-d H:i:s'),
         'calendar_minutes' => $hours * 60, 'shift_code' => $hours === 24 ? 'DAY' : 'H' . $hours . '_' . str_replace(':', '', $startTime)];
@@ -53,14 +54,14 @@ function oee_window_metrics(array $window, array $rows, array $events, array $qu
         }
     }
     if (!empty($flags['missing_cycle_colours'])) $flags['missing_cycle_colours'] = array_values(array_unique($flags['missing_cycle_colours']));
-    $start = strtotime($window['window_start']);
-    $end = strtotime($window['window_end']);
+    $start = oee_wall_timestamp($window['window_start']);
+    $end = oee_wall_timestamp($window['window_end']);
     $boundaries = [$start, $end];
     $clipped = [];
     foreach ($events as $event) {
         if (!in_array($event['status'], ['proposed', 'confirmed', 'approved'], true)) continue;
-        $a = max($start, strtotime($event['starts_at']));
-        $b = min($end, strtotime($event['ends_at']));
+        $a = max($start, oee_wall_timestamp($event['starts_at']));
+        $b = min($end, oee_wall_timestamp($event['ends_at']));
         if ($b <= $a) continue;
         $clipped[] = ['start' => $a, 'end' => $b, 'type' => $event['event_type']];
         $boundaries[] = $a;
