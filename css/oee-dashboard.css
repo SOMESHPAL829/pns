@@ -148,9 +148,14 @@
 .pns-reason-track { height: 0.5rem; border-radius: 1rem; overflow: hidden; background: var(--accent-sft); }
 .pns-reason-track > span { display: block; height: 100%; background: var(--pns-stop); }
 .pns-operations { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,24rem),1fr)); gap: 0.9rem; }
+.pns-operations > .dash-card { min-width: 0; }
 .pns-dashboard .data-table th { background: var(--accent-deep); color: #fff; font-size: 0.68rem; }
 .pns-dashboard .data-table td { padding: 0.75rem 0.9rem; font-size: 0.8rem; }
 .pns-dashboard .data-table th { padding: 0.7rem 0.9rem; }
+.pns-dashboard .dashboard-downtime-table { min-width: 38rem; }
+.pns-dashboard .table-pagination { overflow: visible; }
+.pns-dashboard .table-pagination-summary { flex: 1 1 auto; }
+.pns-dashboard .table-pagination-controls { flex: 1 1 20rem; }
 .pns-cell-detail { display: block; color: var(--mut); font-size: 0.7rem; margin-top: 0.2rem; }
 .pns-dashboard .status-pill { border-radius: 0.3rem; white-space: nowrap; }
 .pns-dashboard .status-pill.proposed { background: var(--warn-sft); color: #795511; }

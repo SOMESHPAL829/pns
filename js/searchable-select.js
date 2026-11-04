@@ -11,6 +11,8 @@
     if (!select || instances.has(select)) return instances.get(select);
 
     const required = select.required;
+    const allowCustom = select.hasAttribute("data-allow-custom");
+    const customMaxlength = Math.max(1, Number(select.dataset.customMaxlength) || 500);
     select.required = false;
     select.tabIndex = -1;
     select.classList.add("searchable-select-native");
@@ -49,7 +51,7 @@
     select.parentNode.insertBefore(root, select);
     root.append(input, toggle, list, select);
 
-    const state = { select, root, input, toggle, list, options: [], active: -1, open: false, observer: null };
+    const state = { select, root, input, toggle, list, options: [], active: -1, open: false, keyboardNavigated: false, observer: null };
     instances.set(select, state);
 
     function selectedOption() {
@@ -103,7 +105,8 @@
     }
 
     function render(query) {
-      const term = normalize(query);
+      const rawQuery = String(query || "").trim().slice(0, customMaxlength);
+      const term = normalize(rawQuery);
       list.replaceChildren();
       state.options = [];
       Array.from(select.options).forEach(function (option) {
@@ -120,6 +123,18 @@
         list.appendChild(item);
         state.options.push(item);
       });
+      const exactMatch = Array.from(select.options).some(option => option.value && normalize(option.textContent) === term);
+      if (allowCustom && rawQuery && !exactMatch) {
+        const custom = document.createElement("button");
+        custom.type = "button";
+        custom.className = "searchable-select-option searchable-select-custom-option";
+        custom.id = list.id + "-option-" + state.options.length;
+        custom.dataset.customValue = rawQuery;
+        custom.textContent = 'Use "' + rawQuery + '" as a new description';
+        custom.setAttribute("role", "option");
+        list.appendChild(custom);
+        state.options.push(custom);
+      }
       if (!state.options.length) {
         const empty = document.createElement("p");
         empty.className = "searchable-select-empty";
@@ -142,6 +157,7 @@
       root.classList.add("is-open");
       list.hidden = false;
       input.setAttribute("aria-expanded", "true");
+      state.keyboardNavigated = false;
       render(query == null ? "" : query);
       positionList();
     }
@@ -161,7 +177,15 @@
     }
     state.close = close;
 
-    function choose(value) {
+    function choose(value, customValue) {
+      if (allowCustom && customValue) {
+        value = String(customValue).trim().slice(0, customMaxlength);
+        if (!Array.from(select.options).some(option => option.value === value)) {
+          const option = new Option(value, value);
+          option.dataset.customOption = "true";
+          select.add(option);
+        }
+      }
       if (select.value !== value) {
         select.value = value;
         select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -173,7 +197,9 @@
     input.addEventListener("focus", function () { open(""); });
     input.addEventListener("click", function () { open(input.value === selectedOption()?.textContent.trim() ? "" : input.value); });
     input.addEventListener("input", function () {
+      if (input.value.length > customMaxlength) input.value = input.value.slice(0, customMaxlength);
       if (input.value !== selectedOption()?.textContent.trim()) select.value = "";
+      state.keyboardNavigated = false;
       open(input.value);
       validate();
     });
@@ -181,10 +207,14 @@
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         if (!state.open) open("");
+        state.keyboardNavigated = true;
         setActive(state.active + (event.key === "ArrowDown" ? 1 : -1), true);
       } else if (event.key === "Enter" && state.open && state.active >= 0) {
         event.preventDefault();
-        choose(state.options[state.active].dataset.value);
+        const typed = String(input.value || "").trim();
+        const exact = Array.from(select.options).find(option => option.value && normalize(option.textContent) === normalize(typed));
+        if (allowCustom && typed && !state.keyboardNavigated) choose(exact?.value || typed, exact ? "" : typed);
+        else choose(state.options[state.active].dataset.value, state.options[state.active].dataset.customValue);
       } else if (event.key === "Escape") {
         event.preventDefault();
         close(true);
@@ -195,7 +225,7 @@
     list.addEventListener("mousedown", function (event) { event.preventDefault(); });
     list.addEventListener("click", function (event) {
       const option = event.target.closest(".searchable-select-option");
-      if (option) choose(option.dataset.value);
+      if (option) choose(option.dataset.value, option.dataset.customValue);
     });
     select.addEventListener("change", sync);
 

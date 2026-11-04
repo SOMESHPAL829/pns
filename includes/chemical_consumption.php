@@ -34,8 +34,17 @@ function chemical_consumption_list(PDO $pdo, string $defaultOperator = '', ?arra
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id WHERE 1=1' . $scope . ' ' .
         'ORDER BY e.entry_date DESC,e.id DESC LIMIT 1000'
     );$query->execute($parameters);$entries=$query->fetchAll();
+    $descriptionParameters=[];
+    $descriptionScope=chemical_plant_filter($plants,'e.machine_code',$descriptionParameters);
+    $descriptionQuery=$pdo->prepare(
+        "SELECT DISTINCT TRIM(e.process_description) AS process_description " .
+        "FROM chemical_consumption_entries e WHERE TRIM(e.process_description)<>''" . $descriptionScope . ' ' .
+        'ORDER BY process_description'
+    );
+    $descriptionQuery->execute($descriptionParameters);
+    $processDescriptions=$descriptionQuery->fetchAll(PDO::FETCH_COLUMN);
     $items = $pdo->query('SELECT id,item_code,description,status,uom FROM chemical_items ORDER BY item_code LIMIT 1000')->fetchAll();
-    return ['available' => true, 'entries' => $entries, 'items' => $items, 'default_operator' => $defaultOperator];
+    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'default_operator' => $defaultOperator];
 }
 
 function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, ?array $plants=null): array

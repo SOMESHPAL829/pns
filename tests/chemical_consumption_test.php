@@ -82,6 +82,7 @@ consumption_check($invalidUsageRejected, 'Unsupported Used For value was accepte
 $list = chemical_consumption_list($pdo, 'Default Operator');
 consumption_check($list['available'] && count($list['entries']) === 1 && count($list['items']) === 2, 'Consumption list is incomplete.');
 consumption_check($list['entries'][0]['chemical_name'] === 'Sulphuric Acid' && $list['entries'][0]['uom'] === 'ML', 'Chemical details or entry-specific UOM were not returned.');
+consumption_check($list['process_descriptions'] === ['Surface Treatment'], 'Distinct process-description suggestions were not returned.');
 consumption_check($list['default_operator'] === 'Default Operator', 'Default operator was not returned.');
 
 $report = chemical_consumption_report($pdo, '2026-10-01', '2026-10-31', 'APP-07');

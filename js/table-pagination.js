@@ -169,6 +169,7 @@
         const select = document.createElement("select");
         select.className = "table-heading-filter";
         select.setAttribute("aria-label", "Filter " + label);
+        select.title = label;
         select.dataset.columnIndex = String(headingIndex);
         select.dataset.headingLabel = label;
         select.add(new Option(label, ""));
@@ -195,6 +196,7 @@
         values.slice(0, 100).forEach(value => select.add(new Option(label + ": " + value, value)));
         if (values.includes(selected)) select.value = selected;
         else if (selected) state.filters.delete(cellIndex);
+        select.title = selected ? label + ": " + selected : label;
       });
     }
 

@@ -26,6 +26,8 @@ ui_check(str_contains($dashboardStyles, '.pns-dashboard .data-table th { backgro
 ui_check(str_contains($styles, '.oee-kpi:hover') && str_contains($styles, 'border-color: var(--accent)'), 'KPI hover highlighting is missing.');
 ui_check(!str_contains($styles, 'border-top: 3px solid var(--accent)'), 'KPI cards still use the heavy blue top border.');
 ui_check(str_contains($styles, '.data-scroll { width: 100%; scrollbar-gutter: auto; }'), 'Table containers still reserve a blank right-side gutter.');
+ui_check(str_contains($styles, '.data-table th:not(.is-filter-heading) { min-width: max-content; }') && str_contains($styles, 'min-width: clamp(8.5rem, 11vw, 10.5rem);'), 'Table headings can still collapse or clip after filters load.');
+ui_check(str_contains($styles, '.table-page-navigation { max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }'), 'Table pagination can still clip its Next button in narrow cards.');
 ui_check(!preg_match('/<th[^>]*>\s*(?:SR\.?\s*No\.?|Sr\.?|SRNO)\s*<\/th>/i', $shell), 'Serial number columns should not be rendered.');
 ui_check(str_contains($shell, 'class="app-topbar-title" id="page-title"') && !str_contains($shell, 'id="page-eyebrow"') && !str_contains($shell, 'id="page-subtitle"'), 'Topbar should contain only the main page heading.');
 ui_check(str_contains($styles, '.table-action') && str_contains($styles, '.user-actions'), 'Shared table action button styling is missing.');

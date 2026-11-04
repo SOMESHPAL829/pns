@@ -1951,6 +1951,7 @@ table.data tbody tr:hover {
   letter-spacing: 0.025em;
   vertical-align: middle;
 }
+.data-table th:not(.is-filter-heading) { min-width: max-content; }
 .table-sort-button {
   display: inline-flex;
   width: 100%;
@@ -1967,6 +1968,7 @@ table.data tbody tr:hover {
   text-align: left;
   cursor: pointer;
 }
+.table-sort-button { width: max-content; min-width: 100%; }
 .table-sort-button:focus-visible { border-radius: 0.2rem; outline-color: #fff; outline-offset: 3px; }
 .table-sort-indicator {
   display: inline-flex;
@@ -2401,6 +2403,7 @@ html[data-theme="dark"] .searchable-select-list { border-color: var(--line); }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 1rem;
   min-height: 3.5rem;
   padding: 0.65rem 0.8rem;
@@ -2411,7 +2414,15 @@ html[data-theme="dark"] .searchable-select-list { border-color: var(--line); }
 .table-pagination-controls,
 .table-page-navigation,
 .table-page-size { display: flex; align-items: center; gap: 0.4rem; }
-.table-pagination-controls { gap: 0.8rem; }
+.table-pagination-controls {
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+.table-page-navigation { max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
 .table-page-size { color: var(--mut); font-size: 0.72rem; font-weight: 650; white-space: nowrap; }
 .table-page-size select {
   min-height: 2rem;
@@ -2671,7 +2682,10 @@ html[data-theme="dark"] .data-table thead tr.col-filter-row th { background: var
 }
 
 /* Categorical filters live inside their headings and do not also sort. */
-.data-table th.is-filter-heading { padding: 0; }
+.data-table th.is-filter-heading {
+  min-width: clamp(8.5rem, 11vw, 10.5rem);
+  padding: 0;
+}
 .table-heading-filter {
   width: 100%;
   min-height: 2.65rem;
