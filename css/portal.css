@@ -1436,6 +1436,13 @@ table.data tbody tr:hover {
 .chemical-consumption-actions { grid-column: span 3; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .chemical-consumption-actions .btn { min-height: 2.15rem; }
 .chemical-consumption-table { min-width: 1700px; }
+.chemical-consumption-form input,
+.chemical-consumption-form select,
+.chemical-consumption-form textarea,
+.chemical-consumption-table tbody,
+.chemical-report-table tbody {
+  text-transform: uppercase;
+}
 .chemical-report-filter-card { margin-bottom: 1rem; overflow: hidden; }
 .chemical-report-filter-card h2 { margin: 0; font: inherit; }
 .chemical-consumption-report-card { overflow: hidden; }

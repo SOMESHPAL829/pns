@@ -20,6 +20,11 @@ function chemical_text(mixed $value, string $field, int $maximum): string
     return $text;
 }
 
+function chemical_upper_text(mixed $value, string $field, int $maximum): string
+{
+    return mb_strtoupper(chemical_text($value, $field, $maximum), 'UTF-8');
+}
+
 function chemical_date(mixed $value, string $field, bool $required = true): ?string
 {
     if (($value === null || $value === '') && !$required) return null;
@@ -44,10 +49,10 @@ function chemical_save_item(PDO $pdo, array $data, int $actorId): array
 {
     if (!chemical_tables_ready($pdo)) throw new DomainException('Chemical registration migration is not installed yet.', 503);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
-    $code = strtoupper(chemical_text($data['item_code'] ?? null, 'Item code', 80));
-    $description = chemical_text($data['description'] ?? null, 'Description', 500);
+    $code = chemical_upper_text($data['item_code'] ?? null, 'Item code', 80);
+    $description = chemical_upper_text($data['description'] ?? null, 'Description', 500);
     $status = strtolower(chemical_text($data['status'] ?? null, 'Status', 16));
-    $uom = strtoupper(chemical_text($data['uom'] ?? null, 'UOM', 40));
+    $uom = chemical_upper_text($data['uom'] ?? null, 'UOM', 40);
     if ($uom === 'L') $uom = 'LTR';
     if (!preg_match('/^[A-Z0-9][A-Z0-9._\/-]*$/', $code)) throw new InvalidArgumentException('Item code may contain letters, numbers, dots, underscores, slashes and hyphens.');
     if (!in_array($status, ['active', 'inactive'], true)) throw new InvalidArgumentException('Status must be Active or Inactive.');

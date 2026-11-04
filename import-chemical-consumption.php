@@ -33,23 +33,24 @@ while (($values = fgetcsv($handle, 0, "\t")) !== false) {
     $date = DateTimeImmutable::createFromFormat('!d-M-y', $row['Date']);
     $dateErrors = DateTimeImmutable::getLastErrors();
     if (!$date || ($dateErrors !== false && ($dateErrors['warning_count'] || $dateErrors['error_count']))) throw new RuntimeException("Line {$line} has an invalid date.");
-    $shift = preg_match('/^shift\s+/i', $row['Shift Name']) ? $row['Shift Name'] : 'Shift ' . strtoupper($row['Shift Name']);
+    $shift = preg_match('/^shift\s+/i', $row['Shift Name']) ? $row['Shift Name'] : 'Shift ' . mb_strtoupper($row['Shift Name'], 'UTF-8');
     $normalized = [
         'entry_date'=>$date->format('Y-m-d'),
-        'shift_name'=>$shift,
-        'operator_name'=>$row['Operator Name'],
-        'machine_code'=>strtoupper($row['Machine']),
-        'process_description'=>$row['Process'],
-        'chemical_code'=>strtoupper($row['Chemical Code']),
-        'chemical_name'=>$row['Chemical Name'],
+        'shift_name'=>mb_strtoupper($shift, 'UTF-8'),
+        'operator_name'=>mb_strtoupper($row['Operator Name'], 'UTF-8'),
+        'machine_code'=>mb_strtoupper($row['Machine'], 'UTF-8'),
+        'process_description'=>mb_strtoupper($row['Process'], 'UTF-8'),
+        'chemical_code'=>mb_strtoupper($row['Chemical Code'], 'UTF-8'),
+        'chemical_name'=>mb_strtoupper($row['Chemical Name'], 'UTF-8'),
         'consume_quantity'=>chemical_consumption_quantity($row['Consumption Qty']),
-        'uom'=>strtoupper($row['UOM']),
-        'used_for'=>$row['Used For'],
-        'recommended_by'=>$row['Recommended By'],
+        'uom'=>mb_strtoupper($row['UOM'], 'UTF-8'),
+        'used_for'=>mb_strtoupper($row['Used For'], 'UTF-8'),
+        'recommended_by'=>mb_strtoupper($row['Recommended By'], 'UTF-8'),
         'remarks'=>'',
         'source_line'=>$line,
     ];
-    if (!in_array($normalized['used_for'], ['Fresh Makeup','Top-Up'], true)) throw new RuntimeException("Line {$line} has an invalid Used For value.");
+    if (!in_array($normalized['used_for'], ['FRESH MAKEUP','TOP-UP'], true)) throw new RuntimeException("Line {$line} has an invalid Used For value.");
+    if (!in_array($normalized['recommended_by'], ['QC MANAGER','PRODUCTION MANAGER'], true)) throw new RuntimeException("Line {$line} has an invalid Recommended By value.");
     $key = json_encode(array_diff_key($normalized, ['source_line'=>true]), JSON_THROW_ON_ERROR);
     if (isset($sourceKeys[$key])) throw new RuntimeException("Lines {$sourceKeys[$key]} and {$line} are exact duplicates.");
     $sourceKeys[$key] = $line;

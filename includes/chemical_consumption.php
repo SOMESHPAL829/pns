@@ -232,21 +232,24 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId, ?array $
     if (!chemical_consumption_tables_ready($pdo)) throw new DomainException('Chemical consumption migration is not installed yet.', 503);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
     $entryDate = chemical_date($data['entry_date'] ?? null, 'Date');
-    $shift = chemical_text($data['shift_name'] ?? null, 'Shift', 40);
-    $operator = chemical_text($data['operator_name'] ?? null, 'Operator Name', 120);
-    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Plant Code', 80));
-    $process = chemical_text($data['process_description'] ?? null, 'Process Description', 500);
+    $shift = chemical_upper_text($data['shift_name'] ?? null, 'Shift', 40);
+    $operator = chemical_upper_text($data['operator_name'] ?? null, 'Operator Name', 120);
+    $machine = chemical_upper_text($data['machine_code'] ?? null, 'Plant Code', 80);
+    $process = chemical_upper_text($data['process_description'] ?? null, 'Process Description', 500);
     $chemicalId = filter_var($data['chemical_item_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if (!$chemicalId) throw new InvalidArgumentException('Choose a Chemical Name.');
     $quantity = chemical_consumption_quantity($data['consume_quantity'] ?? null);
-    $usedFor = chemical_text($data['used_for'] ?? null, 'Used For', 500);
-    if (!in_array($usedFor, ['Fresh Makeup', 'Top-Up'], true)) {
+    $usedFor = chemical_upper_text($data['used_for'] ?? null, 'Used For', 500);
+    if (!in_array($usedFor, ['FRESH MAKEUP', 'TOP-UP'], true)) {
         throw new InvalidArgumentException('Used For must be Fresh Makeup or Top-Up.');
     }
-    $recommendedBy = chemical_text($data['recommended_by'] ?? null, 'Recommended By', 120);
+    $recommendedBy = chemical_upper_text($data['recommended_by'] ?? null, 'Recommended By', 120);
+    if (!in_array($recommendedBy, ['QC MANAGER', 'PRODUCTION MANAGER'], true)) {
+        throw new InvalidArgumentException('Recommended By must be QC Manager or Production Manager.');
+    }
     $remarksRaw = $data['remarks'] ?? '';
     if (!is_string($remarksRaw)) throw new InvalidArgumentException('Remarks must be text.');
-    $remarks = trim($remarksRaw);
+    $remarks = mb_strtoupper(trim($remarksRaw), 'UTF-8');
     if (mb_strlen($remarks, 'UTF-8') > 1000) throw new InvalidArgumentException('Remarks is too long.');
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Plant Code.');
     if($plants!==null && !in_array($machine,$plants,true))throw new DomainException('You do not have access to this plant.',403);
@@ -256,7 +259,7 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId, ?array $
     $item->execute([$chemicalId]);
     $chemical = $item->fetch();
     if (!$chemical) throw new DomainException('Chemical item not found.', 404);
-    $uom = strtoupper(chemical_text($data['uom'] ?? $chemical['uom'], 'UOM', 40));
+    $uom = chemical_upper_text($data['uom'] ?? $chemical['uom'], 'UOM', 40);
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $uom)) throw new InvalidArgumentException('Enter a valid UOM.');
     if ($chemical['status'] !== 'active') {
         if ($id === null) throw new DomainException('Inactive chemical items cannot be used for new entries.', 409);

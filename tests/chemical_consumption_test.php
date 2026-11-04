@@ -20,17 +20,17 @@ $pdo->exec("INSERT INTO oee_fb_runs(line_code,report_date,total_surface_area) VA
 $saved = chemical_consumption_save($pdo, [
     'entry_date' => '2026-10-27', 'shift_name' => 'Shift A', 'operator_name' => 'Aman Gupta',
     'machine_code' => 'app-06', 'process_description' => 'Surface Treatment', 'chemical_item_id' => 1,
-    'consume_quantity' => '12.5000', 'uom' => 'ML', 'used_for' => 'Fresh Makeup', 'recommended_by' => 'Process Team',
+    'consume_quantity' => '12.5000', 'uom' => 'ML', 'used_for' => 'Fresh Makeup', 'recommended_by' => 'Production Manager',
     'remarks' => 'Opening batch'
 ], 7);
 consumption_check($saved['id'] === 1, 'Consumption entry was not created.');
 $row = $pdo->query('SELECT * FROM chemical_consumption_entries')->fetch();
-consumption_check($row['machine_code'] === 'APP-06' && $row['uom'] === 'ML' && (int) $row['created_by'] === 7, 'Machine normalization, entry UOM, or actor audit failed.');
+consumption_check($row['machine_code'] === 'APP-06' && $row['operator_name'] === 'AMAN GUPTA' && $row['process_description'] === 'SURFACE TREATMENT' && $row['used_for'] === 'FRESH MAKEUP' && $row['recommended_by'] === 'PRODUCTION MANAGER' && $row['remarks'] === 'OPENING BATCH' && $row['uom'] === 'ML' && (int) $row['created_by'] === 7, 'Consumption text normalization, entry UOM, or actor audit failed.');
 
 chemical_consumption_save($pdo, [
     'id' => 1, 'entry_date' => '2026-10-28', 'shift_name' => 'Shift B', 'operator_name' => 'Aman Gupta',
     'machine_code' => 'APP-07', 'process_description' => 'Surface Treatment', 'chemical_item_id' => 1,
-    'consume_quantity' => '10', 'uom' => 'ML', 'used_for' => 'Top-Up', 'recommended_by' => 'Process Team', 'remarks' => ''
+    'consume_quantity' => '10', 'uom' => 'ML', 'used_for' => 'Top-Up', 'recommended_by' => 'QC Manager', 'remarks' => ''
 ], 8);
 $row = $pdo->query('SELECT * FROM chemical_consumption_entries')->fetch();
 consumption_check($row['entry_date'] === '2026-10-28' && (int) $row['updated_by'] === 8, 'Consumption entry was not updated.');
@@ -40,7 +40,7 @@ try {
     chemical_consumption_save($pdo, [
         'entry_date' => '2026-10-28', 'shift_name' => 'Shift B', 'operator_name' => 'Operator',
         'machine_code' => 'APP-07', 'process_description' => 'Test', 'chemical_item_id' => 2,
-        'consume_quantity' => '1', 'used_for' => 'Top-Up', 'recommended_by' => 'Lead', 'remarks' => ''
+        'consume_quantity' => '1', 'used_for' => 'Top-Up', 'recommended_by' => 'Production Manager', 'remarks' => ''
     ], 8);
 } catch (DomainException $exception) {
     $inactiveRejected = $exception->getCode() === 409;
@@ -52,7 +52,7 @@ try {
     chemical_consumption_save($pdo, [
         'id' => 1, 'entry_date' => '2026-10-28', 'shift_name' => 'Shift B', 'operator_name' => 'Operator',
         'machine_code' => 'APP-07', 'process_description' => 'Test', 'chemical_item_id' => 2,
-        'consume_quantity' => '1', 'used_for' => 'Top-Up', 'recommended_by' => 'Lead', 'remarks' => ''
+        'consume_quantity' => '1', 'used_for' => 'Top-Up', 'recommended_by' => 'Production Manager', 'remarks' => ''
     ], 8);
 } catch (DomainException $exception) {
     $inactiveChangeRejected = $exception->getCode() === 409;
@@ -72,22 +72,34 @@ try {
     chemical_consumption_save($pdo, [
         'entry_date' => '2026-10-28', 'shift_name' => 'Shift B', 'operator_name' => 'Operator',
         'machine_code' => 'APP-07', 'process_description' => 'Test', 'chemical_item_id' => 1,
-        'consume_quantity' => '1', 'used_for' => 'Cleaning', 'recommended_by' => 'Lead', 'remarks' => ''
+        'consume_quantity' => '1', 'used_for' => 'Cleaning', 'recommended_by' => 'Production Manager', 'remarks' => ''
     ], 8);
 } catch (InvalidArgumentException) {
     $invalidUsageRejected = true;
 }
 consumption_check($invalidUsageRejected, 'Unsupported Used For value was accepted.');
 
+$invalidRecommenderRejected = false;
+try {
+    chemical_consumption_save($pdo, [
+        'entry_date' => '2026-10-28', 'shift_name' => 'Shift B', 'operator_name' => 'Operator',
+        'machine_code' => 'APP-07', 'process_description' => 'Test', 'chemical_item_id' => 1,
+        'consume_quantity' => '1', 'used_for' => 'Top-Up', 'recommended_by' => 'Supervisor', 'remarks' => ''
+    ], 8);
+} catch (InvalidArgumentException) {
+    $invalidRecommenderRejected = true;
+}
+consumption_check($invalidRecommenderRejected, 'Unsupported Recommended By value was accepted.');
+
 $list = chemical_consumption_list($pdo, 'Default Operator');
 consumption_check($list['available'] && count($list['entries']) === 1 && count($list['items']) === 2, 'Consumption list is incomplete.');
 consumption_check($list['entries'][0]['chemical_name'] === 'Sulphuric Acid' && $list['entries'][0]['uom'] === 'ML', 'Chemical details or entry-specific UOM were not returned.');
-consumption_check($list['process_descriptions'] === ['Surface Treatment'], 'Distinct process-description suggestions were not returned.');
+consumption_check($list['process_descriptions'] === ['SURFACE TREATMENT'], 'Distinct uppercase process-description suggestions were not returned.');
 consumption_check($list['default_operator'] === 'Default Operator', 'Default operator was not returned.');
 
 $report = chemical_consumption_report($pdo, '2026-10-01', '2026-10-31', 'APP-07');
 consumption_check($report['available'] && count($report['rows']) === 1, 'Chemical consumption report did not return the filtered entry.');
-consumption_check($report['rows'][0]['item_code'] === 'CHEM-001' && $report['rows'][0]['used_for'] === 'Top-Up', 'Chemical report row is incomplete.');
+consumption_check($report['rows'][0]['item_code'] === 'CHEM-001' && $report['rows'][0]['used_for'] === 'TOP-UP', 'Chemical report row is incomplete.');
 consumption_check(in_array('APP-07', $report['machines'], true), 'Chemical report machine filter list is incomplete.');
 
 $invalidReportRangeRejected = false;

@@ -14,6 +14,7 @@ $pdo->exec('CREATE TABLE chemical_item_rates (id INTEGER PRIMARY KEY AUTOINCREME
 
 $item = chemical_save_item($pdo, ['item_code' => 'chem-001', 'description' => 'Sulphuric Acid', 'status' => 'active', 'uom' => 'kg'], 7);
 chemical_check($item['item_code'] === 'CHEM-001', 'Item code was not normalized.');
+chemical_check((string) $pdo->query("SELECT description FROM chemical_items WHERE id=1")->fetchColumn() === 'SULPHURIC ACID', 'Chemical description was not normalized to uppercase.');
 chemical_check((int) $pdo->query('SELECT created_by FROM chemical_items')->fetchColumn() === 7, 'Item actor was not stored.');
 chemical_save_item($pdo, ['item_code' => 'chem-002', 'description' => 'Liquid Cleaner', 'status' => 'active', 'uom' => 'L'], 7);
 chemical_check((string) $pdo->query("SELECT uom FROM chemical_items WHERE item_code='CHEM-002'")->fetchColumn() === 'LTR', 'Legacy L UOM was not normalized to LTR.');
