@@ -18,7 +18,7 @@
     [["ALL", "All Plants"], ...plants.map(p => [p, p])].forEach(function ([value, label]) {
       const item = document.createElement("label"); item.className = "plant-picker-option";
       const input = document.createElement("input"); input.type = "checkbox"; input.dataset.rolePlant = value;
-      input.checked = value === "ALL" ? all : (!all && selected.has(value)); input.disabled = readonly || (value !== "ALL" && all);
+      input.checked = value === "ALL" ? all : (all || selected.has(value)); input.disabled = readonly;
       item.append(input, document.createTextNode(label)); options.appendChild(item);
     });
   }
@@ -86,7 +86,13 @@
   form.addEventListener("change", function (event) {
     const input = event.target;
     if (input.dataset.rolePlant === "ALL") {
-      form.querySelectorAll("[data-role-plant]:not([data-role-plant='ALL'])").forEach(node => { node.checked = false; node.disabled = input.checked; });
+      form.querySelectorAll("[data-role-plant]:not([data-role-plant='ALL'])").forEach(node => { node.checked = input.checked; });
+      return;
+    }
+    if (input.dataset.rolePlant) {
+      const individual = [...form.querySelectorAll("[data-role-plant]:not([data-role-plant='ALL'])")];
+      const all = form.querySelector("[data-role-plant='ALL']");
+      if (all) all.checked = individual.length > 0 && individual.every(node => node.checked);
       return;
     }
     if (!input.dataset.page) return;
@@ -112,5 +118,6 @@
     } catch (error) { message(error.message); window.AppToast?.show(error.message, "crit"); button.disabled = false; }
   });
   window.addEventListener("portal-view-changed", function (event) { if (event.detail.route === "roles") load(); });
+  window.addEventListener("portal-access-ready", function () { if (location.hash.replace(/^#\/?/, "") === "roles") load(); });
   editor();
 })();

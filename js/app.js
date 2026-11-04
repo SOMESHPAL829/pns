@@ -1445,16 +1445,6 @@
     }
   }
 
-  function renderExtraPlantPicker(id, selected) {
-    const container = document.getElementById(id); if (!container) return;
-    const chosen = new Set(selected || []); container.replaceChildren();
-    (app.availablePlants || []).forEach(function (plant) {
-      const label = document.createElement("label"); label.className = "plant-picker-option";
-      const input = document.createElement("input"); input.type = "checkbox"; input.value = plant; input.checked = chosen.has(plant);
-      label.append(input, document.createTextNode(plant)); container.appendChild(label);
-    });
-  }
-
   function selectedExtraPlants(id) {
     return [...(document.getElementById(id)?.querySelectorAll('input[type="checkbox"]:checked') || [])].map(input => input.value);
   }
@@ -1464,14 +1454,14 @@
     return (app.assignableRoles || []).find(role => Number(role.id) === Number(select?.value));
   }
 
-  function renderExactPlantPicker(id, scope) {
+  function renderExactPlantPicker(id, scope, readonly = false) {
     const container = document.getElementById(id); if (!container) return;
     const all = scope?.all_plants === true;
     const chosen = new Set(scope?.plants || []); container.replaceChildren();
     [["ALL", "All Plants"], ...(app.availablePlants || []).map(plant => [plant, plant])].forEach(function ([value, text]) {
       const label = document.createElement("label"); label.className = "plant-picker-option";
       const input = document.createElement("input"); input.type = "checkbox"; input.value = value; input.dataset.userPlant = value;
-      input.checked = value === "ALL" ? all : (!all && chosen.has(value)); input.disabled = value !== "ALL" && all;
+      input.checked = value === "ALL" ? all : (all || chosen.has(value)); input.disabled = readonly;
       label.append(input, document.createTextNode(text)); container.appendChild(label);
     });
   }
@@ -1506,9 +1496,14 @@
     if (customPlants) customPlants.hidden = !custom;
     const extraId = form.id === "user-create-form" ? "new-user-plants" : "user-role-plants";
     const customId = form.id === "user-create-form" ? "new-user-custom-plants" : "user-role-custom-plants";
-    renderExtraPlantPicker(extraId, user?.extra_plants || []);
-    renderExactPlantPicker(customId, custom ? { all_plants: user.all_plants, plants: user.plants } : { all_plants: role?.all_plants === true, plants: role?.plants || [] });
-    renderUserPermissionMatrix(form, custom ? user.permissions : role?.permissions, custom);
+    const roleScope = { all_plants: role?.all_plants === true, plants: role?.plants || [] };
+    renderExactPlantPicker(extraId, roleScope, true);
+    const customScope = custom && user
+      ? { all_plants: user.all_plants, plants: user.plants }
+      : roleScope;
+    const permissionSource = custom && user ? user.permissions : role?.permissions;
+    renderExactPlantPicker(customId, customScope);
+    renderUserPermissionMatrix(form, permissionSource, custom);
     const caption = form.querySelector("[data-user-permission-caption]");
     if (caption) caption.textContent = custom ? "Custom permissions for this user" : `Inherited from ${role?.name || "the selected role"}`;
   }
@@ -1529,7 +1524,13 @@
     form.addEventListener("change", function (event) {
       const input = event.target;
       if (input.dataset.userPlant === "ALL") {
-        form.querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])").forEach(node => { node.checked = false; node.disabled = input.checked; });
+        form.querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])").forEach(node => { node.checked = input.checked; });
+        return;
+      }
+      if (input.dataset.userPlant) {
+        const individual = [...form.querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])")];
+        const all = form.querySelector("[data-user-plant='ALL']");
+        if (all) all.checked = individual.length > 0 && individual.every(node => node.checked);
         return;
       }
       if (input.dataset.userPermissionPage) {
@@ -1765,7 +1766,7 @@
     userForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       const button=document.querySelector('[form="user-create-form"][type="submit"]');
-      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:selectedExtraPlants("new-user-plants"),custom_access:collectCustomAccess(userForm)}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
+      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:[],custom_access:collectCustomAccess(userForm)}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
       catch(error){toast(error.message,"crit");} finally {if(button)button.disabled=false;}
     });
 
@@ -2184,7 +2185,7 @@
           body: {
             id: Number(document.getElementById("user-role-user-id").value),
             role_id: Number(document.getElementById("user-role-select").value),
-            extra_plants: selectedExtraPlants("user-role-plants"),
+            extra_plants: [],
             custom_access: collectCustomAccess(userRoleForm),
           },
         });
