@@ -34,7 +34,7 @@ function oee_calculate_daily(PDO $pdo, string $lineCode, string $reportDate): ar
     $rows = $rowsQuery->fetchAll();
     $proposedGaps = oee_propose_gap_downtime($pdo, $lineCode, $reportDate);
     $dayStart = $reportDate . ' 00:00:00';
-    $dayEnd = date('Y-m-d H:i:s', strtotime($reportDate . ' +1 day'));
+    $dayEnd = oee_wall_datetime($reportDate . ' 00:00:00')->modify('+1 day')->format('Y-m-d H:i:s');
     $flags = [];
     $productive = 0;
     $idealOutput = 0.0;
@@ -81,10 +81,10 @@ function oee_calculate_daily(PDO $pdo, string $lineCode, string $reportDate): ar
     );
     $downtimeQuery->execute([$lineCode, $dayEnd, $dayStart]);
     $events = [];
-    $boundaries = [strtotime($dayStart), strtotime($dayEnd)];
+    $boundaries = [oee_wall_timestamp($dayStart), oee_wall_timestamp($dayEnd)];
     foreach ($downtimeQuery->fetchAll() as $event) {
-        $start = max(strtotime($dayStart), strtotime((string) $event['starts_at']));
-        $end = min(strtotime($dayEnd), strtotime((string) $event['ends_at']));
+        $start = max(oee_wall_timestamp($dayStart), oee_wall_timestamp((string) $event['starts_at']));
+        $end = min(oee_wall_timestamp($dayEnd), oee_wall_timestamp((string) $event['ends_at']));
         if ($end <= $start) continue;
         $events[] = [
             'start' => $start,

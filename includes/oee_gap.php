@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/oee_settings.php';
+require_once __DIR__ . '/oee_time.php';
 
 /** Pure detection. Each input row has a resolved, effective cycle time. */
 function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
@@ -13,9 +14,13 @@ function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
     $add = static function (string $source, array $before, array $after, array $cycleRow, ?array $firstEmpty = null) use (&$events, $identity, $thresholdMinutes): void {
         $cycle = (float) ($cycleRow['cycle_minutes'] ?? 0);
         if ($cycle <= 0 || !is_finite($cycle)) throw new InvalidArgumentException('Gap detection requires a resolved positive cycle time.');
-        $start = date('Y-m-d H:i:s', strtotime($before['loading_at']) + (int) round($cycle * 60));
-        if ($start >= $after['loading_at']) return;
-        $gap = (strtotime($after['loading_at']) - strtotime($before['loading_at'])) / 60;
+        // The threshold decides whether a SCADA gap is downtime; it is not a
+        // deductible allowance. Keep the complete measured interval once the
+        // gap qualifies so review screens and OEE use the same actual time.
+        $start = $before['loading_at'];
+        if (oee_wall_timestamp($start) >= oee_wall_timestamp($after['loading_at'])) return;
+        $gap = (oee_wall_timestamp($after['loading_at']) - oee_wall_timestamp($before['loading_at'])) / 60;
+        if ($gap < $thresholdMinutes) return;
         $flags = $cycleRow['flags'] ?? [];
         if (!is_array($flags)) $flags = json_decode((string) $flags, true) ?: [];
         $events[] = ['report_date' => substr($start, 0, 10), 'starts_at' => $start, 'ends_at' => $after['loading_at'],
@@ -24,7 +29,7 @@ function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
             'notes' => sprintf('SCADA %s: %s -> %s; raw gap %.3f min; cycle %.3f min (%s); %s.%s',
                 $source, $before['seq'] ?? $before['si_no'], $after['seq'] ?? $after['si_no'], $gap, $cycle,
                 $cycleRow['cycle_colour'] ?? $cycleRow['used_colour'] ?? '',
-                $source === 'gap' ? sprintf('plant stop threshold >%.3f min', $thresholdMinutes) : 'separate empty-rack rule (no gap threshold)',
+                sprintf('plant stop threshold >=%.3f min', $thresholdMinutes),
                 !empty($flags['colour_no_standard']) ? ' Missing standard: default 12 min applied.' : '')];
     };
     $previous = $anchor = $firstEmpty = $lastEmpty = null;
@@ -34,7 +39,7 @@ function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
             $previous = $anchor = $firstEmpty = $lastEmpty = null;
         }
         if ((int) $row['is_productive'] === 1) {
-            if ($previous && (strtotime($row['loading_at']) - strtotime($previous['loading_at'])) > $thresholdMinutes * 60) $add('gap', $previous, $row, $row);
+            if ($previous && (oee_wall_timestamp($row['loading_at']) - oee_wall_timestamp($previous['loading_at'])) >= $thresholdMinutes * 60) $add('gap', $previous, $row, $row);
             if ($anchor && $lastEmpty) $add('empty_rack', $anchor, $lastEmpty, $anchor, $firstEmpty);
             $anchor = $row;
             $firstEmpty = $lastEmpty = null;

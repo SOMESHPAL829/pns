@@ -15,9 +15,9 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 3. Set `APP_BASE_URL` to the public app URL and `APP_MAIL_FROM` to a sender address in the PHP environment.
 4. Ensure the database account can create and use the `portal_*` tables.
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
-6. Run `php migrate-permissions.php`, then `php migrate-export-permissions.php` to install page-level roles and permissions.
+6. Run `php migrate-permissions.php`, `php migrate-export-permissions.php`, `php migrate-plant-access.php`, then `php migrate-user-access-overrides.php` to install page-level roles, role plant scope, and optional per-user permission and exact plant overrides. Existing users continue using role defaults.
 7. Run `php migrate-chemicals.php` to install chemical items and effective-dated INR rates.
-8. Run `php migrate-chemical-consumption.php` to install the chemical consumption ledger.
+8. Run `php migrate-chemical-consumption.php`, then `php migrate-chemical-consumption-entry-uom.php` to install the chemical consumption ledger and preserve each entry's recorded unit.
 9. Run `php migrate-breakdowns.php` to refresh the downtime reason catalogue and archive referenced legacy reasons without deleting downtime history.
 10. Run `php migrate-user-appearance.php` to enable per-user theme and brightness preferences.
 
@@ -71,7 +71,7 @@ new custom roles and the built-in Standard User role receive no access by defaul
 ## Chemical Consumption
 
 Open **Workspace → Chemical Consumption** to record Date, Shift, Operator Name,
-Machine Code, Process Description, Chemical Name, Consume Quantity, Used For,
+Plant Code, Process Description, Chemical Name, Consume Quantity, Used For,
 Recommended By, and Remarks. Chemical names are selected from Chemical
 Registration, quantities display the registered UOM, and inactive chemicals
 cannot be used for new entries. Used For is limited to Fresh Makeup or Top-Up.
@@ -84,14 +84,14 @@ built-in Standard User role until explicitly granted.
 ## Chemical Consumption Report
 
 Open **Workspace → Chemical Consumption Report** to filter consumption entries
-by From Date, To Date, and Machine. The report follows the operational register
+by From Date, To Date, and Plant. The report follows the operational register
 format, includes the chemical name and item code together, shows quantity with
 its UOM, and provides a landscape print layout. Report access is controlled by
 the independent Chemical Consumption Report View permission.
 
 ## Chemical Cost Report
 
-Open **Workspace → Chemical Cost Report** to select From Date, To Date, Machine,
+Open **Workspace → Chemical Cost Report** to select From Date, To Date, Plant,
 and a Weekly Basis, Monthly Basis, or Consolidated report. Total Chemical Cost
 uses each consumption entry's effective INR item rate. Chemical Cost per dm² is
 calculated as Total Chemical Cost divided by production Total Surface Area from
@@ -171,7 +171,7 @@ machine/date/duration. The separate date-range dashboard is unchanged.
 
 Presentation code is isolated in `includes/dashboard.php`, `css/oee-dashboard.css`
 and `js/dashboard.js`. The dashboard API adds permission-gated read-only detail
-fields; reason durations union overlapping events per line and clip to the selected
+fields; reason durations union overlapping events per plant and clip to the selected
 window. No OEE formula or database migration changes. See [OEE_DASHBOARD_UI.md](OEE_DASHBOARD_UI.md).
 Verify with `php tests/oee_dashboard_view_test.php`, the existing HTTP permission
 test, and `node tests/oee_dashboard_browser_test.cjs` (Playwright overrides supported).
@@ -215,7 +215,7 @@ same window.
 
 The report/export API accepts `duration_minutes=480|600|720|960|1440&start_time=HH:MM`
 (`duration_hours=8|10|12|16|24` is also supported). Window utilization uses the
-selected minutes per line; `utilization_24h` in API responses retains the fixed
+selected minutes per plant; `utilization_24h` in API responses retains the fixed
 1440-minute meaning. Exports include the selection in their filename and
 workbook header. Partial-day views are calculated separately and do not replace
 stored DAY results.
@@ -234,7 +234,7 @@ The editable window timestamps are in P:Q. Planned production time is
 `MAX(0, window minutes - planned stops)`; run time is
 `MAX(0, planned production minutes - unplanned downtime)`.
 
-All five aggregate cells B6:B10 and all line percentages contain live Excel
+All five aggregate cells B6:B10 and all plant percentages contain live Excel
 formulas. Availability is run / planned production time; performance is ideal
 output time / run time; quality is good / productive FB; OEE multiplies these
 three ratios; utilization divides run time by calendar minutes. A zero
@@ -266,16 +266,16 @@ validates the workbook against the strict OpenXML schema.
 
 Open **Date-range OEE** in the sidebar (`app.php#/oee-range`). The original
 daily dashboard and production report remain separate. Choose From date and
-To date (inclusive, up to 93 days), one machine or all machines, and 480, 600,
+To date (inclusive, up to 93 days), one plant or all plants, and 480, 600,
 720, 960 or 1440 minutes **per day**. For partial-day windows choose the daily
 start time, then
-click **Calculate OEE**. The page shows aggregate KPIs, line-wise OEE, a daily
+click **Calculate OEE**. The page shows aggregate KPIs, plant-wise OEE, a daily
 breakdown, and time/production totals. Excel export uses the same selections.
 
 Percentages use sums, not averages: availability = total run / total planned,
 performance = total ideal / total run, quality = total good / total productive,
 OEE = availability × performance × quality. Utilization = total run /
-(days × selected lines × selected minutes). An overnight partial-day range includes
+(days × selected plants × selected minutes). An overnight partial-day range includes
 each day's selected window, not the uncovered time. Empty days remain in the time
 denominator. See [duration/range rules](OEE_DURATION_SELECTION.md).
 

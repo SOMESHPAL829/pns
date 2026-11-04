@@ -39,6 +39,12 @@ function api_require_page(array $user, string $page, string $action='view'): voi
     if(!portal_can($user['access']['permissions'],$page,$action))json_response(['error'=>'You do not have '.$action.' permission for this page.'],403);
 }
 
+function api_require_plant(array $user, string $plant): void
+{
+    $plant=strtoupper(trim($plant));
+    if($plant!=='ALL' && !portal_can_plant($user['access'],$plant))json_response(['error'=>'You do not have access to this plant.'],403);
+}
+
 function api_text(array $data, string $key, int $maxLength): string
 {
     $rawValue = $data[$key] ?? '';
@@ -80,7 +86,7 @@ function oee_requested_machine(): string
 {
     $machine = strtoupper(trim((string) ($_GET['machine'] ?? 'ALL')));
     if ($machine !== 'ALL' && !oee_line_code_ok($machine)) {
-        json_response(['error' => 'Unknown OEE machine.'], 422);
+        json_response(['error' => 'Unknown OEE plant.'], 422);
     }
     return $machine;
 }
@@ -210,9 +216,11 @@ function oee_logs(PDO $pdo): array
     if (!oee_tables_ready($pdo)) {
         return ['available' => false, 'message' => 'OEE database migration is not installed yet.'];
     }
-    $imports = $pdo->query(
-        'SELECT id, batch_id, source, line_code, report_date, row_count, status, received_at, processed_at, error_message FROM oee_import_batches ORDER BY received_at DESC LIMIT 100'
-    )->fetchAll();
+    $lines=oee_known_lines($pdo);
+    if($lines===[])$imports=[];
+    else{$in=implode(',',array_fill(0,count($lines),'?'));$q=$pdo->prepare(
+        'SELECT id, batch_id, source, line_code, report_date, row_count, status, received_at, processed_at, error_message FROM oee_import_batches WHERE line_code IN ('.$in.') ORDER BY received_at DESC LIMIT 100'
+    );$q->execute($lines);$imports=$q->fetchAll();}
     $sync = $pdo->query(
         'SELECT source, last_batch_id, last_report_date, last_received_at, last_status, last_error, updated_at FROM oee_sync_state ORDER BY updated_at DESC'
     )->fetchAll();
@@ -221,7 +229,7 @@ function oee_logs(PDO $pdo): array
 
 function oee_downtime(PDO $pdo, string $date, string $machine): array
 {
-    if ($machine === 'ALL') json_response(['error' => 'Select one machine to review downtime.'], 422);
+    if ($machine === 'ALL') json_response(['error' => 'Select one plant to review downtime.'], 422);
     $lineCode = oee_machine_line($machine);
     oee_calculate_daily($pdo, $lineCode, $date);
     $dayStart = $date . ' 00:00:00';
@@ -237,7 +245,7 @@ function oee_downtime_save(PDO $pdo, array $data): void
 {
     $machine = strtoupper(api_text($data, 'machine', 20));
     if (!oee_line_code_ok($machine)) {
-        json_response(['error' => 'Unknown OEE machine.'], 422);
+        json_response(['error' => 'Unknown OEE plant.'], 422);
     }
     $date = oee_validate_date(api_text($data, 'report_date', 10));
     $start = api_text($data, 'starts_at', 32);
@@ -264,7 +272,7 @@ function oee_downtime_save(PDO $pdo, array $data): void
         $dayEnd = (new DateTimeImmutable($date))->modify('+1 day')->format('Y-m-d 00:00:00');
         $update->execute([$eventType, $reason, $notes, $startDate->format('Y-m-d H:i:s'), $endDate->format('Y-m-d H:i:s'), $eventId, oee_machine_line($machine), $dayEnd, $date . ' 00:00:00']);
         if ($update->rowCount() < 1) {
-            json_response(['error' => 'Downtime event not found for this machine and date.'], 404);
+            json_response(['error' => 'Downtime event not found for this plant and date.'], 404);
         }
         json_response(['ok' => true, 'event_id' => (int) $eventId, 'updated' => true]);
     }
@@ -278,7 +286,9 @@ function oee_downtime_save(PDO $pdo, array $data): void
 function oee_masters(PDO $pdo): array
 {
     $reasons = $pdo->query('SELECT id, code, label, loss_type, is_active FROM oee_reason_codes ORDER BY loss_type,label')->fetchAll();
-    $cycles = $pdo->query('SELECT id, line_code, colour, minutes_per_fb, effective_from, effective_to FROM oee_cycle_time_standards ORDER BY line_code, colour, effective_from DESC')->fetchAll();
+    $lines=oee_known_lines($pdo);
+    if($lines===[])$cycles=[];
+    else{$in=implode(',',array_fill(0,count($lines),'?'));$q=$pdo->prepare('SELECT id, line_code, colour, minutes_per_fb, effective_from, effective_to FROM oee_cycle_time_standards WHERE line_code IN ('.$in.') ORDER BY line_code, colour, effective_from DESC');$q->execute($lines);$cycles=$q->fetchAll();}
     $thresholds = [];
     foreach (oee_gap_thresholds($pdo) as $line => $minutes) {
         $thresholds[] = ['line_code' => $line, 'gap_threshold_minutes' => $minutes];
@@ -305,7 +315,7 @@ function oee_master_save(PDO $pdo, array $data, array $user): void
         $minutes = filter_var($data['minutes_per_fb'] ?? null, FILTER_VALIDATE_FLOAT);
         $from = oee_validate_date(api_text($data, 'effective_from', 10));
         $to = api_text($data, 'effective_to', 10);
-        if (!oee_line_code_ok($line) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid machine, colour, and positive cycle time.'], 422);
+        if (!oee_line_code_ok($line) || $colour === '' || $minutes === false || $minutes <= 0) json_response(['error' => 'Enter a valid plant, colour, and positive cycle time.'], 422);
         $to = $to === '' ? null : oee_validate_date($to);
         if ($to !== null && $to < $from) json_response(['error' => 'Effective end date cannot be before the start date.'], 422);
         if ($id) {
@@ -356,6 +366,7 @@ try {
 
     $pdo = db();
     $user = api_user($pdo);
+    oee_set_visible_lines($user['access']['all_plants']?null:$user['access']['plants']);
     $required = portal_api_requirement($resource,$action,$method,$data);
     // Downtime needs reason labels, not unrestricted access to cycle masters.
     $reasonSelector = $resource==='oee' && $action==='masters' && $method==='GET'
@@ -366,6 +377,7 @@ try {
         if ($resource === 'oee') {
             $requestedDate = oee_requested_date();
             $requestedMachine = oee_requested_machine();
+            api_require_plant($user,$requestedMachine);
             [$durationHours, $startTime] = oee_requested_window_selection();
             if (in_array($action, ['range-dashboard', 'range-export'], true)) {
                 $from = $_GET['from_date'] ?? null;
@@ -493,16 +505,19 @@ try {
             $query = $pdo->query(
                 "SELECT u.id,u.username,u.email,u.full_name,u.role,u.is_active,u.created_at,ur.role_id AS access_role_id,CASE WHEN u.role='admin' THEN 'Administrator' ELSE COALESCE(r.name,'Standard user') END AS access_role_name FROM portal_users u LEFT JOIN portal_user_roles ur ON ur.user_id=u.id LEFT JOIN portal_access_roles r ON r.id=ur.role_id ORDER BY u.created_at DESC LIMIT 500"
             );
-            $roles=array_values(array_filter(portal_list_roles($pdo),static fn(array $r):bool=>portal_grants_within($r['permissions'],$user['access']['permissions'])));
-            json_response(['users' => $query->fetchAll(),'assignable_roles'=>$roles]);
+            $roles=array_values(array_filter(portal_list_roles($pdo),static fn(array $r):bool=>portal_grants_within($r['permissions'],$user['access']['permissions'])&&portal_scope_within($r,$user['access'])));
+            $users=$query->fetchAll();foreach($users as &$listedUser){$scope=portal_user_access($pdo,$listedUser);$listedUser['all_plants']=$scope['all_plants'];$listedUser['plants']=$scope['plants'];$listedUser['extra_plants']=$scope['extra_plants'];$listedUser['permissions']=$scope['permissions'];$listedUser['custom_access']=$scope['custom_access'];}unset($listedUser);
+            $availablePlants=$user['access']['all_plants']?portal_available_plants($pdo):$user['access']['plants'];
+            json_response(['users'=>$users,'assignable_roles'=>$roles,'plants'=>$availablePlants]);
         }
 
-        if($resource==='roles')json_response(['roles'=>portal_list_roles($pdo),'catalog'=>portal_permission_catalog()]);
+        if($resource==='roles')json_response(['roles'=>portal_list_roles($pdo),'catalog'=>portal_permission_catalog(),'plants'=>portal_available_plants($pdo)]);
 
         if($resource==='chemicals'&&$action==='list')json_response(chemical_list($pdo));
-        if($resource==='chemical-consumption'&&$action==='list')json_response(chemical_consumption_list($pdo,(string)$user['full_name']));
-        if($resource==='chemical-consumption'&&$action==='report')json_response(chemical_consumption_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL'));
-        if($resource==='chemical-consumption'&&$action==='cost-report')json_response(chemical_cost_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL',$_GET['report_type']??'weekly'));
+        $visiblePlants=$user['access']['all_plants']?null:$user['access']['plants'];
+        if($resource==='chemical-consumption'&&$action==='list')json_response(chemical_consumption_list($pdo,(string)$user['full_name'],$visiblePlants));
+        if($resource==='chemical-consumption'&&$action==='report'){api_require_plant($user,(string)($_GET['machine']??'ALL'));json_response(chemical_consumption_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL',$visiblePlants));}
+        if($resource==='chemical-consumption'&&$action==='cost-report'){api_require_plant($user,(string)($_GET['machine']??'ALL'));json_response(chemical_cost_report($pdo,$_GET['from_date']??null,$_GET['to_date']??null,$_GET['machine']??'ALL',$_GET['report_type']??'weekly',$visiblePlants));}
         if($resource==='breakdowns'&&$action==='list')json_response(breakdown_list($pdo));
         if($resource==='breakdowns'&&$action==='by-type'){
             $lossType=$_GET['loss_type']??null;
@@ -514,6 +529,7 @@ try {
     }
 
     if ($resource === 'oee' && $action === 'downtime-tag' && $method === 'POST') {
+        api_require_plant($user,(string)($data['machine']??''));
         json_response(oee_tag_downtime($pdo, $data, $user['access']['permissions']));
     }
     if ($resource === 'oee' && $action === 'duration-setting-save' && $method === 'POST') {
@@ -534,9 +550,11 @@ try {
         json_response(['ok' => true, 'appearance' => ['theme' => $theme, 'brightness' => $brightness]]);
     }
     if ($resource === 'oee' && $action === 'downtime-save' && $method === 'POST') {
+        api_require_plant($user,(string)($data['machine']??''));
         oee_downtime_save($pdo, $data);
     }
     if ($resource === 'oee' && $action === 'master-save' && $method === 'POST') {
+        api_require_plant($user,(string)($data['line_code']??''));
         oee_master_save($pdo, $data, $user);
     }
     if($resource==='chemicals'&&$action==='item-save'&&$method==='POST'){
@@ -546,7 +564,7 @@ try {
         json_response(chemical_save_rate($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
     }
     if($resource==='chemical-consumption'&&$action==='save'&&$method==='POST'){
-        json_response(chemical_consumption_save($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
+        json_response(chemical_consumption_save($pdo,$data,(int)$user['id'],$user['access']['all_plants']?null:$user['access']['plants']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
     }
     if($resource==='breakdowns'&&$action==='save'&&$method==='POST'){
         json_response(breakdown_save($pdo,$data,(int)$user['id']),filter_var($data['id']??null,FILTER_VALIDATE_INT)?200:201);
@@ -555,7 +573,7 @@ try {
         $input=$data['permissions']??null;
         if(!is_array($input))json_response(['error'=>'Permissions must be a page/action object.'],422);
         $id=filter_var($data['id']??null,FILTER_VALIDATE_INT)?:null;
-        $id=portal_save_role($pdo,$user,$id,api_text($data,'name',80),$input);
+        $id=portal_save_role($pdo,$user,$id,api_text($data,'name',80),$input,$data['plants']??['ALL']);
         json_response(['ok'=>true,'id'=>$id]);
     }
     if($resource==='roles'&&$action==='role-delete'){
@@ -566,7 +584,7 @@ try {
     if($resource==='users'&&$action==='user-role'){
         $id=filter_var($data['id']??null,FILTER_VALIDATE_INT);$roleId=filter_var($data['role_id']??null,FILTER_VALIDATE_INT);
         if(!$id||!$roleId)json_response(['error'=>'Choose a user and role.'],422);
-        portal_assign_role($pdo,$user,$id,$roleId);json_response(['ok'=>true]);
+        portal_assign_role($pdo,$user,$id,$roleId,'update',$data['extra_plants']??[],$data['custom_access']??null);json_response(['ok'=>true]);
     }
 
     if ($action === 'profile' && $method === 'POST') {
@@ -678,7 +696,7 @@ try {
                 'INSERT INTO portal_users (username, email, full_name, password_hash) VALUES (?, ?, ?, ?)'
             );
             $insert->execute([$username, $email, $name, password_hash($password, PASSWORD_DEFAULT)]);
-            portal_assign_role($pdo,$user,(int)$pdo->lastInsertId(),$roleId,'create');
+            portal_assign_role($pdo,$user,(int)$pdo->lastInsertId(),$roleId,'create',$data['extra_plants']??[],$data['custom_access']??null);
             $pdo->commit();
         } catch (PDOException $exception) {
             if($pdo->inTransaction())$pdo->rollBack();

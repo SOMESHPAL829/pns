@@ -13,6 +13,13 @@ $evening = oee_window_definition('2026-10-22', 12, '12:00');
 $night = oee_window_definition('2026-10-22', 12, '18:00');
 window_check($morning['calendar_minutes'] === 720 && $day['calendar_minutes'] === 1440, 'duration minutes incorrect');
 window_check($night['window_end'] === '2026-10-23 06:00:00', 'night window must cross midnight');
+$dstDay = oee_window_definition('2026-10-25');
+window_check($dstDay['window_end'] === '2026-10-26 00:00:00', 'Server daylight-saving transition changed a 24-hour plant window');
+$dstMetrics = oee_window_metrics($dstDay, [], [[
+    'starts_at' => '2026-10-25 01:54:17', 'ends_at' => '2026-10-25 02:04:00',
+    'event_type' => 'unplanned', 'status' => 'proposed',
+]], []);
+window_check($dstMetrics['unplanned_minutes'] === 9.717, 'Server daylight-saving transition changed downtime duration');
 foreach ([8, 10, 12, 16, 24] as $hours) {
     $start = $hours === 24 ? '00:00' : '08:00';
     $window = oee_window_definition('2026-10-22', $hours, $start);

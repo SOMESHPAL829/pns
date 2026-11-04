@@ -112,16 +112,125 @@ function portal_role_permissions(PDO $pdo, int $id): array
     return $matrix;
 }
 
+const PORTAL_ALL_PLANTS = '*';
+
+function portal_plant_tables_ready(PDO $pdo): bool
+{
+    try {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            return (int)$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('portal_role_plants','portal_user_plants')")->fetchColumn() === 2;
+        }
+        return (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('portal_role_plants','portal_user_plants')")->fetchColumn() === 2;
+    } catch (Throwable) { return false; }
+}
+
+function portal_available_plants(PDO $pdo): array
+{
+    $plants=[];
+    foreach ([
+        'SELECT DISTINCT line_code AS plant FROM oee_import_batches',
+        'SELECT DISTINCT line_code AS plant FROM oee_fb_runs',
+        'SELECT DISTINCT line_code AS plant FROM oee_cycle_time_standards',
+        'SELECT DISTINCT machine_code AS plant FROM chemical_consumption_entries',
+    ] as $sql) {
+        try { foreach ($pdo->query($sql)->fetchAll(PDO::FETCH_COLUMN) as $plant) {
+            $plant=strtoupper(trim((string)$plant));
+            if($plant!=='' && $plant!=='ALL')$plants[$plant]=true;
+        }} catch(Throwable) {}
+    }
+    $plants=array_keys($plants); sort($plants,SORT_NATURAL); return $plants;
+}
+
+function portal_normalize_plants(PDO $pdo, mixed $input, bool $allowAll=true): array
+{
+    if(!is_array($input))throw new InvalidArgumentException('Plant access must be a list.');
+    $available=array_fill_keys(portal_available_plants($pdo),true); $selected=[];
+    foreach($input as $value){
+        if(!is_string($value))throw new InvalidArgumentException('Choose valid plants.');
+        $plant=strtoupper(trim($value));
+        if($allowAll && in_array($plant,['ALL',PORTAL_ALL_PLANTS],true))return [PORTAL_ALL_PLANTS];
+        if(!isset($available[$plant]))throw new InvalidArgumentException('Unknown plant: '.$plant);
+        $selected[$plant]=true;
+    }
+    return array_keys($selected);
+}
+
+function portal_role_plant_scope(PDO $pdo, ?int $roleId): array
+{
+    if(!$roleId || !portal_plant_tables_ready($pdo))return ['all_plants'=>true,'plants'=>[]];
+    $q=$pdo->prepare('SELECT plant_code FROM portal_role_plants WHERE role_id=? ORDER BY plant_code');$q->execute([$roleId]);
+    $plants=array_map('strval',$q->fetchAll(PDO::FETCH_COLUMN));
+    // A legacy role without rows predates plant scoping and retains its former access.
+    if($plants===[] || in_array(PORTAL_ALL_PLANTS,$plants,true))return ['all_plants'=>true,'plants'=>[]];
+    return ['all_plants'=>false,'plants'=>$plants];
+}
+
+function portal_user_extra_plants(PDO $pdo, int $userId): array
+{
+    if(!portal_plant_tables_ready($pdo))return [];
+    $q=$pdo->prepare('SELECT plant_code FROM portal_user_plants WHERE user_id=? ORDER BY plant_code');$q->execute([$userId]);
+    return array_map('strval',$q->fetchAll(PDO::FETCH_COLUMN));
+}
+
+function portal_user_override_tables_ready(PDO $pdo): bool
+{
+    try {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite') {
+            return (int)$pdo->query("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('portal_user_access_overrides','portal_user_permissions')")->fetchColumn() === 2;
+        }
+        return (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name IN ('portal_user_access_overrides','portal_user_permissions')")->fetchColumn() === 2;
+    } catch (Throwable) { return false; }
+}
+
+function portal_user_has_custom_access(PDO $pdo, int $userId): bool
+{
+    if(!portal_user_override_tables_ready($pdo))return false;
+    $q=$pdo->prepare('SELECT custom_access FROM portal_user_access_overrides WHERE user_id=?');$q->execute([$userId]);
+    return (int)$q->fetchColumn()===1;
+}
+
+function portal_user_permissions(PDO $pdo, int $userId): array
+{
+    $matrix=portal_permission_matrix();
+    if(!portal_user_override_tables_ready($pdo))return $matrix;
+    $q=$pdo->prepare('SELECT page_code,action_code FROM portal_user_permissions WHERE user_id=?');$q->execute([$userId]);
+    foreach($q->fetchAll() as $row){
+        if(isset($matrix[$row['page_code']])&&array_key_exists($row['action_code'],$matrix[$row['page_code']]))$matrix[$row['page_code']][$row['action_code']]=true;
+    }
+    return $matrix;
+}
+
+function portal_scope_within(array $target, array $actor): bool
+{
+    if($actor['all_plants']??false)return true;
+    if($target['all_plants']??false)return false;
+    return array_diff($target['plants']??[],$actor['plants']??[])===[];
+}
+
+function portal_can_plant(array $access, string $plant): bool
+{
+    return ($access['all_plants']??false) || in_array(strtoupper($plant),$access['plants']??[],true);
+}
+
 function portal_user_access(PDO $pdo, array $user): array
 {
-    if ($user['role'] === 'admin') return ['role_id'=>0,'role_name'=>'Administrator','system_admin'=>true,'permissions'=>portal_permission_matrix(true)];
+    if ($user['role'] === 'admin') return ['role_id'=>0,'role_name'=>'Administrator','system_admin'=>true,'permissions'=>portal_permission_matrix(true),'all_plants'=>true,'plants'=>[],'extra_plants'=>[],'custom_access'=>false];
     $q=$pdo->prepare('SELECT ur.role_id,r.name FROM portal_user_roles ur LEFT JOIN portal_access_roles r ON r.id=ur.role_id WHERE ur.user_id=?'); $q->execute([$user['id']]);
     $role=$q->fetch();
     // An explicitly assigned but missing role must never fall back to broader access.
     if (!$role) $role=$pdo->query("SELECT id AS role_id,name FROM portal_access_roles WHERE is_builtin=1 AND name='Standard user'")->fetch();
     $id=$role ? (int)$role['role_id'] : null;
+    $custom=portal_user_has_custom_access($pdo,(int)$user['id']);
+    $extra=portal_user_extra_plants($pdo,(int)$user['id']);
+    if($custom){
+        $scope=['all_plants'=>in_array(PORTAL_ALL_PLANTS,$extra,true),'plants'=>array_values(array_filter($extra,static fn(string $plant):bool=>$plant!==PORTAL_ALL_PLANTS))];
+    }else{
+        $scope=portal_role_plant_scope($pdo,$id);
+        if(!$scope['all_plants']){$scope['plants']=array_values(array_unique(array_merge($scope['plants'],$extra)));sort($scope['plants'],SORT_NATURAL);}
+    }
     return ['role_id'=>$id,'role_name'=>$role['name'] ?? 'No access','system_admin'=>false,
-        'permissions'=>$role && $role['name'] !== null ? portal_role_permissions($pdo,$id) : portal_permission_matrix()];
+        'permissions'=>$custom?portal_user_permissions($pdo,(int)$user['id']):($role && $role['name'] !== null ? portal_role_permissions($pdo,$id) : portal_permission_matrix()),
+        'all_plants'=>$scope['all_plants'],'plants'=>$scope['plants'],'extra_plants'=>$custom?[]:$extra,'custom_access'=>$custom];
 }
 
 function portal_access_audit(PDO $pdo, int $actor, string $event, int $target, array $details): void
@@ -143,18 +252,23 @@ function portal_list_roles(PDO $pdo): array
         if(!isset($catalog[$page]) || !in_array($action,$catalog[$page]['actions'],true))continue;
         $byRole[$grant['role_id']][$page][$action]=true;
     }
-    foreach($roles as &$role) $role['permissions']=array_replace_recursive(portal_permission_matrix(),$byRole[$role['id']] ?? []);
+    foreach($roles as &$role) {
+        $role['permissions']=array_replace_recursive(portal_permission_matrix(),$byRole[$role['id']] ?? []);
+        $scope=portal_role_plant_scope($pdo,(int)$role['id']);$role=array_merge($role,$scope);
+    }
     unset($role);
     return $roles;
 }
 
-function portal_save_role(PDO $pdo, array $actor, ?int $id, string $name, array $input): int
+function portal_save_role(PDO $pdo, array $actor, ?int $id, string $name, array $input, mixed $plantInput=['ALL']): int
 {
     if ($actor['role'] !== 'admin') throw new DomainException('Only protected administrators may manage roles.',403);
     $name=trim($name);
     if ($name==='' || mb_strlen($name)>80 || preg_match('/[\x00-\x1F\x7F]/u',$name)) throw new InvalidArgumentException('Enter a role name of 1–80 characters.');
     if(strcasecmp($name,'Administrator')===0)throw new InvalidArgumentException('Administrator is a reserved role name.');
     $matrix=portal_validate_permissions($input);
+    $plants=portal_normalize_plants($pdo,$plantInput,true);
+    if($plants===[])throw new InvalidArgumentException('Select All Plants or at least one plant.');
     // These permissions are deliberately reserved, even if a forged request asks for them.
     if (in_array(true,$matrix['roles'],true)) throw new DomainException('Role administration is reserved for protected administrators.',403);
     $own=!$pdo->inTransaction(); if($own)$pdo->beginTransaction();
@@ -165,6 +279,7 @@ function portal_save_role(PDO $pdo, array $actor, ?int $id, string $name, array 
             if(!$before)throw new DomainException('Role not found.',404);
             if((int)$before['is_builtin']===1)throw new DomainException('Built-in roles are protected. Create a custom role instead.',409);
             $before['permissions']=portal_role_permissions($pdo,$id);
+            $before['plant_scope']=portal_role_plant_scope($pdo,$id);
             $pdo->prepare('UPDATE portal_access_roles SET name=?,updated_at=CURRENT_TIMESTAMP WHERE id=?')->execute([$name,$id]);
             $pdo->prepare('DELETE FROM portal_role_permissions WHERE role_id=?')->execute([$id]);
         } else {
@@ -173,7 +288,12 @@ function portal_save_role(PDO $pdo, array $actor, ?int $id, string $name, array 
         }
         $insert=$pdo->prepare('INSERT INTO portal_role_permissions(role_id,page_code,action_code) VALUES (?,?,?)');
         foreach($matrix as $page=>$actions)foreach($actions as $action=>$allow)if($allow)$insert->execute([$id,$page,$action]);
-        portal_access_audit($pdo,(int)$actor['id'],$before?'role.update':'role.create',$id,['before'=>$before,'name'=>$name,'permissions'=>$matrix]);
+        if(portal_plant_tables_ready($pdo)){
+            $pdo->prepare('DELETE FROM portal_role_plants WHERE role_id=?')->execute([$id]);
+            $plantInsert=$pdo->prepare('INSERT INTO portal_role_plants(role_id,plant_code) VALUES (?,?)');
+            foreach($plants as $plant)$plantInsert->execute([$id,$plant]);
+        }
+        portal_access_audit($pdo,(int)$actor['id'],$before?'role.update':'role.create',$id,['before'=>$before,'name'=>$name,'permissions'=>$matrix,'plants'=>$plants]);
         if($own)$pdo->commit(); return $id;
     } catch(Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
@@ -196,7 +316,7 @@ function portal_delete_role(PDO $pdo, array $actor, int $id): void
     }catch(Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 
-function portal_assign_role(PDO $pdo, array $actor, int $userId, int $roleId, string $operation='update'): void
+function portal_assign_role(PDO $pdo, array $actor, int $userId, int $roleId, string $operation='update', mixed $extraPlantInput=null, mixed $customInput=null): void
 {
     $access=portal_user_access($pdo,$actor);
     if(!in_array($operation,['create','update'],true) || !portal_can($access['permissions'],'users',$operation))throw new DomainException('User role assignment is not permitted.',403);
@@ -207,16 +327,50 @@ function portal_assign_role(PDO $pdo, array $actor, int $userId, int $roleId, st
         $q=$pdo->prepare('SELECT * FROM portal_access_roles WHERE id=?'.$lock);$q->execute([$roleId]);$role=$q->fetch();
         if(!$role)throw new DomainException('Role not found.',404);
         if(!portal_grants_within(portal_role_permissions($pdo,$roleId),$access['permissions']))throw new DomainException('You cannot assign permissions beyond your own.',403);
+        $roleScope=portal_role_plant_scope($pdo,$roleId);
+        $custom=is_array($customInput)&&($customInput['enabled']??false)===true;
+        $customPermissions=null;$customPlants=null;
+        if($custom){
+            if(!portal_user_override_tables_ready($pdo))throw new DomainException('Install the user access override migration before assigning custom access.',503);
+            if(!isset($customInput['permissions'])||!is_array($customInput['permissions']))throw new InvalidArgumentException('Custom permissions must be a page/action object.');
+            $customPermissions=portal_validate_permissions($customInput['permissions']);
+            if(in_array(true,$customPermissions['roles'],true))throw new DomainException('Role administration is reserved for protected administrators.',403);
+            if(!portal_grants_within($customPermissions,$access['permissions']))throw new DomainException('You cannot assign permissions beyond your own.',403);
+            $customPlants=portal_normalize_plants($pdo,$customInput['plants']??[],true);
+            if($customPlants===[])throw new InvalidArgumentException('Select All Plants or at least one plant for custom access.');
+            $targetScope=['all_plants'=>in_array(PORTAL_ALL_PLANTS,$customPlants,true),'plants'=>array_values(array_filter($customPlants,static fn(string $plant):bool=>$plant!==PORTAL_ALL_PLANTS))];
+            $extra=[];
+        }else{
+            $extra=$extraPlantInput===null?null:portal_normalize_plants($pdo,$extraPlantInput,false);
+            $targetScope=$roleScope;
+            if(!$targetScope['all_plants'] && $extra!==null)$targetScope['plants']=array_values(array_unique(array_merge($targetScope['plants'],$extra)));
+        }
+        if(!portal_scope_within($targetScope,$access))throw new DomainException('You cannot assign plant access beyond your own.',403);
         $q=$pdo->prepare('SELECT id,role FROM portal_users WHERE id=?'.$lock);$q->execute([$userId]);$target=$q->fetch();
         if(!$target)throw new DomainException('User not found.',404);
         if($target['role']==='admin')throw new DomainException('Administrator accounts are protected.',409);
-        if($operation!=='create' && $actor['role']!=='admin' && !portal_grants_within(portal_user_access($pdo,$target)['permissions'],$access['permissions']))throw new DomainException('You cannot manage a higher-privileged account.',403);
+        if($operation!=='create' && $actor['role']!=='admin'){$currentAccess=portal_user_access($pdo,$target);if(!portal_grants_within($currentAccess['permissions'],$access['permissions'])||!portal_scope_within($currentAccess,$access))throw new DomainException('You cannot manage an account beyond your permissions or plant access.',403);}
         $before=portal_user_access($pdo,$target);
         $sql='INSERT INTO portal_user_roles(user_id,role_id) VALUES (?,?) ';
         $sql.=$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)==='sqlite'?'ON CONFLICT(user_id) DO UPDATE SET role_id=excluded.role_id':'ON DUPLICATE KEY UPDATE role_id=VALUES(role_id)';
         $pdo->prepare($sql)->execute([$userId,$roleId]);
+        if(($extra!==null||$custom) && portal_plant_tables_ready($pdo)){
+            $pdo->prepare('DELETE FROM portal_user_plants WHERE user_id=?')->execute([$userId]);
+            $plantInsert=$pdo->prepare('INSERT INTO portal_user_plants(user_id,plant_code) VALUES (?,?)');
+            foreach(($custom?$customPlants:$extra) as $plant)$plantInsert->execute([$userId,$plant]);
+        }
+        if(portal_user_override_tables_ready($pdo)){
+            $pdo->prepare('DELETE FROM portal_user_permissions WHERE user_id=?')->execute([$userId]);
+            if($custom){
+                $permissionInsert=$pdo->prepare('INSERT INTO portal_user_permissions(user_id,page_code,action_code) VALUES (?,?,?)');
+                foreach($customPermissions as $page=>$actions)foreach($actions as $action=>$allow)if($allow)$permissionInsert->execute([$userId,$page,$action]);
+            }
+            $sql='INSERT INTO portal_user_access_overrides(user_id,custom_access) VALUES (?,?) ';
+            $sql.=$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)==='sqlite'?'ON CONFLICT(user_id) DO UPDATE SET custom_access=excluded.custom_access':'ON DUPLICATE KEY UPDATE custom_access=VALUES(custom_access)';
+            $pdo->prepare($sql)->execute([$userId,$custom?1:0]);
+        }
         $pdo->prepare('UPDATE portal_users SET auth_version=auth_version+1 WHERE id=?')->execute([$userId]);
-        portal_access_audit($pdo,(int)$actor['id'],'user.role',$userId,['before_role'=>$before['role_id'],'role_id'=>$roleId]);
+        portal_access_audit($pdo,(int)$actor['id'],'user.role',$userId,['before'=>$before,'role_id'=>$roleId,'extra_plants'=>$extra,'custom_access'=>$custom,'custom_plants'=>$customPlants,'custom_permissions'=>$customPermissions]);
         if($own)$pdo->commit();
     }catch(Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
@@ -231,7 +385,8 @@ function portal_toggle_user(PDO $pdo, array $actor, int $userId): void
         $q=$pdo->prepare('SELECT id,role,is_active FROM portal_users WHERE id=?'.($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'?' FOR UPDATE':''));$q->execute([$userId]);$target=$q->fetch();
         if(!$target)throw new DomainException('User not found.',404);
         if($target['role']==='admin')throw new DomainException('Administrator accounts are protected.',409);
-        if(!portal_grants_within(portal_user_access($pdo,$target)['permissions'],$access['permissions']))throw new DomainException('You cannot manage a higher-privileged account.',403);
+        $targetAccess=portal_user_access($pdo,$target);
+        if(!portal_grants_within($targetAccess['permissions'],$access['permissions'])||!portal_scope_within($targetAccess,$access))throw new DomainException('You cannot manage an account beyond your permissions or plant access.',403);
         $active=(int)$target['is_active']===1?0:1;
         $pdo->prepare('UPDATE portal_users SET is_active=?,auth_version=auth_version+1 WHERE id=?')->execute([$active,$userId]);
         portal_access_audit($pdo,(int)$actor['id'],'user.status',$userId,['before'=>(int)$target['is_active'],'is_active'=>$active]);

@@ -160,7 +160,7 @@
 
   function renderMachines(machines, selected) {
     const select = byId("chemical-cost-report-machine");
-    select.replaceChildren(new Option("All Machines", "ALL"));
+    select.replaceChildren(new Option("All Plants", "ALL"));
     (machines || []).forEach((machine) =>
       select.add(new Option(machine, machine)),
     );
@@ -660,14 +660,14 @@
       data.to_date,
     );
     byId("chemical-cost-report-machine-display").textContent =
-      data.machine === "ALL" ? "All Machines" : data.machine;
+      data.machine === "ALL" ? "All Plants" : data.machine;
     byId("chemical-cost-report-type-display").textContent = reportTypeLabel(
       data.report_type,
     );
     byId("chemical-cost-report-type").value = data.report_type;
     byId("chemical-cost-report-scope").textContent =
       "● " +
-      (data.machine === "ALL" ? "All machines" : data.machine) +
+      (data.machine === "ALL" ? "All plants" : data.machine) +
       " · Chemical cost monitoring";
     setTabs(data.report_type === "monthly" ? "monthly" : "weekly");
 
@@ -693,7 +693,7 @@
   function exportCsv() {
     if (!state.rows.length) return;
     const heads = [
-      "Machine",
+      "Plant",
       "Report Period",
       "Total Surface Area (dm2)",
       "Total Chemical Cost (INR)",

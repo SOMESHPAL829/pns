@@ -2,15 +2,16 @@
 declare(strict_types=1);
 require_once __DIR__.'/permissions.php';
 require_once __DIR__.'/oee_settings.php';
+require_once __DIR__.'/oee_time.php';
 
 /** Read-only presentation of clipped stop unions; never changes OEE inputs. */
 function oee_dashboard_breakdown(array $window,array $events): array
 {
-    $start=strtotime($window['window_start']);$end=strtotime($window['window_end']);
+    $start=oee_wall_timestamp($window['window_start']);$end=oee_wall_timestamp($window['window_end']);
     $lines=[];$buckets=[];$totals=['planned'=>0.0,'unplanned'=>0.0];
     foreach($events as $index=>$event){
         if(!in_array($event['status'],['proposed','confirmed','approved'],true))continue;
-        $a=max($start,strtotime($event['starts_at']));$b=min($end,strtotime($event['ends_at']));if($b<=$a)continue;
+        $a=max($start,oee_wall_timestamp($event['starts_at']));$b=min($end,oee_wall_timestamp($event['ends_at']));if($b<=$a)continue;
         $event['event_type']=$event['event_type']==='planned'?'planned':'unplanned';
         $line=$event['line_code'];$lines[$line][$a]['start'][$index]=$event;$lines[$line][$b]['end'][]=$index;
     }

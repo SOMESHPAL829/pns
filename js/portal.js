@@ -96,6 +96,9 @@
         : "#/" + requestedKey;
     if (location.hash !== routeHash) history.replaceState(null, "", routeHash);
     if (shell) shell.classList.remove("sidebar-open");
+    if (window.matchMedia("(max-width: 980px)").matches) {
+      document.getElementById("sidebar-toggle")?.setAttribute("aria-expanded", "false");
+    }
     closeHeaderMenus();
     window.dispatchEvent(
       new CustomEvent("portal-view-changed", { detail: { route: key } }),
@@ -117,25 +120,37 @@
   });
 
   const toggle = document.getElementById("sidebar-toggle");
-  const mobile = document.getElementById("sidebar-mobile-toggle");
   if (toggle && shell) {
+    const syncSidebarToggle = function () {
+      const mobileLayout = window.matchMedia("(max-width: 980px)").matches;
+      const expanded = mobileLayout
+        ? shell.classList.contains("sidebar-open")
+        : !shell.classList.contains("sidebar-collapsed");
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.title = mobileLayout
+        ? expanded ? "Close navigation" : "Open navigation"
+        : expanded ? "Collapse sidebar" : "Expand sidebar";
+    };
+    if (!window.matchMedia("(max-width: 980px)").matches && localStorage.getItem("pns-sidebar-collapsed") === "true") {
+      shell.classList.add("sidebar-collapsed");
+    }
     toggle.addEventListener("click", function () {
-      shell.classList.toggle("sidebar-collapsed");
-      toggle.setAttribute(
-        "aria-expanded",
-        String(!shell.classList.contains("sidebar-collapsed")),
-      );
+      if (window.matchMedia("(max-width: 980px)").matches) {
+        shell.classList.toggle("sidebar-open");
+      } else {
+        shell.classList.toggle("sidebar-collapsed");
+        localStorage.setItem("pns-sidebar-collapsed", String(shell.classList.contains("sidebar-collapsed")));
+      }
+      syncSidebarToggle();
     });
-  }
-  if (mobile && shell) {
-    mobile.addEventListener("click", function () {
-      shell.classList.toggle("sidebar-open");
-    });
+    window.addEventListener("resize", syncSidebarToggle);
+    syncSidebarToggle();
   }
   const backdrop = document.getElementById("sidebar-backdrop");
   if (backdrop && shell) {
     backdrop.addEventListener("click", function () {
       shell.classList.remove("sidebar-open");
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
     });
   }
 

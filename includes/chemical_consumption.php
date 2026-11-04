@@ -13,23 +13,41 @@ function chemical_consumption_tables_ready(PDO $pdo): bool
     return (bool) $pdo->query("SHOW TABLES LIKE 'chemical_consumption_entries'")->fetchColumn();
 }
 
-function chemical_consumption_list(PDO $pdo, string $defaultOperator = ''): array
+function chemical_plant_filter(?array $plants, string $column, array &$parameters): string
+{
+    if($plants===null)return '';
+    if($plants===[])return ' AND 1=0';
+    $parameters=array_merge($parameters,$plants);
+    return ' AND '.$column.' IN ('.implode(',',array_fill(0,count($plants),'?')).')';
+}
+
+function chemical_consumption_list(PDO $pdo, string $defaultOperator = '', ?array $plants=null): array
 {
     if (!chemical_consumption_tables_ready($pdo)) {
         return ['available' => false, 'message' => 'Chemical consumption migration is not installed yet.', 'entries' => [], 'items' => []];
     }
-    $entries = $pdo->query(
+    $parameters=[];$scope=chemical_plant_filter($plants,'e.machine_code',$parameters);
+    $query=$pdo->prepare(
         'SELECT e.id,e.entry_date,e.shift_name,e.operator_name,e.machine_code,e.process_description,e.chemical_item_id,' .
-        'e.consume_quantity,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
-        'i.item_code,i.description AS chemical_name,i.uom,i.status AS chemical_status ' .
-        'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
+        'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
+        'i.item_code,i.description AS chemical_name,i.status AS chemical_status ' .
+        'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id WHERE 1=1' . $scope . ' ' .
         'ORDER BY e.entry_date DESC,e.id DESC LIMIT 1000'
-    )->fetchAll();
+    );$query->execute($parameters);$entries=$query->fetchAll();
+    $descriptionParameters=[];
+    $descriptionScope=chemical_plant_filter($plants,'e.machine_code',$descriptionParameters);
+    $descriptionQuery=$pdo->prepare(
+        "SELECT DISTINCT TRIM(e.process_description) AS process_description " .
+        "FROM chemical_consumption_entries e WHERE TRIM(e.process_description)<>''" . $descriptionScope . ' ' .
+        'ORDER BY process_description'
+    );
+    $descriptionQuery->execute($descriptionParameters);
+    $processDescriptions=$descriptionQuery->fetchAll(PDO::FETCH_COLUMN);
     $items = $pdo->query('SELECT id,item_code,description,status,uom FROM chemical_items ORDER BY item_code LIMIT 1000')->fetchAll();
-    return ['available' => true, 'entries' => $entries, 'items' => $items, 'default_operator' => $defaultOperator];
+    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'default_operator' => $defaultOperator];
 }
 
-function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue): array
+function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, ?array $plants=null): array
 {
     if (!chemical_consumption_tables_ready($pdo)) {
         return ['available' => false, 'message' => 'Chemical consumption migration is not installed yet.', 'rows' => [], 'machines' => []];
@@ -40,17 +58,19 @@ function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue,
     $machine = strtoupper(trim(is_string($machineValue) ? $machineValue : 'ALL'));
     if ($machine === '') $machine = 'ALL';
     if ($machine !== 'ALL' && !preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]{0,79}$/', $machine)) {
-        throw new InvalidArgumentException('Choose a valid Machine.');
+        throw new InvalidArgumentException('Choose a valid Plant.');
     }
 
     $sql = 'SELECT e.id,e.entry_date,e.shift_name,e.operator_name,e.machine_code,e.process_description,' .
-        'e.consume_quantity,e.used_for,e.recommended_by,e.remarks,i.item_code,i.description AS chemical_name,i.uom ' .
+        'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,i.item_code,i.description AS chemical_name ' .
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
         'WHERE e.entry_date BETWEEN ? AND ?';
     $parameters = [$from, $to];
     if ($machine !== 'ALL') {
         $sql .= ' AND e.machine_code=?';
         $parameters[] = $machine;
+    } else {
+        $sql.=chemical_plant_filter($plants,'e.machine_code',$parameters);
     }
     $sql .= ' ORDER BY e.entry_date,e.id LIMIT 5001';
     $query = $pdo->prepare($sql);
@@ -58,7 +78,7 @@ function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue,
     $rows = $query->fetchAll();
     $truncated = count($rows) > 5000;
     if ($truncated) array_pop($rows);
-    $machines = $pdo->query('SELECT DISTINCT machine_code FROM chemical_consumption_entries ORDER BY machine_code')->fetchAll(PDO::FETCH_COLUMN);
+    $machines=$plants??$pdo->query('SELECT DISTINCT machine_code FROM chemical_consumption_entries ORDER BY machine_code')->fetchAll(PDO::FETCH_COLUMN);
     return [
         'available' => true,
         'from_date' => $from,
@@ -96,7 +116,7 @@ function chemical_cost_report_period(string $date, string $type, string $from, s
     return ['consolidated', $start->format('d M Y') . ' - ' . $end->format('d M Y')];
 }
 
-function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, mixed $typeValue): array
+function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, mixed $typeValue, ?array $plants=null): array
 {
     if (!chemical_cost_report_tables_ready($pdo)) {
         return ['available' => false, 'message' => 'Chemical consumption and OEE production data must be installed before using this report.', 'rows' => [], 'machines' => []];
@@ -110,21 +130,23 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
     $machine = strtoupper(trim(is_string($machineValue) ? $machineValue : 'ALL'));
     if ($machine === '') $machine = 'ALL';
     if ($machine !== 'ALL' && !preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]{0,79}$/', $machine)) {
-        throw new InvalidArgumentException('Choose a valid Machine.');
+        throw new InvalidArgumentException('Choose a valid Plant.');
     }
     $type = strtolower(trim(is_string($typeValue) ? $typeValue : 'weekly'));
     if (!in_array($type, ['weekly', 'monthly', 'consolidated'], true)) {
         throw new InvalidArgumentException('Report Type must be Weekly Basis, Monthly Basis, or Consolidated.');
     }
 
-    $machineClause = $machine === 'ALL' ? '' : ' AND line_code=?';
+    $surfaceParameters=[$from,$to];
+    $machineClause = $machine === 'ALL' ? chemical_plant_filter($plants,'line_code',$surfaceParameters) : ' AND line_code=?';
     $surface = $pdo->prepare(
         'SELECT line_code AS machine_code,report_date,COALESCE(SUM(total_surface_area),0) AS total_surface_area ' .
         'FROM oee_fb_runs WHERE report_date BETWEEN ? AND ?' . $machineClause . ' GROUP BY line_code,report_date'
     );
-    $surface->execute($machine === 'ALL' ? [$from, $to] : [$from, $to, $machine]);
+    $surface->execute($machine === 'ALL' ? $surfaceParameters : [$from, $to, $machine]);
 
-    $consumptionMachineClause = $machine === 'ALL' ? '' : ' AND e.machine_code=?';
+    $costParameters=[$from,$to];
+    $consumptionMachineClause = $machine === 'ALL' ? chemical_plant_filter($plants,'e.machine_code',$costParameters) : ' AND e.machine_code=?';
     $cost = $pdo->prepare(
         'SELECT e.machine_code,e.entry_date AS report_date,' .
         'COALESCE(SUM(CASE WHEN r.id IS NULL THEN 0 ELSE e.consume_quantity*r.rate_inr END),0) AS priced_cost,' .
@@ -133,7 +155,7 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
         'AND r.effective_from<=e.entry_date AND (r.effective_to IS NULL OR r.effective_to>=e.entry_date) ' .
         'WHERE e.entry_date BETWEEN ? AND ?' . $consumptionMachineClause . ' GROUP BY e.machine_code,e.entry_date'
     );
-    $cost->execute($machine === 'ALL' ? [$from, $to] : [$from, $to, $machine]);
+    $cost->execute($machine === 'ALL' ? $costParameters : [$from, $to, $machine]);
 
     $groups = [];
     $add = static function (array $daily, string $source) use (&$groups, $type, $from, $to): void {
@@ -176,7 +198,7 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
     }
     unset($row);
 
-    $machines = $pdo->query(
+    $machines = $plants??$pdo->query(
         'SELECT machine_code FROM (' .
         'SELECT DISTINCT machine_code FROM chemical_consumption_entries UNION SELECT DISTINCT line_code AS machine_code FROM oee_fb_runs' .
         ') report_machines ORDER BY machine_code'
@@ -205,14 +227,14 @@ function chemical_consumption_quantity(mixed $value): string
     return $quantity;
 }
 
-function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
+function chemical_consumption_save(PDO $pdo, array $data, int $actorId, ?array $plants=null): array
 {
     if (!chemical_consumption_tables_ready($pdo)) throw new DomainException('Chemical consumption migration is not installed yet.', 503);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
     $entryDate = chemical_date($data['entry_date'] ?? null, 'Date');
     $shift = chemical_text($data['shift_name'] ?? null, 'Shift', 40);
     $operator = chemical_text($data['operator_name'] ?? null, 'Operator Name', 120);
-    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Machine Code', 80));
+    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Plant Code', 80));
     $process = chemical_text($data['process_description'] ?? null, 'Process Description', 500);
     $chemicalId = filter_var($data['chemical_item_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if (!$chemicalId) throw new InvalidArgumentException('Choose a Chemical Name.');
@@ -226,12 +248,16 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     if (!is_string($remarksRaw)) throw new InvalidArgumentException('Remarks must be text.');
     $remarks = trim($remarksRaw);
     if (mb_strlen($remarks, 'UTF-8') > 1000) throw new InvalidArgumentException('Remarks is too long.');
-    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Machine Code.');
+    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Plant Code.');
+    if($plants!==null && !in_array($machine,$plants,true))throw new DomainException('You do not have access to this plant.',403);
+    if($id!==null && $plants!==null){$scopeCheck=$pdo->prepare('SELECT machine_code FROM chemical_consumption_entries WHERE id=?');$scopeCheck->execute([$id]);$existingPlant=$scopeCheck->fetchColumn();if($existingPlant!==false&&!in_array(strtoupper((string)$existingPlant),$plants,true))throw new DomainException('You do not have access to this entry.',403);}
 
-    $item = $pdo->prepare('SELECT id,status FROM chemical_items WHERE id=?');
+    $item = $pdo->prepare('SELECT id,status,uom FROM chemical_items WHERE id=?');
     $item->execute([$chemicalId]);
     $chemical = $item->fetch();
     if (!$chemical) throw new DomainException('Chemical item not found.', 404);
+    $uom = strtoupper(chemical_text($data['uom'] ?? $chemical['uom'], 'UOM', 40));
+    if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $uom)) throw new InvalidArgumentException('Enter a valid UOM.');
     if ($chemical['status'] !== 'active') {
         if ($id === null) throw new DomainException('Inactive chemical items cannot be used for new entries.', 409);
         $existing = $pdo->prepare('SELECT chemical_item_id FROM chemical_consumption_entries WHERE id=?');
@@ -246,9 +272,9 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     if ($id !== null) {
         $query = $pdo->prepare(
             'UPDATE chemical_consumption_entries SET entry_date=?,shift_name=?,operator_name=?,machine_code=?,process_description=?,' .
-            'chemical_item_id=?,consume_quantity=?,used_for=?,recommended_by=?,remarks=?,updated_by=? WHERE id=?'
+            'chemical_item_id=?,consume_quantity=?,uom=?,used_for=?,recommended_by=?,remarks=?,updated_by=? WHERE id=?'
         );
-        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $id]);
+        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $uom, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $id]);
         if ($query->rowCount() < 1) {
             $exists = $pdo->prepare('SELECT id FROM chemical_consumption_entries WHERE id=?');
             $exists->execute([$id]);
@@ -257,9 +283,9 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId): array
     } else {
         $query = $pdo->prepare(
             'INSERT INTO chemical_consumption_entries(entry_date,shift_name,operator_name,machine_code,process_description,' .
-            'chemical_item_id,consume_quantity,used_for,recommended_by,remarks,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+            'chemical_item_id,consume_quantity,uom,used_for,recommended_by,remarks,created_by,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
         );
-        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $actorId]);
+        $query->execute([$entryDate, $shift, $operator, $machine, $process, $chemicalId, $quantity, $uom, $usedFor, $recommendedBy, $remarks ?: null, $actorId, $actorId]);
         $id = (int) $pdo->lastInsertId();
     }
     return ['ok' => true, 'id' => $id];

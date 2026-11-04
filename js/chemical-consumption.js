@@ -2,7 +2,7 @@
   const access = window.PortalAccess;
   const api = (...args) => window.PortalRequest(...args);
   const byId = id => document.getElementById(id);
-  const state = { entries: [], items: [], defaultOperator: "", loading: false };
+  const state = { entries: [], items: [], processDescriptions: [], defaultOperator: "", loading: false };
 
   function showAlert(message) {
     const alert = byId("chemical-consumption-alert");
@@ -51,7 +51,7 @@
     const item = selectedItem();
     const unit = item?.uom || "";
     const currentValue = uomSelect.value || unit;
-    const options = [...new Set(state.items.map(item => item.uom).filter(Boolean))];
+    const options = [...new Set(["KG", "LTR", "ML", "GM", "NOS", ...state.items.map(item => item.uom).filter(Boolean)])];
     if (unit && !options.includes(unit)) options.push(unit);
     uomSelect.replaceChildren(new Option("UOM", ""));
     options.sort((left, right) => left.localeCompare(right));
@@ -95,6 +95,8 @@
       }
     }
     updateUom();
+    window.PortalSearchableSelect?.refresh(byId("chemical-consumption-item"));
+    window.PortalSearchableSelect?.refresh(byId("chemical-consumption-process"));
     applyControls();
   }
 
@@ -108,6 +110,24 @@
     });
     if (selectedId != null) select.value = String(selectedId);
     updateUom();
+    window.PortalSearchableSelect?.refresh(select);
+  }
+
+  function renderProcessDescriptions(selectedValue) {
+    const select = byId("chemical-consumption-process");
+    const value = String(selectedValue || select.value || "").trim();
+    select.replaceChildren(new Option("Select or enter a Process Description", ""));
+    state.processDescriptions.forEach(description => {
+      const text = String(description || "").trim();
+      if (text) select.add(new Option(text, text));
+    });
+    if (value && !Array.from(select.options).some(option => option.value === value)) {
+      const custom = new Option(value, value);
+      custom.dataset.customOption = "true";
+      select.add(custom);
+    }
+    select.value = value;
+    window.PortalSearchableSelect?.refresh(select);
   }
 
   function renderEntries() {
@@ -147,8 +167,10 @@
       if (!data.available) throw new Error(data.message || "Chemical consumption is unavailable.");
       state.entries = data.entries || [];
       state.items = data.items || [];
+      state.processDescriptions = data.process_descriptions || [];
       state.defaultOperator = data.default_operator || "";
       renderItems(byId("chemical-consumption-item").value);
+      renderProcessDescriptions(byId("chemical-consumption-process").value);
       if (!byId("chemical-consumption-id").value) {
         if (!byId("chemical-consumption-date").value) byId("chemical-consumption-date").value = localDate();
         if (!byId("chemical-consumption-operator").value) byId("chemical-consumption-operator").value = state.defaultOperator;
@@ -180,6 +202,7 @@
         process_description: byId("chemical-consumption-process").value,
         chemical_item_id: byId("chemical-consumption-item").value,
         consume_quantity: byId("chemical-consumption-quantity").value,
+        uom: byId("chemical-consumption-uom").value,
         used_for: byId("chemical-consumption-used-for").value,
         recommended_by: byId("chemical-consumption-recommended-by").value,
         remarks: byId("chemical-consumption-remarks").value
@@ -210,7 +233,7 @@
     byId("chemical-consumption-shift").value = entry.shift_name;
     byId("chemical-consumption-operator").value = entry.operator_name;
     byId("chemical-consumption-machine").value = entry.machine_code;
-    byId("chemical-consumption-process").value = entry.process_description;
+    renderProcessDescriptions(entry.process_description);
     byId("chemical-consumption-item").value = entry.chemical_item_id;
     byId("chemical-consumption-quantity").value = entry.consume_quantity;
     byId("chemical-consumption-used-for").value = entry.used_for;
@@ -219,6 +242,8 @@
     byId("chemical-consumption-save").textContent = "Update Entry";
     byId("chemical-consumption-cancel").hidden = false;
     updateUom();
+    byId("chemical-consumption-uom").value = entry.uom || selectedItem()?.uom || "";
+    window.PortalSearchableSelect?.refresh(byId("chemical-consumption-item"));
     applyControls();
     byId("chemical-consumption-date").focus();
   });

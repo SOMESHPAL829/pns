@@ -12,7 +12,12 @@ function oee_line_code_ok(string $line): bool
  * New lines appear automatically after the first successful Unit 1 ingest
  * (or after a cycle/threshold/downtime row is saved for that line).
  */
-function oee_known_lines(PDO $pdo): array
+function oee_set_visible_lines(?array $lines): void
+{
+    $GLOBALS['portal_visible_oee_lines']=$lines===null?null:array_values(array_unique(array_map(static fn($v):string=>strtoupper(trim((string)$v)),$lines)));
+}
+
+function oee_all_known_lines(PDO $pdo): array
 {
     $clean = [];
     foreach ([
@@ -32,6 +37,9 @@ function oee_known_lines(PDO $pdo): array
         }
         foreach ($rows as $line) {
             $code = strtoupper(trim((string) $line));
+            if ($code === 'CED') {
+                continue;
+            }
             if (oee_line_code_ok($code)) {
                 $clean[$code] = $code;
             }
@@ -42,13 +50,22 @@ function oee_known_lines(PDO $pdo): array
     return $lines;
 }
 
+function oee_known_lines(PDO $pdo): array
+{
+    $lines=oee_all_known_lines($pdo);
+    if(array_key_exists('portal_visible_oee_lines',$GLOBALS) && is_array($GLOBALS['portal_visible_oee_lines'])){
+        $lines=array_values(array_intersect($lines,$GLOBALS['portal_visible_oee_lines']));
+    }
+    return $lines;
+}
+
 function oee_is_known_line(PDO $pdo, string $line): bool
 {
     return in_array(strtoupper(trim($line)), oee_known_lines($pdo), true);
 }
 
 /** Build <option> markup for machine selectors from a dynamic line list. */
-function oee_machine_options_html(array $lines, bool $includeAll = false, string $allLabel = 'All Machines', string $labelSuffix = ''): string
+function oee_machine_options_html(array $lines, bool $includeAll = false, string $allLabel = 'All Plants', string $labelSuffix = ''): string
 {
     $html = $includeAll
         ? '<option value="ALL">' . htmlspecialchars($allLabel, ENT_QUOTES, 'UTF-8') . '</option>'
@@ -83,7 +100,7 @@ function oee_gap_thresholds(PDO $pdo): array
     try {
         foreach ($pdo->query('SELECT line_code, gap_threshold_minutes FROM oee_line_settings')->fetchAll() as $row) {
             $code = strtoupper(trim((string) $row['line_code']));
-            if ($code === '') {
+            if ($code === '' || !array_key_exists($code,$limits)) {
                 continue;
             }
             $limits[$code] = oee_validate_gap_threshold($row['gap_threshold_minutes']);
@@ -99,7 +116,7 @@ function oee_save_gap_threshold(PDO $pdo, string $line, mixed $value, int $userI
 {
     $line = strtoupper(trim($line));
     if ($line === 'ALL' || !oee_line_code_ok($line)) {
-        throw new InvalidArgumentException('Enter a valid plant / machine code for the gap threshold.');
+        throw new InvalidArgumentException('Enter a valid plant code for the gap threshold.');
     }
     $minutes = oee_validate_gap_threshold($value);
     $sql = 'INSERT INTO oee_line_settings (line_code, gap_threshold_minutes, updated_by) VALUES (?, ?, ?) ';

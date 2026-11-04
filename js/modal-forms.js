@@ -2,8 +2,8 @@
   const definitions = [
     { id: "record-create-form", title: "Create New Record", submit: "Create Record" },
     { id: "record-edit-form", title: "Edit Record" },
-    { id: "user-create-form", title: "Add User", submit: "Create User" },
-    { id: "user-role-form", title: "Assign Access Role" },
+    { id: "user-create-form", title: "Add User", submit: "Create User", wide: true },
+    { id: "user-role-form", title: "Assign Access Role", wide: true },
     { id: "role-form", title: "Role Permission Editor", label: "New Role", host: '[data-view="roles"] .data-card .table-heading-actions', page: "roles", action: "create", mode: "create" },
     { id: "downtime-form", title: "Downtime Entry", label: "Add Downtime", host: '[data-view="downtime"] .downtime-filter-actions', page: "downtime", action: "create", mode: "create" },
     { id: "chemical-item-form", title: "Chemical Item Registration", label: "Add Item", host: '[aria-labelledby="chemical-item-heading"] .table-heading-actions', page: "chemical-registration", action: "create", mode: "create" },

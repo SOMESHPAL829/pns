@@ -78,6 +78,9 @@
       const data = await api("breakdowns", "list", {});
       if (!data.available) throw new Error(data.message || "Breakdown registration is unavailable.");
       state.breakdowns = data.breakdowns || [];
+      window.PortalDowntimeReasons = state.breakdowns
+        .filter(item => Number(item.is_active) === 1)
+        .map(item => ({ code: item.code, label: item.label, loss_type: item.loss_type }));
       render();
       alertMessage("");
     } catch (error) {

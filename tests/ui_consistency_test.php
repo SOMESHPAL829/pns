@@ -16,6 +16,8 @@ ui_check(is_string($shell) && is_string($login) && is_string($styles) && is_stri
 
 ui_check(!str_contains($shell, 'app-header-profile-card'), 'Profile dropdown contains content beyond Profile and Sign Out options.');
 ui_check(substr_count($shell, 'data-logout-form') === 2, 'Both portal logout actions must use loading feedback.');
+ui_check(str_contains($shell, 'class="app-sidebar-account"') && str_contains($shell, 'data-goto="profile"') && str_contains($shell, 'class="app-sidebar-footer-logout"') && str_contains($shell, 'data-icon="arrow-right-start-on-rectangle"'), 'Sidebar account footer must open Profile and expose an outward-facing logout icon.');
+ui_check(str_contains($shell, 'id="sidebar-toggle"') && !str_contains($shell, 'id="sidebar-mobile-toggle"'), 'The sidebar toggle must live in the topbar on desktop and mobile.');
 ui_check(str_contains($login, 'data-loading-form') && str_contains($login, 'auth-message-transient'), 'Login/logout feedback is incomplete.');
 ui_check(str_contains($shell, 'id="welcome-message"') && str_contains($shell, 'id="page-transition"'), 'Welcome or transition UI is missing.');
 ui_check(substr_count($shell, 'class="page-transition-dialog"') === 1 && str_contains($login, 'class="page-transition-dialog"'), 'Premium login/logout transition dialogs are missing.');
@@ -24,6 +26,8 @@ ui_check(str_contains($dashboardStyles, '.pns-dashboard .data-table th { backgro
 ui_check(str_contains($styles, '.oee-kpi:hover') && str_contains($styles, 'border-color: var(--accent)'), 'KPI hover highlighting is missing.');
 ui_check(!str_contains($styles, 'border-top: 3px solid var(--accent)'), 'KPI cards still use the heavy blue top border.');
 ui_check(str_contains($styles, '.data-scroll { width: 100%; scrollbar-gutter: auto; }'), 'Table containers still reserve a blank right-side gutter.');
+ui_check(str_contains($styles, '.data-table th:not(.is-filter-heading) { min-width: max-content; }') && str_contains($styles, 'min-width: clamp(8.5rem, 11vw, 10.5rem);'), 'Table headings can still collapse or clip after filters load.');
+ui_check(str_contains($styles, '.table-page-navigation { max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }'), 'Table pagination can still clip its Next button in narrow cards.');
 ui_check(!preg_match('/<th[^>]*>\s*(?:SR\.?\s*No\.?|Sr\.?|SRNO)\s*<\/th>/i', $shell), 'Serial number columns should not be rendered.');
 ui_check(str_contains($shell, 'class="app-topbar-title" id="page-title"') && !str_contains($shell, 'id="page-eyebrow"') && !str_contains($shell, 'id="page-subtitle"'), 'Topbar should contain only the main page heading.');
 ui_check(str_contains($styles, '.table-action') && str_contains($styles, '.user-actions'), 'Shared table action button styling is missing.');
@@ -33,6 +37,7 @@ ui_check(str_contains($styles, '.app-sidebar-link.is-active') && str_contains($s
 ui_check(str_contains($styles, '.oee-log-grid { display: grid; grid-template-columns: minmax(0, 1fr);'), 'SCADA cards are not stacked vertically.');
 ui_check(str_contains($shell, 'class="profile-settings-grid"') && !str_contains($shell, 'data-modal-open="profile-form"'), 'Profile forms are not visible inline.');
 ui_check(str_contains($dashboard, 'id="dashboard-duration-save"') && !str_contains($dashboard, 'id="dashboard-start-time"') && !str_contains($shell, 'id="report-start-time"') && !str_contains($shell, 'id="range-start-time"'), 'Date-specific duration save control or Window Start removal is incomplete.');
+ui_check(str_contains($dashboard, 'id="dashboard-greeting"') && str_contains($dashboard, 'id="dashboard-greeting-date"') && str_contains($dashboard, 'id="dashboard-greeting-time"') && str_contains($appScript, 'refreshDashboardGreeting') && str_contains($appScript, 'hour < 16 ? "Good afternoon"') && str_contains($dashboardStyles, 'font-weight: 400'), 'Dashboard greeting, time-based salutation, normal typography, date or live time is missing.');
 ui_check(substr_count($dashboard, 'dashboard-link-button') >= 4 && str_contains($dashboard, 'data-icon="arrow-right"'), 'Dashboard navigation controls are not styled consistently with export buttons.');
 ui_check(str_contains($login, 'data-password-toggle="password"') && str_contains($shell, 'data-password-toggle="current-password"') && str_contains($shell, 'data-password-toggle="new-password"'), 'Login or profile password visibility controls are missing.');
 ui_check(!str_contains($dashboard, 'Reporting Window') && str_contains($shell, '>End Time</th>') && str_contains($shell, 'Calculation Time') && str_contains($appScript, '"h Utilization"'), 'Calculation-time terminology is inconsistent in the UI.');
