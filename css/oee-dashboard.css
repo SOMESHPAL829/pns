@@ -61,6 +61,7 @@
   justify-content: flex-end;
   gap: 0.65rem;
 }
+.pns-dashboard .dashboard-control-fields .date-control { font-weight: 400; }
 .pns-dashboard .dashboard-control-fields .btn { min-height: 2.5rem; }
 .pns-dashboard .dashboard-live-messages .oee-window-summary,
 .pns-dashboard .dashboard-live-messages .oee-status-strip,

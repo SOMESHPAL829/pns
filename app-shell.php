@@ -342,7 +342,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <div class="dash-card-head"><h2 id="chemical-rate-heading">INR Rate Registration</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Rates" aria-label="Search Chemical Rates" data-table-search="#chemical-rates-body"></div></div>
               <form id="chemical-rate-form" class="master-form">
                 <input id="chemical-rate-id" type="hidden">
-                <label>Chemical Item<select id="chemical-rate-item" required><option value="">Select an Item</option></select></label>
+                <label>Chemical Item<select id="chemical-rate-item" data-searchable-select data-search-placeholder="Search chemical code or name" required><option value="">Select an Item</option></select></label>
                 <label>Rate (INR)<input id="chemical-rate-inr" type="number" min="0.0001" max="9999999999.9999" step="0.0001" required></label>
                 <label>Effective From<input id="chemical-rate-from" type="date" required></label>
                 <label>Effective To<input id="chemical-rate-to" type="date"></label>
@@ -535,6 +535,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
   <script id="downtime-reason-catalog" type="application/json"><?= json_encode($downtimeReasonCatalog, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script>window.PortalDowntimeReasons=JSON.parse(document.getElementById('downtime-reason-catalog').textContent||'[]');</script>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
+  <script src="js/required-fields.js?v=<?= filemtime(__DIR__ . '/js/required-fields.js') ?>"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
   <script src="js/searchable-select.js?v=<?= filemtime(__DIR__ . '/js/searchable-select.js') ?>"></script>

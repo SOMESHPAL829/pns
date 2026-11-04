@@ -662,8 +662,20 @@ table.data tbody tr:hover {
   letter-spacing: 0.06em;
 }
 
-.form-label .req {
+.req,
+.required-marker {
+  display: inline;
+  margin-left: 0.15rem;
   color: var(--crit);
+  font-weight: 800;
+  line-height: 1;
+}
+.required-label-text {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: baseline;
+  white-space: nowrap;
 }
 
 .form-input,
@@ -1436,9 +1448,6 @@ table.data tbody tr:hover {
 .chemical-consumption-actions { grid-column: span 3; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .chemical-consumption-actions .btn { min-height: 2.15rem; }
 .chemical-consumption-table { min-width: 1700px; }
-.chemical-consumption-form input,
-.chemical-consumption-form select,
-.chemical-consumption-form textarea,
 .chemical-consumption-table tbody,
 .chemical-report-table tbody {
   text-transform: uppercase;
@@ -2195,6 +2204,11 @@ table.data tbody tr:hover {
 }
 .searchable-select-input[aria-invalid="true"]:not(:focus):not(:placeholder-shown) { border-color: var(--crit); }
 html[data-theme="dark"] .searchable-select-list { border-color: var(--line); }
+
+/* Table values use a consistent uppercase presentation without altering forms or stored text. */
+.data-table tbody td {
+  text-transform: uppercase;
+}
 
 .oee-kpi,
 .dash-kpi,

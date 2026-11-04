@@ -37,14 +37,25 @@ function chemical_consumption_list(PDO $pdo, string $defaultOperator = '', ?arra
     $descriptionParameters=[];
     $descriptionScope=chemical_plant_filter($plants,'e.machine_code',$descriptionParameters);
     $descriptionQuery=$pdo->prepare(
-        "SELECT DISTINCT TRIM(e.process_description) AS process_description " .
+        "SELECT DISTINCT UPPER(TRIM(e.machine_code)) AS machine_code,UPPER(TRIM(e.process_description)) AS process_description " .
         "FROM chemical_consumption_entries e WHERE TRIM(e.process_description)<>''" . $descriptionScope . ' ' .
-        'ORDER BY process_description'
+        'ORDER BY machine_code,process_description'
     );
     $descriptionQuery->execute($descriptionParameters);
-    $processDescriptions=$descriptionQuery->fetchAll(PDO::FETCH_COLUMN);
+    $processDescriptionsByPlant=[];
+    foreach($descriptionQuery->fetchAll() as $descriptionRow){
+        $plant=(string)$descriptionRow['machine_code'];
+        $description=(string)$descriptionRow['process_description'];
+        if($plant!==''&&$description!=='')$processDescriptionsByPlant[$plant][]=$description;
+    }
+    $processDescriptions=[];
+    foreach($processDescriptionsByPlant as $descriptions){
+        foreach($descriptions as $description)$processDescriptions[$description]=true;
+    }
+    $processDescriptions=array_keys($processDescriptions);
+    sort($processDescriptions,SORT_NATURAL|SORT_FLAG_CASE);
     $items = $pdo->query('SELECT id,item_code,description,status,uom FROM chemical_items ORDER BY item_code LIMIT 1000')->fetchAll();
-    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'default_operator' => $defaultOperator];
+    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'process_descriptions_by_plant' => $processDescriptionsByPlant, 'default_operator' => $defaultOperator];
 }
 
 function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, ?array $plants=null): array

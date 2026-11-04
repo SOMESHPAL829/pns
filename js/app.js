@@ -1313,7 +1313,7 @@
           .includes(search);
       return (
         matchesSearch &&
-        (!type || record.record_type === type) &&
+        (!type || String(record.record_type).toLocaleUpperCase() === type.toLocaleUpperCase()) &&
         (!status || record.status === status)
       );
     });
@@ -1567,13 +1567,21 @@
     }
   }
 
+  function titleCaseName(value) {
+    return String(value || "")
+      .toLocaleLowerCase("en-IN")
+      .replace(/(^|[\s.'-])(\p{L})/gu, function (_match, prefix, letter) {
+        return prefix + letter.toLocaleUpperCase("en-IN");
+      });
+  }
+
   function refreshDashboardGreeting() {
     const greeting = document.getElementById("dashboard-greeting");
     if (!greeting) return;
     const now = new Date();
     const hour = now.getHours();
     const salutation = hour < 12 ? "Good morning" : hour < 16 ? "Good afternoon" : "Good evening";
-    const name = greeting.dataset.name || "";
+    const name = titleCaseName(greeting.dataset.name);
     greeting.textContent = salutation + (name ? ", " + name : "");
     const date = document.getElementById("dashboard-greeting-date");
     const time = document.getElementById("dashboard-greeting-time");
@@ -1606,7 +1614,7 @@
     document
       .querySelectorAll(".app-header-profile-name")
       .forEach(function (node) {
-        node.textContent = user.full_name;
+        node.textContent = titleCaseName(user.full_name);
       });
     document
       .querySelectorAll(".app-header-profile-user")

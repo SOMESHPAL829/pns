@@ -136,6 +136,7 @@ $csrf = csrf_token();
   </main>
   <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Signing In…</strong><span id="page-transition-note">Verifying your account securely.</span></div></div></div>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
+  <script src="js/required-fields.js?v=<?= filemtime(__DIR__ . '/js/required-fields.js') ?>"></script>
   <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>

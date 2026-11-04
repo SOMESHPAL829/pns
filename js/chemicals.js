@@ -64,6 +64,7 @@
     byId("chemical-rate-id").value = "";
     byId("chemical-rate-save").textContent = "Save Rate";
     byId("chemical-rate-cancel").hidden = true;
+    window.PortalSearchableSelect?.refresh(byId("chemical-rate-item"));
     applyControls();
   }
 
@@ -90,6 +91,7 @@
     itemSelect.replaceChildren(new Option("Select an Item", ""));
     state.items.forEach(item => itemSelect.add(new Option(item.item_code + " · " + item.description, item.id)));
     itemSelect.value = state.items.some(item => String(item.id) === selectedItem) ? selectedItem : "";
+    window.PortalSearchableSelect?.refresh(itemSelect);
 
     const itemBody = byId("chemical-items-body");
     itemBody.replaceChildren();
@@ -213,6 +215,7 @@
     if (addRate) {
       resetRateForm();
       byId("chemical-rate-item").value = addRate.dataset.addChemicalRate;
+      window.PortalSearchableSelect?.refresh(byId("chemical-rate-item"));
       byId("chemical-rate-from").value = today();
       byId("chemical-rate-inr").focus();
     }
@@ -222,6 +225,7 @@
       if (!rate) return;
       byId("chemical-rate-id").value = rate.id;
       byId("chemical-rate-item").value = rate.chemical_item_id;
+      window.PortalSearchableSelect?.refresh(byId("chemical-rate-item"));
       byId("chemical-rate-inr").value = rate.rate_inr;
       byId("chemical-rate-from").value = rate.effective_from;
       byId("chemical-rate-to").value = rate.effective_to || "";

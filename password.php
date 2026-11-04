@@ -115,5 +115,6 @@ $csrf = csrf_token();
       </form>
     </section>
   </main>
+  <script src="js/required-fields.js?v=<?= filemtime(__DIR__ . '/js/required-fields.js') ?>"></script>
 </body>
 </html>
