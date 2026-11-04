@@ -32,7 +32,7 @@ function chemical_consumption_list(PDO $pdo, string $defaultOperator = '', ?arra
         'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
         'i.item_code,i.description AS chemical_name,i.status AS chemical_status ' .
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id WHERE 1=1' . $scope . ' ' .
-        'ORDER BY e.entry_date DESC,e.id DESC LIMIT 1000'
+        'ORDER BY e.entry_date DESC,e.id DESC'
     );$query->execute($parameters);$entries=$query->fetchAll();
     $descriptionParameters=[];
     $descriptionScope=chemical_plant_filter($plants,'e.machine_code',$descriptionParameters);

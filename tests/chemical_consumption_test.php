@@ -131,4 +131,11 @@ try {
 }
 consumption_check($invalidReportTypeRejected, 'Unsupported chemical cost report type was accepted.');
 
+$bulkInsert = $pdo->prepare("INSERT INTO chemical_consumption_entries(entry_date,shift_name,operator_name,machine_code,process_description,chemical_item_id,consume_quantity,uom,used_for,recommended_by) VALUES ('2026-10-29','SHIFT A','OPERATOR','APP-07','TEST',1,1,'KG','TOP-UP','PRODUCTION MANAGER')");
+$pdo->beginTransaction();
+for ($index = 0; $index < 1000; $index++) $bulkInsert->execute();
+$pdo->commit();
+$completeList = chemical_consumption_list($pdo, 'Default Operator');
+consumption_check(count($completeList['entries']) === 1002, 'Consumption list was truncated at 1,000 entries.');
+
 echo "Chemical consumption entry tests passed\n";
