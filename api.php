@@ -506,7 +506,7 @@ try {
                 "SELECT u.id,u.username,u.email,u.full_name,u.role,u.is_active,u.created_at,ur.role_id AS access_role_id,CASE WHEN u.role='admin' THEN 'Administrator' ELSE COALESCE(r.name,'Standard user') END AS access_role_name FROM portal_users u LEFT JOIN portal_user_roles ur ON ur.user_id=u.id LEFT JOIN portal_access_roles r ON r.id=ur.role_id ORDER BY u.created_at DESC LIMIT 500"
             );
             $roles=array_values(array_filter(portal_list_roles($pdo),static fn(array $r):bool=>portal_grants_within($r['permissions'],$user['access']['permissions'])&&portal_scope_within($r,$user['access'])));
-            $users=$query->fetchAll();foreach($users as &$listedUser){$scope=portal_user_access($pdo,$listedUser);$listedUser['all_plants']=$scope['all_plants'];$listedUser['plants']=$scope['plants'];$listedUser['extra_plants']=$scope['extra_plants'];}unset($listedUser);
+            $users=$query->fetchAll();foreach($users as &$listedUser){$scope=portal_user_access($pdo,$listedUser);$listedUser['all_plants']=$scope['all_plants'];$listedUser['plants']=$scope['plants'];$listedUser['extra_plants']=$scope['extra_plants'];$listedUser['permissions']=$scope['permissions'];$listedUser['custom_access']=$scope['custom_access'];}unset($listedUser);
             $availablePlants=$user['access']['all_plants']?portal_available_plants($pdo):$user['access']['plants'];
             json_response(['users'=>$users,'assignable_roles'=>$roles,'plants'=>$availablePlants]);
         }
@@ -584,7 +584,7 @@ try {
     if($resource==='users'&&$action==='user-role'){
         $id=filter_var($data['id']??null,FILTER_VALIDATE_INT);$roleId=filter_var($data['role_id']??null,FILTER_VALIDATE_INT);
         if(!$id||!$roleId)json_response(['error'=>'Choose a user and role.'],422);
-        portal_assign_role($pdo,$user,$id,$roleId,'update',$data['extra_plants']??[]);json_response(['ok'=>true]);
+        portal_assign_role($pdo,$user,$id,$roleId,'update',$data['extra_plants']??[],$data['custom_access']??null);json_response(['ok'=>true]);
     }
 
     if ($action === 'profile' && $method === 'POST') {
@@ -696,7 +696,7 @@ try {
                 'INSERT INTO portal_users (username, email, full_name, password_hash) VALUES (?, ?, ?, ?)'
             );
             $insert->execute([$username, $email, $name, password_hash($password, PASSWORD_DEFAULT)]);
-            portal_assign_role($pdo,$user,(int)$pdo->lastInsertId(),$roleId,'create',$data['extra_plants']??[]);
+            portal_assign_role($pdo,$user,(int)$pdo->lastInsertId(),$roleId,'create',$data['extra_plants']??[],$data['custom_access']??null);
             $pdo->commit();
         } catch (PDOException $exception) {
             if($pdo->inTransaction())$pdo->rollBack();

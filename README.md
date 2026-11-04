@@ -15,7 +15,7 @@ PHP and MySQL starter app based on the KARAM theme. It includes server-backed si
 3. Set `APP_BASE_URL` to the public app URL and `APP_MAIL_FROM` to a sender address in the PHP environment.
 4. Ensure the database account can create and use the `portal_*` tables.
 5. From this directory, run `php setup.php admin@example.com admin "Portal Administrator"` and enter a password when prompted. The installer creates the tables and refuses to create a second initial admin.
-6. Run `php migrate-permissions.php`, `php migrate-export-permissions.php`, then `php migrate-plant-access.php` to install page-level roles, permissions, role plant scope, and optional per-user additional plants.
+6. Run `php migrate-permissions.php`, `php migrate-export-permissions.php`, `php migrate-plant-access.php`, then `php migrate-user-access-overrides.php` to install page-level roles, role plant scope, and optional per-user permission and exact plant overrides. Existing users continue using role defaults.
 7. Run `php migrate-chemicals.php` to install chemical items and effective-dated INR rates.
 8. Run `php migrate-chemical-consumption.php`, then `php migrate-chemical-consumption-entry-uom.php` to install the chemical consumption ledger and preserve each entry's recorded unit.
 9. Run `php migrate-breakdowns.php` to refresh the downtime reason catalogue and archive referenced legacy reasons without deleting downtime history.

@@ -1,4 +1,11 @@
 <section class="view pns-dashboard" data-view="dashboard" aria-label="OEE Dashboard">
+  <div class="pns-dashboard-greeting" aria-label="Welcome and current date">
+    <h1 id="dashboard-greeting" data-name="">Good morning</h1>
+    <div class="pns-dashboard-greeting-meta">
+      <span><i data-icon="calendar-date-range" aria-hidden="true"></i><time id="dashboard-greeting-date"></time></span>
+      <span><i data-icon="clock" aria-hidden="true"></i><time id="dashboard-greeting-time"></time></span>
+    </div>
+  </div>
   <div class="dashboard-overview-bar">
     <div class="dashboard-live-messages" aria-live="polite">
       <div id="dashboard-loading" class="pns-loading" role="status" hidden>Updating Selected Calculation…</div>

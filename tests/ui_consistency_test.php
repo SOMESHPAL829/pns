@@ -16,6 +16,8 @@ ui_check(is_string($shell) && is_string($login) && is_string($styles) && is_stri
 
 ui_check(!str_contains($shell, 'app-header-profile-card'), 'Profile dropdown contains content beyond Profile and Sign Out options.');
 ui_check(substr_count($shell, 'data-logout-form') === 2, 'Both portal logout actions must use loading feedback.');
+ui_check(str_contains($shell, 'class="app-sidebar-account"') && str_contains($shell, 'data-goto="profile"') && str_contains($shell, 'class="app-sidebar-footer-logout"') && str_contains($shell, 'data-icon="arrow-right-start-on-rectangle"'), 'Sidebar account footer must open Profile and expose an outward-facing logout icon.');
+ui_check(str_contains($shell, 'id="sidebar-toggle"') && !str_contains($shell, 'id="sidebar-mobile-toggle"'), 'The sidebar toggle must live in the topbar on desktop and mobile.');
 ui_check(str_contains($login, 'data-loading-form') && str_contains($login, 'auth-message-transient'), 'Login/logout feedback is incomplete.');
 ui_check(str_contains($shell, 'id="welcome-message"') && str_contains($shell, 'id="page-transition"'), 'Welcome or transition UI is missing.');
 ui_check(substr_count($shell, 'class="page-transition-dialog"') === 1 && str_contains($login, 'class="page-transition-dialog"'), 'Premium login/logout transition dialogs are missing.');
@@ -33,6 +35,7 @@ ui_check(str_contains($styles, '.app-sidebar-link.is-active') && str_contains($s
 ui_check(str_contains($styles, '.oee-log-grid { display: grid; grid-template-columns: minmax(0, 1fr);'), 'SCADA cards are not stacked vertically.');
 ui_check(str_contains($shell, 'class="profile-settings-grid"') && !str_contains($shell, 'data-modal-open="profile-form"'), 'Profile forms are not visible inline.');
 ui_check(str_contains($dashboard, 'id="dashboard-duration-save"') && !str_contains($dashboard, 'id="dashboard-start-time"') && !str_contains($shell, 'id="report-start-time"') && !str_contains($shell, 'id="range-start-time"'), 'Date-specific duration save control or Window Start removal is incomplete.');
+ui_check(str_contains($dashboard, 'id="dashboard-greeting"') && str_contains($dashboard, 'id="dashboard-greeting-date"') && str_contains($dashboard, 'id="dashboard-greeting-time"') && str_contains($appScript, 'refreshDashboardGreeting') && str_contains($appScript, 'hour < 16 ? "Good afternoon"') && str_contains($dashboardStyles, 'font-weight: 400'), 'Dashboard greeting, time-based salutation, normal typography, date or live time is missing.');
 ui_check(substr_count($dashboard, 'dashboard-link-button') >= 4 && str_contains($dashboard, 'data-icon="arrow-right"'), 'Dashboard navigation controls are not styled consistently with export buttons.');
 ui_check(str_contains($login, 'data-password-toggle="password"') && str_contains($shell, 'data-password-toggle="current-password"') && str_contains($shell, 'data-password-toggle="new-password"'), 'Login or profile password visibility controls are missing.');
 ui_check(!str_contains($dashboard, 'Reporting Window') && str_contains($shell, '>End Time</th>') && str_contains($shell, 'Calculation Time') && str_contains($appScript, '"h Utilization"'), 'Calculation-time terminology is inconsistent in the UI.');

@@ -17,6 +17,7 @@
     reportRequest: 0,
     appearance: { theme: "light", brightness: 100 },
     appearanceSaveTimer: null,
+    permissionCatalog: {},
   };
   const apiUrl = "api.php";
   const can = (page, action = "view") => window.PortalAccess.can(page, action);
@@ -1401,9 +1402,9 @@
       makeCell(row, user.email);
       makeCell(
         row,
-        user.access_role_name === "Standard user"
+        (user.access_role_name === "Standard user"
           ? "Standard User"
-          : user.access_role_name || titleLabel(user.role),
+          : user.access_role_name || titleLabel(user.role)) + (user.custom_access ? " (Custom)" : ""),
       );
       makeCell(row, user.all_plants ? "All Plants" : (user.plants || []).join(", ") || "No Plants");
       makeCell(row, Number(user.is_active) === 1 ? "Active" : "Inactive");
@@ -1429,7 +1430,7 @@
         const assign = document.createElement("button");
         assign.type = "button";
         assign.className = "table-action";
-        assign.textContent = "Assign Role";
+        assign.textContent = "Manage Access";
         assign.dataset.assignUserRole = String(user.id);
         actionGroup.prepend(assign);
         actions.appendChild(actionGroup);
@@ -1458,6 +1459,89 @@
     return [...(document.getElementById(id)?.querySelectorAll('input[type="checkbox"]:checked') || [])].map(input => input.value);
   }
 
+  function selectedRole(form) {
+    const select = form.querySelector('select[name="role_id"], #user-role-select');
+    return (app.assignableRoles || []).find(role => Number(role.id) === Number(select?.value));
+  }
+
+  function renderExactPlantPicker(id, scope) {
+    const container = document.getElementById(id); if (!container) return;
+    const all = scope?.all_plants === true;
+    const chosen = new Set(scope?.plants || []); container.replaceChildren();
+    [["ALL", "All Plants"], ...(app.availablePlants || []).map(plant => [plant, plant])].forEach(function ([value, text]) {
+      const label = document.createElement("label"); label.className = "plant-picker-option";
+      const input = document.createElement("input"); input.type = "checkbox"; input.value = value; input.dataset.userPlant = value;
+      input.checked = value === "ALL" ? all : (!all && chosen.has(value)); input.disabled = value !== "ALL" && all;
+      label.append(input, document.createTextNode(text)); container.appendChild(label);
+    });
+  }
+
+  function renderUserPermissionMatrix(form, permissions, editable) {
+    const body = form.querySelector('tbody[id$="-permissions"]'); if (!body) return;
+    body.replaceChildren();
+    Object.entries(app.permissionCatalog || {}).forEach(function ([page, item]) {
+      const row = document.createElement("tr"); makeCell(row, item.label);
+      ["view", "create", "update", "delete", "export"].forEach(function (action) {
+        const cell = makeCell(row, "");
+        if (!item.actions.includes(action)) { cell.textContent = "—"; return; }
+        const input = document.createElement("input"); input.type = "checkbox"; input.dataset.userPermissionPage = page; input.dataset.userPermissionAction = action;
+        input.checked = permissions?.[page]?.[action] === true;
+        input.disabled = !editable || page === "roles";
+        input.setAttribute("aria-label", item.label + ": " + action);
+        cell.appendChild(input);
+      });
+      body.appendChild(row);
+    });
+  }
+
+  function initializeUserAccessEditor(form, user) {
+    if (!form) return;
+    const role = selectedRole(form);
+    const custom = user ? user.custom_access === true : form.querySelector('input[name$="_access_mode"]:checked')?.value === "custom";
+    const mode = form.querySelector(`input[name$="_access_mode"][value="${custom ? "custom" : "role"}"]`);
+    if (mode) mode.checked = true;
+    const defaultPlants = form.querySelector("[data-user-default-plants]");
+    const customPlants = form.querySelector("[data-user-custom-plants]");
+    if (defaultPlants) defaultPlants.hidden = custom;
+    if (customPlants) customPlants.hidden = !custom;
+    const extraId = form.id === "user-create-form" ? "new-user-plants" : "user-role-plants";
+    const customId = form.id === "user-create-form" ? "new-user-custom-plants" : "user-role-custom-plants";
+    renderExtraPlantPicker(extraId, user?.extra_plants || []);
+    renderExactPlantPicker(customId, custom ? { all_plants: user.all_plants, plants: user.plants } : { all_plants: role?.all_plants === true, plants: role?.plants || [] });
+    renderUserPermissionMatrix(form, custom ? user.permissions : role?.permissions, custom);
+    const caption = form.querySelector("[data-user-permission-caption]");
+    if (caption) caption.textContent = custom ? "Custom permissions for this user" : `Inherited from ${role?.name || "the selected role"}`;
+  }
+
+  function collectCustomAccess(form) {
+    const enabled = form.querySelector('input[name$="_access_mode"]:checked')?.value === "custom";
+    if (!enabled) return { enabled: false };
+    const permissions = {};
+    form.querySelectorAll("[data-user-permission-page]").forEach(function (input) {
+      (permissions[input.dataset.userPermissionPage] ||= {})[input.dataset.userPermissionAction] = input.checked;
+    });
+    const plantId = form.id === "user-create-form" ? "new-user-custom-plants" : "user-role-custom-plants";
+    return { enabled: true, permissions, plants: selectedExtraPlants(plantId) };
+  }
+
+  function bindUserAccessEditor(form) {
+    if (!form) return;
+    form.addEventListener("change", function (event) {
+      const input = event.target;
+      if (input.dataset.userPlant === "ALL") {
+        form.querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])").forEach(node => { node.checked = false; node.disabled = input.checked; });
+        return;
+      }
+      if (input.dataset.userPermissionPage) {
+        const row = input.closest("tr");
+        if (input.dataset.userPermissionAction === "view" && !input.checked) row.querySelectorAll("input").forEach(node => { node.checked = false; });
+        else if (input.checked) row.querySelector('[data-user-permission-action="view"]').checked = true;
+        return;
+      }
+      if (input.matches('select[name="role_id"], #user-role-select') || input.matches('input[name$="_access_mode"]')) initializeUserAccessEditor(form, null);
+    });
+  }
+
   function setDetail(record) {
     app.currentRecord = record;
     const values = {
@@ -1482,7 +1566,33 @@
     }
   }
 
-  function updateIdentity(user) {
+  function refreshDashboardGreeting() {
+    const greeting = document.getElementById("dashboard-greeting");
+    if (!greeting) return;
+    const now = new Date();
+    const hour = now.getHours();
+    const salutation = hour < 12 ? "Good morning" : hour < 16 ? "Good afternoon" : "Good evening";
+    const name = greeting.dataset.name || "";
+    greeting.textContent = salutation + (name ? ", " + name : "");
+    const date = document.getElementById("dashboard-greeting-date");
+    const time = document.getElementById("dashboard-greeting-time");
+    if (date) {
+      date.textContent = now.toLocaleDateString("en-GB", {
+        weekday: "long", day: "2-digit", month: "long", year: "numeric",
+      });
+      date.dateTime = now.toISOString().slice(0, 10);
+    }
+    if (time) {
+      time.textContent = now.toLocaleTimeString("en-IN", {
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+      }).toLowerCase();
+      time.dateTime = now.toTimeString().slice(0, 8);
+    }
+  }
+
+  window.setInterval(refreshDashboardGreeting, 1000);
+
+  function updateIdentity(user, access) {
     const initials = user.full_name
       .trim()
       .split(/\s+/)
@@ -1505,6 +1615,12 @@
     document.querySelectorAll(".app-header-avatar").forEach(function (node) {
       node.textContent = initials;
     });
+    document.querySelectorAll(".app-sidebar-profile-role").forEach(function (node) {
+      node.textContent = access?.role_name || (user.role === "admin" ? "Administrator" : "User");
+    });
+    const greeting = document.getElementById("dashboard-greeting");
+    if (greeting) greeting.dataset.name = user.full_name || user.username || "";
+    refreshDashboardGreeting();
     const name = document.getElementById("profile-name");
     const email = document.getElementById("profile-email");
     const username = document.getElementById("profile-username");
@@ -1518,10 +1634,11 @@
     app.csrf = data.csrf_token;
     app.user = data.user;
     app.records = data.records;
+    app.permissionCatalog = data.permission_catalog || {};
     applyAppearance(data.appearance);
     window.PortalAccess.set(data.access);
     updateThresholdForm();
-    updateIdentity(app.user);
+    updateIdentity(app.user, data.access);
     renderRecords();
     const detailMatch = location.hash.match(/^#\/detail\/(\d+)$/);
     if (detailMatch) {
@@ -1538,8 +1655,6 @@
       app.users = users.users;
       app.assignableRoles = users.assignable_roles || [];
       app.availablePlants = users.plants || [];
-      renderExtraPlantPicker("new-user-plants", []);
-      renderExtraPlantPicker("user-role-plants", []);
       const roleSelect = document.getElementById("new-user-role");
       if (roleSelect) {
         roleSelect.replaceChildren();
@@ -1566,6 +1681,7 @@
           );
         });
       }
+      initializeUserAccessEditor(document.getElementById("user-create-form"), null);
       renderUsers(users.users);
     }
   }
@@ -1641,11 +1757,15 @@
     });
 
   const userForm = document.getElementById("user-create-form");
+  bindUserAccessEditor(userForm);
+  window.addEventListener("portal-modal-create", function (event) {
+    if (event.detail.formId === "user-create-form") initializeUserAccessEditor(userForm, null);
+  });
   if (userForm)
     userForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       const button=document.querySelector('[form="user-create-form"][type="submit"]');
-      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:selectedExtraPlants("new-user-plants")}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
+      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:selectedExtraPlants("new-user-plants"),custom_access:collectCustomAccess(userForm)}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
       catch(error){toast(error.message,"crit");} finally {if(button)button.disabled=false;}
     });
 
@@ -1998,7 +2118,7 @@
             (role) => Number(role.is_builtin) === 1,
           )?.id;
         roleSelect.value = String(assigned || "");
-        renderExtraPlantPicker("user-role-plants", selectedUser.extra_plants || []);
+        initializeUserAccessEditor(document.getElementById("user-role-form"), selectedUser);
         window.PortalModalForms?.open(
           "user-role-form",
           "Assign Role to " + selectedUser.full_name,
@@ -2052,6 +2172,7 @@
   });
 
   const userRoleForm = document.getElementById("user-role-form");
+  bindUserAccessEditor(userRoleForm);
   if (userRoleForm)
     userRoleForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -2064,6 +2185,7 @@
             id: Number(document.getElementById("user-role-user-id").value),
             role_id: Number(document.getElementById("user-role-select").value),
             extra_plants: selectedExtraPlants("user-role-plants"),
+            custom_access: collectCustomAccess(userRoleForm),
           },
         });
         toast(

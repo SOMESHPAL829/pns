@@ -1,6 +1,42 @@
 /* Scoped adaptation of deploy/PNS_Anodizing_Dashboard.html. */
 .pns-dashboard { --pns-blue: #2e679f; --pns-stop: #bc514a; --pns-planned: #a86d14; min-width: 0; }
 .pns-dashboard.active { display: block; }
+.pns-dashboard-greeting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1.15rem;
+}
+.pns-dashboard-greeting h1 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.1rem, 1.4vw, 1.3rem);
+  font-weight: 400;
+  line-height: 1.25;
+}
+.pns-dashboard-greeting-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  color: var(--mut);
+  font-size: 0.82rem;
+}
+.pns-dashboard-greeting-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  white-space: nowrap;
+}
+.pns-dashboard-greeting-meta i,
+.pns-dashboard-greeting-meta svg {
+  display: inline-flex;
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--accent-deep);
+}
 .pns-dashboard .dashboard-overview-bar {
   display: flex;
   align-items: flex-end;
@@ -174,4 +210,5 @@
 }
 @media(max-width:1200px) { .pns-dashboard .oee-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-grid-main { grid-template-columns: 1fr; } }
 @media(max-width:750px) { .pns-dashboard .dashboard-control-fields { width: 100%; justify-content: stretch; } .pns-dashboard .oee-kpis { grid-template-columns: 1fr; } .pns-dashboard .date-control { flex: 1 1 9rem; } .pns-dashboard .date-control input, .pns-dashboard .date-control select { width: 100%; min-width: 0; } .pns-dashboard .dashboard-control-fields .btn { flex: 1 1 auto; } .pns-dashboard .oee-production-grid, .pns-reasons { grid-template-columns: repeat(2,minmax(0,1fr)); } .pns-dashboard .oee-status-strip { align-items: start; flex-wrap: wrap; } .pns-dashboard .oee-status-meta { margin-left: 1rem; width: 100%; } }
+@media(max-width:750px) { .pns-dashboard-greeting { align-items: flex-start; flex-direction: column; } .pns-dashboard-greeting-meta { justify-content: flex-start; } }
 @media(max-width:420px) { .pns-reasons { grid-template-columns: 1fr; } .pns-dashboard .dash-card-head { flex-wrap: wrap; } }

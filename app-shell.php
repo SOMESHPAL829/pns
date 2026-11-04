@@ -53,22 +53,24 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
         <a class="app-sidebar-link" href="#/oee-masters" data-nav="oee-masters" title="OEE Master Data"><span class="app-sidebar-icon" data-icon="cog-6-tooth"></span><span class="app-sidebar-label">OEE Master Data</span></a>
         <a class="app-sidebar-link" href="#/chemical-registration" data-nav="chemical-registration" title="Chemical Registration"><span class="app-sidebar-icon" data-icon="beaker"></span><span class="app-sidebar-label">Chemical Registration</span></a>
         <a class="app-sidebar-link" href="#/breakdown-registration" data-nav="breakdown-registration" title="Downtime Registration"><span class="app-sidebar-icon" data-icon="wrench-screwdriver"></span><span class="app-sidebar-label">Downtime Registration</span></a>
-        <a class="app-sidebar-link" href="#/profile" data-nav="profile" title="Profile"><span class="app-sidebar-icon" data-icon="user-circle"></span><span class="app-sidebar-label">My Profile</span></a>
-        <form method="post" action="logout.php" data-logout-form>
-          <input type="hidden" name="csrf_token" value="<?= escape_html($csrfToken) ?>">
-          <button class="app-sidebar-logout" type="submit" title="Sign Out"><span class="app-sidebar-icon" data-icon="arrow-left-start-on-rectangle"></span><span class="app-sidebar-label">Sign Out</span></button>
-        </form>
       </nav>
       <div class="app-sidebar-footer">
-        <button type="button" id="sidebar-toggle" class="app-sidebar-toggle" aria-label="Toggle sidebar" aria-expanded="true" title="Collapse sidebar"><span data-icon="chevron-left"></span></button>
+        <a class="app-sidebar-account" href="#/profile" data-goto="profile" title="Open My Profile">
+          <span class="app-header-avatar app-sidebar-user-avatar">P</span>
+          <span class="app-sidebar-account-copy"><strong class="app-header-profile-name">Account</strong><span class="app-sidebar-profile-role">User</span></span>
+        </a>
+        <form method="post" action="logout.php" data-logout-form>
+          <input type="hidden" name="csrf_token" value="<?= escape_html($csrfToken) ?>">
+          <button class="app-sidebar-footer-logout" type="submit" aria-label="Sign Out" title="Sign Out"><span data-icon="arrow-right-start-on-rectangle"></span></button>
+        </form>
       </div>
     </aside>
 
     <div class="app-main">
       <header class="app-topbar">
         <div class="app-topbar-inner">
-          <div style="display:flex;align-items:center;gap:12px;min-width:0">
-            <button type="button" id="sidebar-mobile-toggle" class="app-sidebar-mobile-toggle" aria-label="Open navigation"><span data-icon="bars-3"></span></button>
+          <div class="app-topbar-leading">
+            <button type="button" id="sidebar-toggle" class="app-sidebar-mobile-toggle app-sidebar-toggle-top" aria-label="Toggle navigation" aria-expanded="true" title="Collapse sidebar"><span data-icon="bars-3"></span></button>
             <strong class="app-topbar-title" id="page-title" aria-live="polite">PNS OEE</strong>
           </div>
           <div class="app-topbar-actions">
@@ -280,7 +282,12 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
         <section class="view" data-view="users">
           <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div></div>
           <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2><div class="table-heading-actions"><form class="table-heading-search-form" id="user-search-form"><input id="users-search" type="search" placeholder="Search Users" aria-label="Search Users"></form><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Plant Access</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
-          <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div><fieldset class="plant-picker"><legend>Additional Plant Access</legend><p class="form-note">Optional plants added specifically for this user, in addition to the selected role.</p><div id="user-role-plants" class="plant-picker-options"></div></fieldset><button class="btn" type="submit">Save Access</button></form>
+          <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div>
+            <fieldset class="user-access-mode"><legend>Access Configuration</legend><label><input type="radio" name="user_access_mode" value="role" checked> Use Role Defaults</label><label><input type="radio" name="user_access_mode" value="custom"> Custom Access</label></fieldset>
+            <fieldset class="plant-picker" data-user-default-plants><legend>Additional Plant Access</legend><p class="form-note">Optional plants added to the selected role's plant access.</p><div id="user-role-plants" class="plant-picker-options"></div></fieldset>
+            <fieldset class="plant-picker" data-user-custom-plants hidden><legend>Custom Plant Access</legend><p class="form-note">Choose the exact plants this user can access.</p><div id="user-role-custom-plants" class="plant-picker-options"></div></fieldset>
+            <section class="user-permission-preview"><div class="user-permission-heading"><h3>Permissions</h3><span data-user-permission-caption>Inherited from the selected role</span></div><div class="data-scroll"><table class="data-table permission-table"><thead><tr><th>Page</th><th>View</th><th>Create</th><th>Update</th><th>Delete</th><th>Export</th></tr></thead><tbody id="user-role-permissions"></tbody></table></div></section>
+            <button class="btn" type="submit">Save Access</button></form>
         </section>
 
         <section class="view" data-view="user-create">
@@ -289,7 +296,10 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
             <div class="form-grid-2"><div><label class="form-label" for="new-user-email">Email <span class="req">*</span></label><input class="form-input" id="new-user-email" name="email" type="email" required></div><div><label class="form-label" for="new-user-username">Username <span class="req">*</span></label><input class="form-input" id="new-user-username" name="username" minlength="3" maxlength="80" required></div></div>
             <div><label class="form-label" for="new-user-name">Full Name <span class="req">*</span></label><input class="form-input" id="new-user-name" name="full_name" maxlength="160" required></div><div><label class="form-label" for="new-user-password">Temporary Password <span class="req">*</span></label><input class="form-input" id="new-user-password" name="password" type="password" minlength="12" required></div><p class="form-note">The user can change this password in their profile.</p>
             <div><label class="form-label" for="new-user-role">Access Role</label><select class="form-select" id="new-user-role" name="role_id" required></select></div>
-            <fieldset class="plant-picker"><legend>Additional Plant Access</legend><p class="form-note">Optional. The user automatically inherits the plants assigned to the role.</p><div id="new-user-plants" class="plant-picker-options"></div></fieldset>
+            <fieldset class="user-access-mode"><legend>Access Configuration</legend><label><input type="radio" name="new_user_access_mode" value="role" checked> Use Role Defaults</label><label><input type="radio" name="new_user_access_mode" value="custom"> Custom Access</label></fieldset>
+            <fieldset class="plant-picker" data-user-default-plants><legend>Additional Plant Access</legend><p class="form-note">Optional plants added to the selected role's plant access.</p><div id="new-user-plants" class="plant-picker-options"></div></fieldset>
+            <fieldset class="plant-picker" data-user-custom-plants hidden><legend>Custom Plant Access</legend><p class="form-note">Choose the exact plants this user can access.</p><div id="new-user-custom-plants" class="plant-picker-options"></div></fieldset>
+            <section class="user-permission-preview"><div class="user-permission-heading"><h3>Permissions</h3><span data-user-permission-caption>Inherited from the selected role</span></div><div class="data-scroll"><table class="data-table permission-table"><thead><tr><th>Page</th><th>View</th><th>Create</th><th>Update</th><th>Delete</th><th>Export</th></tr></thead><tbody id="new-user-permissions"></tbody></table></div></section>
           </form></div>
         </section>
 
