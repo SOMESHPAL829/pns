@@ -316,6 +316,42 @@ textarea {
   transition: width 0.18s ease;
 }
 
+.app-sidebar-resizer {
+  position: absolute;
+  inset: 0 -5px 0 auto;
+  z-index: 4;
+  width: 10px;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: 0;
+}
+
+.app-sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 2px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.app-sidebar-resizer:hover::after,
+.app-sidebar-resizer:focus-visible::after,
+.app-shell.sidebar-is-resizing .app-sidebar-resizer::after {
+  background: var(--accent);
+}
+
+.app-shell.sidebar-is-resizing .app-sidebar,
+.app-shell.sidebar-is-resizing .app-main {
+  transition: none;
+}
+
+body.app-sidebar-is-resizing,
+body.app-sidebar-is-resizing * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+
 .app-sidebar-header {
   padding: 1rem 1rem 0.75rem;
 }
@@ -512,6 +548,10 @@ textarea {
 .app-shell.sidebar-collapsed .app-sidebar-link,
 .app-shell.sidebar-collapsed .app-sidebar-logout {
   justify-content: center;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-resizer {
+  display: none;
 }
 
 /* ——— Page chrome ——— */
@@ -3529,5 +3569,7 @@ html[data-theme="dark"] .app-sidebar-footer { background: var(--card); }
 
 @media (max-width: 980px) {
   .app-sidebar-toggle-top { display: inline-flex; }
-  .app-shell.sidebar-collapsed .app-sidebar { width: var(--sidebar-w); }
+  .app-sidebar,
+  .app-shell.sidebar-collapsed .app-sidebar { width: min(var(--sidebar-w), 88vw); }
+  .app-sidebar-resizer { display: none; }
 }
