@@ -67,6 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($isLocked) {
                 $pdo->commit();
                 $error = 'This account was temporarily locked after multiple failed sign-in attempts. Please try again shortly.';
+            } elseif ($user && (int) $user['is_active'] !== 1 && $passwordMatches) {
+                $pdo->prepare('DELETE FROM portal_login_attempts WHERE attempt_key = ?')->execute([$attemptKey]);
+                $pdo->commit();
+                $error = 'Your account is inactive. Contact your administrator.';
             } else {
                 $inWindow = empty($attempt['locked_until'])
                   && strtotime($attempt['window_started_at']) >= time() - 900;
@@ -136,6 +140,7 @@ $csrf = csrf_token();
   </main>
   <div id="page-transition" class="page-transition" role="status" aria-live="polite" hidden><div class="page-transition-dialog"><span class="loading-spinner" aria-hidden="true"></span><div class="page-transition-copy"><strong id="page-transition-message">Signing In…</strong><span id="page-transition-note">Verifying your account securely.</span></div></div></div>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
+  <script src="js/required-fields.js?v=<?= filemtime(__DIR__ . '/js/required-fields.js') ?>"></script>
   <script src="js/auth.js?v=<?= filemtime(__DIR__ . '/js/auth.js') ?>"></script>
 </body>
 </html>

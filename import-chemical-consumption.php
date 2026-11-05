@@ -9,53 +9,169 @@ require_once __DIR__ . '/includes/chemical_consumption.php';
 $source = $argv[1] ?? '';
 $dryRun = in_array('--dry-run', $argv, true);
 if ($source === '' || !is_file($source)) {
-    fwrite(STDERR, "Usage: php import-chemical-consumption.php <tab-separated-file> [--dry-run]\n");
+    fwrite(STDERR, "Usage: php import-chemical-consumption.php <xlsx-or-tab-separated-file> [--dry-run]\n");
     exit(1);
 }
 
 $expected = ['Date','Machine','Shift Name','Operator Name','Process','Chemical Code','Chemical Name','Consumption Qty','UOM','Used For','Recommended By'];
-$handle = fopen($source, 'rb');
-if ($handle === false) throw new RuntimeException('Unable to open the import file.');
-$header = fgetcsv($handle, 0, "\t");
-if (!is_array($header)) throw new RuntimeException('The import file has no header row.');
-$header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)$header[0]);
-if ($header !== $expected) throw new RuntimeException('Unexpected columns. Expected: ' . implode(' | ', $expected));
+
+/** @return list<list<string>> */
+function chemical_import_xlsx_rows(string $path): array
+{
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) throw new RuntimeException('Unable to open the Excel workbook.');
+    try {
+        $sharedStrings = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($sharedXml !== false) {
+            $document = new DOMDocument();
+            if (!$document->loadXML($sharedXml)) throw new RuntimeException('The Excel shared strings file is invalid.');
+            $xpath = new DOMXPath($document);
+            foreach ($xpath->query('/*[local-name()="sst"]/*[local-name()="si"]') ?: [] as $item) {
+                $value = '';
+                foreach ($xpath->query('.//*[local-name()="t"]', $item) ?: [] as $textNode) $value .= $textNode->textContent;
+                $sharedStrings[] = $value;
+            }
+        }
+
+        $workbookXml = $zip->getFromName('xl/workbook.xml');
+        $relationsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        if ($workbookXml === false || $relationsXml === false) throw new RuntimeException('The Excel workbook structure is incomplete.');
+        $workbook = new DOMDocument();
+        $relations = new DOMDocument();
+        if (!$workbook->loadXML($workbookXml) || !$relations->loadXML($relationsXml)) throw new RuntimeException('The Excel workbook structure is invalid.');
+        $workbookXpath = new DOMXPath($workbook);
+        $firstSheet = $workbookXpath->query('//*[local-name()="sheets"]/*[local-name()="sheet"][1]')?->item(0);
+        if (!$firstSheet instanceof DOMElement) throw new RuntimeException('The Excel workbook contains no worksheet.');
+        $relationshipId = $firstSheet->getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
+        $relationsXpath = new DOMXPath($relations);
+        $relationship = $relationsXpath->query('/*[local-name()="Relationships"]/*[local-name()="Relationship"][@Id="' . $relationshipId . '"]')?->item(0);
+        if (!$relationship instanceof DOMElement) throw new RuntimeException('The first worksheet relationship is missing.');
+        $worksheetTarget = str_replace('\\', '/', $relationship->getAttribute('Target'));
+        $worksheetPath = str_starts_with($worksheetTarget, '/')
+            ? ltrim($worksheetTarget, '/')
+            : 'xl/' . preg_replace('#^(?:\.\./)+#', '', $worksheetTarget);
+        $worksheetXml = $zip->getFromName($worksheetPath);
+        if ($worksheetXml === false) throw new RuntimeException('The first Excel worksheet could not be read.');
+
+        $worksheet = new DOMDocument();
+        if (!$worksheet->loadXML($worksheetXml)) throw new RuntimeException('The first Excel worksheet is invalid.');
+        $worksheetXpath = new DOMXPath($worksheet);
+        $result = [];
+        foreach ($worksheetXpath->query('//*[local-name()="sheetData"]/*[local-name()="row"]') ?: [] as $rowNode) {
+            $row = [];
+            foreach ($worksheetXpath->query('./*[local-name()="c"]', $rowNode) ?: [] as $cell) {
+                if (!$cell instanceof DOMElement) continue;
+                preg_match('/^[A-Z]+/i', $cell->getAttribute('r'), $columnMatch);
+                $letters = strtoupper($columnMatch[0] ?? 'A');
+                $columnIndex = 0;
+                foreach (str_split($letters) as $letter) $columnIndex = ($columnIndex * 26) + (ord($letter) - 64);
+                $columnIndex--;
+                $valueNode = $worksheetXpath->query('./*[local-name()="v"]', $cell)?->item(0);
+                $value = $valueNode?->textContent ?? '';
+                $type = $cell->getAttribute('t');
+                if ($type === 's') $value = $sharedStrings[(int)$value] ?? '';
+                elseif ($type === 'inlineStr') {
+                    $value = '';
+                    foreach ($worksheetXpath->query('.//*[local-name()="t"]', $cell) ?: [] as $textNode) $value .= $textNode->textContent;
+                }
+                $row[$columnIndex] = trim($value);
+            }
+            if ($row !== []) {
+                $lastColumn = max(array_keys($row));
+                $result[] = array_map(static fn(int $index): string => (string)($row[$index] ?? ''), range(0, $lastColumn));
+            }
+        }
+        return $result;
+    } finally {
+        $zip->close();
+    }
+}
+
+/** @return list<list<string>> */
+function chemical_import_source_rows(string $path): array
+{
+    if (strtolower(pathinfo($path, PATHINFO_EXTENSION)) === 'xlsx') return chemical_import_xlsx_rows($path);
+    $handle = fopen($path, 'rb');
+    if ($handle === false) throw new RuntimeException('Unable to open the import file.');
+    try {
+        $rows = [];
+        while (($values = fgetcsv($handle, 0, "\t")) !== false) $rows[] = array_map(static fn($value): string => trim((string)$value), $values);
+        return $rows;
+    } finally {
+        fclose($handle);
+    }
+}
+
+function chemical_import_date(string $value, int $line): DateTimeImmutable
+{
+    if (is_numeric($value)) {
+        $serial = (float)$value;
+        if ($serial < 1 || $serial > 100000) throw new RuntimeException("Line {$line} has an invalid Excel date.");
+        return (new DateTimeImmutable('1899-12-30'))->modify('+' . (int)floor($serial) . ' days');
+    }
+    foreach (['!d-M-y', '!Y-m-d', '!d-m-Y', '!d/m/Y'] as $format) {
+        $date = DateTimeImmutable::createFromFormat($format, $value);
+        $errors = DateTimeImmutable::getLastErrors();
+        if ($date && ($errors === false || (!$errors['warning_count'] && !$errors['error_count']))) return $date;
+    }
+    throw new RuntimeException("Line {$line} has an invalid date.");
+}
+
+$sourceRows = chemical_import_source_rows($source);
+if ($sourceRows === []) throw new RuntimeException('The import file has no header row.');
+$header = array_shift($sourceRows);
+$header[0] = preg_replace('/^\xEF\xBB\xBF/', '', (string)($header[0] ?? ''));
+$headerAliases = [
+    'DATE'=>'Date', 'MACHINE'=>'Machine', 'SHIFT'=>'Shift Name', 'SHIFT NAME'=>'Shift Name',
+    'OPERATOR'=>'Operator Name', 'OPERATOR NAME'=>'Operator Name', 'PROCESS'=>'Process',
+    'CHEMICAL CODE'=>'Chemical Code', 'CHEMICAL NAME'=>'Chemical Name', 'CONSUMPTION QTY'=>'Consumption Qty',
+    'UOM'=>'UOM', 'CONSUMPTION TYPE'=>'Used For', 'USED FOR'=>'Used For', 'RECOMMENDED BY'=>'Recommended By',
+];
+$canonicalHeader = array_map(static function(string $column) use ($headerAliases): string {
+    $key = mb_strtoupper(trim($column), 'UTF-8');
+    return $headerAliases[$key] ?? $column;
+}, $header);
+$requiredColumns = array_values(array_diff($expected, ['Recommended By']));
+$missingColumns = array_values(array_diff($requiredColumns, $canonicalHeader));
+if ($missingColumns !== []) throw new RuntimeException('Missing required columns: ' . implode(', ', $missingColumns));
+if (count($canonicalHeader) !== count(array_unique($canonicalHeader))) throw new RuntimeException('The import file contains duplicate columns.');
 
 $rows = [];
 $sourceKeys = [];
 $line = 1;
-while (($values = fgetcsv($handle, 0, "\t")) !== false) {
+foreach ($sourceRows as $values) {
     $line++;
-    if ($values === [null] || (count($values) === 1 && trim((string)$values[0]) === '')) continue;
-    if (count($values) !== count($expected)) throw new RuntimeException("Line {$line} has " . count($values) . ' columns; expected ' . count($expected) . '.');
-    $row = array_combine($expected, array_map(static fn($value): string => trim((string)$value), $values));
-    foreach ($row as $column=>$value) if ($value === '') throw new RuntimeException("Line {$line} has a blank {$column} value.");
-    $date = DateTimeImmutable::createFromFormat('!d-M-y', $row['Date']);
-    $dateErrors = DateTimeImmutable::getLastErrors();
-    if (!$date || ($dateErrors !== false && ($dateErrors['warning_count'] || $dateErrors['error_count']))) throw new RuntimeException("Line {$line} has an invalid date.");
-    $shift = preg_match('/^shift\s+/i', $row['Shift Name']) ? $row['Shift Name'] : 'Shift ' . strtoupper($row['Shift Name']);
+    if (count(array_filter($values, static fn($value): bool => trim((string)$value) !== '')) === 0) continue;
+    $values = array_pad($values, count($canonicalHeader), '');
+    if (count($values) !== count($canonicalHeader)) throw new RuntimeException("Line {$line} has " . count($values) . ' columns; expected ' . count($canonicalHeader) . '.');
+    $row = array_combine($canonicalHeader, array_map(static fn($value): string => trim((string)$value), $values));
+    $row['Recommended By'] = trim((string)($row['Recommended By'] ?? '')) ?: 'PRODUCTION MANAGER';
+    foreach ($expected as $column) if (($row[$column] ?? '') === '') throw new RuntimeException("Line {$line} has a blank {$column} value.");
+    $date = chemical_import_date($row['Date'], $line);
+    $shift = preg_match('/^shift\s+/i', $row['Shift Name']) ? $row['Shift Name'] : 'Shift ' . mb_strtoupper($row['Shift Name'], 'UTF-8');
     $normalized = [
         'entry_date'=>$date->format('Y-m-d'),
-        'shift_name'=>$shift,
-        'operator_name'=>$row['Operator Name'],
-        'machine_code'=>strtoupper($row['Machine']),
-        'process_description'=>$row['Process'],
-        'chemical_code'=>strtoupper($row['Chemical Code']),
-        'chemical_name'=>$row['Chemical Name'],
+        'shift_name'=>mb_strtoupper($shift, 'UTF-8'),
+        'operator_name'=>mb_strtoupper($row['Operator Name'], 'UTF-8'),
+        'machine_code'=>mb_strtoupper($row['Machine'], 'UTF-8'),
+        'process_description'=>mb_strtoupper($row['Process'], 'UTF-8'),
+        'chemical_code'=>mb_strtoupper($row['Chemical Code'], 'UTF-8'),
+        'chemical_name'=>mb_strtoupper($row['Chemical Name'], 'UTF-8'),
         'consume_quantity'=>chemical_consumption_quantity($row['Consumption Qty']),
-        'uom'=>strtoupper($row['UOM']),
-        'used_for'=>$row['Used For'],
-        'recommended_by'=>$row['Recommended By'],
+        'uom'=>mb_strtoupper($row['UOM'], 'UTF-8'),
+        'used_for'=>mb_strtoupper($row['Used For'], 'UTF-8'),
+        'recommended_by'=>mb_strtoupper($row['Recommended By'], 'UTF-8'),
         'remarks'=>'',
         'source_line'=>$line,
     ];
-    if (!in_array($normalized['used_for'], ['Fresh Makeup','Top-Up'], true)) throw new RuntimeException("Line {$line} has an invalid Used For value.");
+    if (!in_array($normalized['used_for'], ['FRESH MAKEUP','TOP-UP'], true)) throw new RuntimeException("Line {$line} has an invalid Used For value.");
+    if (!in_array($normalized['recommended_by'], ['QC MANAGER','PRODUCTION MANAGER'], true)) throw new RuntimeException("Line {$line} has an invalid Recommended By value.");
     $key = json_encode(array_diff_key($normalized, ['source_line'=>true]), JSON_THROW_ON_ERROR);
     if (isset($sourceKeys[$key])) throw new RuntimeException("Lines {$sourceKeys[$key]} and {$line} are exact duplicates.");
     $sourceKeys[$key] = $line;
     $rows[] = $normalized;
 }
-fclose($handle);
 if ($rows === []) throw new RuntimeException('The import file contains no data rows.');
 
 $pdo = db();

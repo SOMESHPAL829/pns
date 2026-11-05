@@ -316,6 +316,42 @@ textarea {
   transition: width 0.18s ease;
 }
 
+.app-sidebar-resizer {
+  position: absolute;
+  inset: 0 -5px 0 auto;
+  z-index: 4;
+  width: 10px;
+  cursor: ew-resize;
+  touch-action: none;
+  outline: 0;
+}
+
+.app-sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 2px;
+  background: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.app-sidebar-resizer:hover::after,
+.app-sidebar-resizer:focus-visible::after,
+.app-shell.sidebar-is-resizing .app-sidebar-resizer::after {
+  background: var(--accent);
+}
+
+.app-shell.sidebar-is-resizing .app-sidebar,
+.app-shell.sidebar-is-resizing .app-main {
+  transition: none;
+}
+
+body.app-sidebar-is-resizing,
+body.app-sidebar-is-resizing * {
+  cursor: ew-resize !important;
+  user-select: none !important;
+}
+
 .app-sidebar-header {
   padding: 1rem 1rem 0.75rem;
 }
@@ -324,7 +360,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  width: 100%;
   min-width: 0;
+  position: relative;
 }
 
 .app-sidebar-logo {
@@ -342,6 +380,43 @@ textarea {
 .app-sidebar-brand-title {
   font-weight: 750;
   letter-spacing: 0.01em;
+}
+
+.app-sidebar-brand-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-sidebar-brand-toggle {
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.app-sidebar-brand-toggle:hover,
+.app-sidebar-brand-toggle:focus-visible {
+  background: var(--accent-sft);
+  color: var(--accent-deep);
+  outline: none;
+}
+
+.app-sidebar-brand-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+
+.app-sidebar-mobile-launcher {
+  display: none;
 }
 
 .app-sidebar-brand-subtitle,
@@ -499,19 +574,67 @@ textarea {
 
 .app-shell.sidebar-collapsed .app-sidebar-brand-text,
 .app-shell.sidebar-collapsed .app-sidebar-section-label,
-.app-shell.sidebar-collapsed .app-sidebar-label {
+.app-shell.sidebar-collapsed .app-sidebar-label,
+.app-shell.sidebar-resized-compact .app-sidebar-brand-text,
+.app-shell.sidebar-resized-compact .app-sidebar-section-label,
+.app-shell.sidebar-resized-compact .app-sidebar-label {
   display: none;
 }
 
 .app-shell.sidebar-collapsed .app-sidebar-brand,
 .app-shell.sidebar-collapsed .app-sidebar-header,
-.app-shell.sidebar-collapsed .app-sidebar-footer {
+.app-shell.sidebar-collapsed .app-sidebar-footer,
+.app-shell.sidebar-resized-compact .app-sidebar-brand,
+.app-shell.sidebar-resized-compact .app-sidebar-header,
+.app-shell.sidebar-resized-compact .app-sidebar-footer {
   justify-content: center;
 }
 
+.app-shell.sidebar-collapsed .app-sidebar-brand,
+.app-shell.sidebar-resized-compact .app-sidebar-brand {
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 2.15rem;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-logo,
+.app-shell.sidebar-resized-compact .app-sidebar-logo {
+  transition: opacity 0.15s ease;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-brand-toggle,
+.app-shell.sidebar-resized-compact .app-sidebar-brand-toggle {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-brand:hover .app-sidebar-logo,
+.app-shell.sidebar-collapsed .app-sidebar-brand:focus-within .app-sidebar-logo,
+.app-shell.sidebar-resized-compact .app-sidebar-brand:hover .app-sidebar-logo,
+.app-shell.sidebar-resized-compact .app-sidebar-brand:focus-within .app-sidebar-logo {
+  opacity: 0;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-brand:hover .app-sidebar-brand-toggle,
+.app-shell.sidebar-collapsed .app-sidebar-brand:focus-within .app-sidebar-brand-toggle,
+.app-shell.sidebar-resized-compact .app-sidebar-brand:hover .app-sidebar-brand-toggle,
+.app-shell.sidebar-resized-compact .app-sidebar-brand:focus-within .app-sidebar-brand-toggle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .app-shell.sidebar-collapsed .app-sidebar-link,
-.app-shell.sidebar-collapsed .app-sidebar-logout {
+.app-shell.sidebar-collapsed .app-sidebar-logout,
+.app-shell.sidebar-resized-compact .app-sidebar-link,
+.app-shell.sidebar-resized-compact .app-sidebar-logout {
   justify-content: center;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-resizer {
+  display: none;
 }
 
 /* ——— Page chrome ——— */
@@ -662,8 +785,20 @@ table.data tbody tr:hover {
   letter-spacing: 0.06em;
 }
 
-.form-label .req {
+.req,
+.required-marker {
+  display: inline;
+  margin-left: 0.15rem;
   color: var(--crit);
+  font-weight: 800;
+  line-height: 1;
+}
+.required-label-text {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: baseline;
+  white-space: nowrap;
 }
 
 .form-input,
@@ -1436,6 +1571,10 @@ table.data tbody tr:hover {
 .chemical-consumption-actions { grid-column: span 3; display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .chemical-consumption-actions .btn { min-height: 2.15rem; }
 .chemical-consumption-table { min-width: 1700px; }
+.chemical-consumption-table tbody,
+.chemical-report-table tbody {
+  text-transform: uppercase;
+}
 .chemical-report-filter-card { margin-bottom: 1rem; overflow: hidden; }
 .chemical-report-filter-card h2 { margin: 0; font: inherit; }
 .chemical-consumption-report-card { overflow: hidden; }
@@ -1549,6 +1688,13 @@ table.data tbody tr:hover {
   color: var(--mut);
 }
 .chemical-cost-chartarea svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.chemical-cost-item-chart { margin-bottom: 1rem; }
+.chemical-cost-item-chart-card { width: 100%; }
+.chemical-cost-item-chartarea { height: 350px; padding: 1rem 1.25rem 0.75rem; }
+.chemical-cost-gridline.chemical-cost-item-gridline { stroke: var(--line); stroke-dasharray: 4 5; opacity: 0.9; }
+.chemical-cost-item-bar { fill: #3979b8; }
+.chemical-cost-item-label { font-size: 12px; }
+.chemical-cost-item-value { fill: var(--ink); font-size: 11px; font-weight: 750; }
 .chemical-cost-gridline { opacity: 0.35; }
 .chemical-cost-axis { fill: currentColor; font-size: 11px; }
 .chemical-combo-axis-title { font-size: 10px; font-weight: 750; }
@@ -1674,6 +1820,7 @@ table.data tbody tr:hover {
   .chemical-cost-kpis { grid-template-columns: 1fr; }
   .chemical-cost-badge { display: none; }
   .chemical-cost-chartarea { height: 240px; }
+  .chemical-cost-item-chartarea { height: 300px; padding-inline: 0.5rem; }
 }
 
 @media print {
@@ -1696,6 +1843,7 @@ table.data tbody tr:hover {
   .chemical-cost-report-card { border: 0; box-shadow: none; }
   .chemical-cost-kpis,
   .chemical-cost-chart-grid,
+  .chemical-cost-item-chart,
   .chemical-cost-tip { display: none !important; }
   .chemical-report-title,
   .chemical-cost-report-title { display: block; }
@@ -2188,6 +2336,11 @@ table.data tbody tr:hover {
 }
 .searchable-select-input[aria-invalid="true"]:not(:focus):not(:placeholder-shown) { border-color: var(--crit); }
 html[data-theme="dark"] .searchable-select-list { border-color: var(--line); }
+
+/* Table values use a consistent uppercase presentation without altering forms or stored text. */
+.data-table tbody td {
+  text-transform: uppercase;
+}
 
 .oee-kpi,
 .dash-kpi,
@@ -2702,9 +2855,10 @@ html[data-theme="dark"] .data-table thead tr.col-filter-row th { background: var
 }
 .table-heading-filter:hover,
 .table-heading-filter:focus-visible {
-  border-color: #8fb7df;
+  border-color: transparent;
   background-color: var(--accent-deep);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%);
+  box-shadow: none;
+  filter: brightness(1.08);
 }
 .table-heading-filter option { background: var(--card); color: var(--ink); }
 
@@ -3383,6 +3537,11 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 .user-access-mode label{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border,#dbe3ec);border-radius:9px;background:var(--surface,#fff);cursor:pointer}
 .user-access-mode label:has(input:checked){border-color:var(--brand,#1f4c7e);background:var(--brand-soft,#eef5fb);color:var(--navy,#183b68)}
 .user-access-mode input{accent-color:var(--brand,#1f4c7e)}
+.user-account-status{border:1px solid var(--border,#dbe3ec);border-radius:10px;padding:14px;margin:4px 0;background:var(--surface,#fff)}
+.user-account-status legend{font-weight:700;color:var(--navy,#183b68);padding:0 6px}
+.user-account-status label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.user-account-status input{accent-color:var(--brand,#1f4c7e)}
+.user-account-status .form-note{margin:8px 0 0}
 .user-permission-preview{border:1px solid var(--border,#dbe3ec);border-radius:10px;overflow:hidden;background:var(--surface,#fff)}
 .user-permission-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 16px;background:var(--surface-soft,#f5f8fb);border-bottom:1px solid var(--border,#dbe3ec)}
 .user-permission-heading h3{margin:0;color:var(--navy,#183b68);font-size:1rem}
@@ -3496,17 +3655,48 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   padding-inline: 0.45rem;
 }
 
+.app-shell.sidebar-resized-compact .app-sidebar-footer {
+  flex-direction: column;
+  padding-inline: 0.45rem;
+}
+
 .app-shell.sidebar-collapsed .app-sidebar-account {
   flex: 0 0 auto;
   justify-content: center;
   padding: 0.25rem;
 }
 
-.app-shell.sidebar-collapsed .app-sidebar-account-copy { display: none; }
+.app-shell.sidebar-resized-compact .app-sidebar-account {
+  flex: 0 0 auto;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+.app-shell.sidebar-collapsed .app-sidebar-account-copy,
+.app-shell.sidebar-resized-compact .app-sidebar-account-copy { display: none; }
 
 html[data-theme="dark"] .app-sidebar-footer { background: var(--card); }
 
 @media (max-width: 980px) {
-  .app-sidebar-toggle-top { display: inline-flex; }
-  .app-shell.sidebar-collapsed .app-sidebar { width: var(--sidebar-w); }
+  .app-sidebar,
+  .app-shell.sidebar-collapsed .app-sidebar { width: min(16.5rem, 88vw); }
+  .app-sidebar-resizer { display: none; }
+  .app-sidebar-mobile-launcher {
+    position: fixed;
+    top: 0.65rem;
+    left: 0.75rem;
+    z-index: 25;
+    width: 2.15rem;
+    height: 2.15rem;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .app-shell.sidebar-open .app-sidebar-mobile-launcher { display: none; }
+  .app-topbar-leading { padding-left: 2.75rem; }
 }

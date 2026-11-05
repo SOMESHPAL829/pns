@@ -67,12 +67,15 @@ oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-23');
 gap_check((int) $pdo->query("SELECT COUNT(*) FROM oee_downtime_events WHERE starts_at >= '2026-10-23 00:30:25' AND ends_at <= '2026-10-23 00:50:48'")->fetchColumn() === 1, 'Legacy false alarm recreated as proposed downtime');
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-24');
 gap_check((bool) $pdo->query("SELECT id FROM oee_downtime_events WHERE starts_at='2026-10-24 00:10:00' AND ends_at='2026-10-24 00:35:00'")->fetchColumn(), 'Full SCADA interval changed with effective-date cycle master');
-$pdo->exec("INSERT INTO oee_cycle_time_standards VALUES ('APP-07','CLEAR',7,'2026-01-01',NULL)");
+$pdo->exec("INSERT INTO oee_cycle_time_standards VALUES ('APP-07','CLEAR',7,'2026-01-01',NULL), ('APP-07','NO COLOUR',16,'2026-01-01',NULL)");
 foreach ([['01:00:00','CLEAR'], ['01:25:00',''], ['02:00:00','UNKNOWN'], ['02:25:00','UNKNOWN']] as [$time, $colour]) {
     $insert->execute(['APP-07','2026-10-23',1,$time,'2026-10-23 ' . $time,$colour,'',5,1,999,'{}']);
 }
 oee_propose_gap_downtime($pdo, 'APP-07', '2026-10-23');
-gap_check((bool) $pdo->query("SELECT id FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 01:00:00' AND ends_at='2026-10-23 01:25:00'")->fetchColumn(), 'Full interval missing for colour fill-forward evidence');
+$noColour = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 01:00:00' AND ends_at='2026-10-23 01:25:00'")->fetchColumn();
+gap_check(is_string($noColour) && str_contains($noColour, '16.000 min (NO COLOUR)') && !str_contains($noColour, 'Missing standard'), 'Blank APP-07 colour did not use its NO COLOUR cycle standard');
+gap_check(oee_cycle_colour('APP-03', '', '', 'BLACK-1') === 'NO COLOUR' && oee_cycle_colour('APP-04', '', '', 'CLEAR') === 'NO COLOUR' && oee_cycle_colour('APP-10', '', '', 'BLUE') === 'NO COLOUR', 'Configured blank-colour plants must not inherit a previous colour');
+gap_check(oee_cycle_colour('APP-06', '', '', 'BLACK-1') === 'BLACK-1', 'Other plants must retain existing colour fill-forward behaviour');
 $fallback = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 02:00:00' AND ends_at='2026-10-23 02:25:00'")->fetchColumn();
 gap_check(is_string($fallback) && str_contains($fallback, 'Missing standard'), 'Fallback cycle must be 12 and explicitly flagged');
 $oldMetrics = oee_metrics(1440, 0, 26.567, 969, 99);

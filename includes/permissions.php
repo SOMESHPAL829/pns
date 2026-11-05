@@ -13,7 +13,7 @@ function portal_permission_catalog(): array
         'chemical-consumption' => ['label'=>'Chemical Consumption','actions'=>['view','create','update']],
         'chemical-consumption-report' => ['label'=>'Chemical Consumption Report','actions'=>['view']],
         'chemical-cost-report' => ['label'=>'Chemical Cost Analytics','actions'=>['view']],
-        'users' => ['label'=>'Users (Deactivate = Update)','actions'=>['view','create','update']],
+        'users' => ['label'=>'Users (Account Status = Update)','actions'=>['view','create','update']],
         'oee-masters' => ['label'=>'OEE Master Data','actions'=>['view','create','update']],
         'chemical-registration' => ['label'=>'Chemical Registration','actions'=>['view','create','update']],
         'breakdown-registration' => ['label'=>'Downtime Registration','actions'=>['view','create','update']],
@@ -375,9 +375,9 @@ function portal_assign_role(PDO $pdo, array $actor, int $userId, int $roleId, st
     }catch(Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 
-function portal_toggle_user(PDO $pdo, array $actor, int $userId): void
+function portal_set_user_active(PDO $pdo, array $actor, int $userId, bool $active): bool
 {
-    if($userId===(int)$actor['id'])throw new DomainException('You cannot deactivate your own account.',409);
+    if($userId===(int)$actor['id'])throw new DomainException('You cannot change your own account status.',409);
     $access=portal_user_access($pdo,$actor);
     if(!portal_can($access['permissions'],'users','update'))throw new DomainException('User updates are not permitted.',403);
     $own=!$pdo->inTransaction();if($own)$pdo->beginTransaction();
@@ -387,9 +387,20 @@ function portal_toggle_user(PDO $pdo, array $actor, int $userId): void
         if($target['role']==='admin')throw new DomainException('Administrator accounts are protected.',409);
         $targetAccess=portal_user_access($pdo,$target);
         if(!portal_grants_within($targetAccess['permissions'],$access['permissions'])||!portal_scope_within($targetAccess,$access))throw new DomainException('You cannot manage an account beyond your permissions or plant access.',403);
-        $active=(int)$target['is_active']===1?0:1;
-        $pdo->prepare('UPDATE portal_users SET is_active=?,auth_version=auth_version+1 WHERE id=?')->execute([$active,$userId]);
-        portal_access_audit($pdo,(int)$actor['id'],'user.status',$userId,['before'=>(int)$target['is_active'],'is_active'=>$active]);
-        if($own)$pdo->commit();
+        $activeValue=$active?1:0;
+        $changed=(int)$target['is_active']!==$activeValue;
+        if($changed){
+            $pdo->prepare('UPDATE portal_users SET is_active=?,auth_version=auth_version+1 WHERE id=?')->execute([$activeValue,$userId]);
+            portal_access_audit($pdo,(int)$actor['id'],'user.status',$userId,['before'=>(int)$target['is_active'],'is_active'=>$activeValue]);
+        }
+        if($own)$pdo->commit(); return $changed;
     }catch(Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+
+function portal_toggle_user(PDO $pdo, array $actor, int $userId): void
+{
+    $query=$pdo->prepare('SELECT is_active FROM portal_users WHERE id=?');$query->execute([$userId]);
+    $current=$query->fetchColumn();
+    if($current===false)throw new DomainException('User not found.',404);
+    portal_set_user_active($pdo,$actor,$userId,(int)$current!==1);
 }

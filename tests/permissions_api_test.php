@@ -32,7 +32,9 @@ try{
     }
     [$status,$created]=$call('roles','role-save',$admin,['name'=>'RBAC viewer '.$suffix,'permissions'=>['oee-report'=>['view'=>true]]]);
     $check($status===200,'Admin role creation failed');$roles[]=$roleId=(int)$created['id'];
-    [$status]=$call('users','user-role',$admin,['id'=>$users['viewer'],'role_id'=>$roleId]);$check($status===200,'Role assignment failed');
+    $resetPassword='Reset-'.$suffix.'-Password';
+    [$status,$assignment]=$call('users','user-role',$admin,['id'=>$users['viewer'],'role_id'=>$roleId,'temporary_password'=>$resetPassword]);$check($status===200&&($assignment['password_updated']??false)===true,'Role assignment with temporary password failed');
+    $q=$pdo->prepare('SELECT password_hash FROM portal_users WHERE id=?');$q->execute([$users['viewer']]);$check(password_verify($resetPassword,(string)$q->fetchColumn()),'Administrator temporary password reset was not persisted');
     $viewer=$session($users['viewer']);
     [$status,$bootstrap]=$call('bootstrap','',$viewer);$check($status===200&&$bootstrap['records']===[]&&$bootstrap['record_count']===0&&$bootstrap['user_count']===null,'Bootstrap leaked restricted data');
     [$status,$savedAppearance]=$call('appearance','save',$viewer,['theme'=>'dark','brightness'=>115,'user_id'=>0]);
@@ -135,6 +137,9 @@ try{
     $q=$pdo->prepare('SELECT id FROM portal_users WHERE username=?');$q->execute([$newName]);$createdUser=(int)$q->fetchColumn();if($createdUser)$users['created']=$createdUser;
     $check($status===201&&$createdUser>0,'Delegated Create with assignable role failed');
     $check(portal_user_access($pdo,['id'=>$createdUser,'role'=>'user'])['role_id']===$delegated,'New user did not get selected role');
+    $q=$pdo->prepare('SELECT password_hash FROM portal_users WHERE id=?');$q->execute([$createdUser]);$createdHash=(string)$q->fetchColumn();
+    $check($call('users','user-role',$delegate,['id'=>$createdUser,'role_id'=>$delegated,'temporary_password'=>'Forged-'.$suffix.'-Password'])[0]===403,'Delegated manager reset another user password');
+    $q->execute([$createdUser]);$check(hash_equals($createdHash,(string)$q->fetchColumn()),'Rejected delegated password reset changed the password hash');
     $check($call('users','user-toggle',$delegate,['id'=>$createdUser])[0]===200,'Permitted status Update failed');
     $check((int)$pdo->query('SELECT is_active FROM portal_users WHERE id='.$createdUser)->fetchColumn()===0,'Deactivation not persisted');
     [$status,$created]=$call('roles','role-save',$admin,['name'=>'RBAC unused '.$suffix,'permissions'=>[]]);$check($status===200,'Empty role create failed');$roles[]=$unused=(int)$created['id'];

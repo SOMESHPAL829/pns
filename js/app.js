@@ -101,6 +101,19 @@
     return String(value).replace("T", " ").slice(0, 16);
   }
 
+  function downtimeMinutes(startsAt, endsAt) {
+    const parseTimestamp = function (value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+      if (!match) return NaN;
+      const milliseconds = Number((match[7] || "").padEnd(3, "0").slice(0, 3));
+      return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), milliseconds);
+    };
+    const start = parseTimestamp(startsAt);
+    const end = parseTimestamp(endsAt);
+    const minutes = (end - start) / 60000;
+    return Number.isFinite(minutes) && minutes >= 0 ? minutes.toFixed(3) + " min" : "—";
+  }
+
   function percent(value) {
     if (value === null || value === undefined || value === "") return "—";
     return (Number(value) * 100).toFixed(1) + "%";
@@ -131,8 +144,22 @@
 
   function setText(id, value) {
     const node = document.getElementById(id);
-    if (node)
+    if (node) {
       node.textContent = value == null || value === "" ? "—" : String(value);
+      updateDashboardMessageTooltip(node);
+    }
+  }
+
+  function updateDashboardMessageTooltip(node) {
+    const message = node.closest(
+      ".dashboard-live-messages .oee-window-summary, .dashboard-live-messages .oee-status-strip, .dashboard-live-messages .pns-loading, .dashboard-live-messages .oee-alert",
+    );
+    if (!message) return;
+    const fullText = message.textContent.replace(/\s+/g, " ").trim();
+    if (!fullText) return;
+    message.title = fullText;
+    message.setAttribute("aria-label", fullText);
+    message.tabIndex = 0;
   }
 
   function showOeeAlert(id, message, visible) {
@@ -140,6 +167,15 @@
     if (!node) return;
     node.hidden = !visible;
     node.textContent = message || "";
+    if (visible && message) {
+      node.title = String(message);
+      node.setAttribute("aria-label", String(message));
+      updateDashboardMessageTooltip(node);
+    } else {
+      node.removeAttribute("title");
+      node.removeAttribute("aria-label");
+      node.removeAttribute("tabindex");
+    }
   }
 
   function applyAppearance(settings) {
@@ -1068,6 +1104,7 @@
       makeCell(row, readableDateTime(item.starts_at));
       makeCell(row, readableDateTime(item.ends_at));
       makeCell(row, titleLabel(item.event_type));
+      makeCell(row, downtimeMinutes(item.starts_at, item.ends_at));
       makeCell(row, item.reason_label || item.reason_code);
       makeCell(row, titleLabel(item.source));
       makeCell(row, titleLabel(item.status));
@@ -1102,7 +1139,7 @@
         row,
         "No downtime tagged for this plant and date yet.",
       );
-      cell.colSpan = 8;
+      cell.colSpan = 9;
       body.appendChild(row);
     }
   }
@@ -1313,7 +1350,7 @@
           .includes(search);
       return (
         matchesSearch &&
-        (!type || record.record_type === type) &&
+        (!type || String(record.record_type).toLocaleUpperCase() === type.toLocaleUpperCase()) &&
         (!status || record.status === status)
       );
     });
@@ -1412,15 +1449,6 @@
       const actions = makeCell(row, "", "user-actions-cell");
       const actionGroup = document.createElement("div");
       actionGroup.className = "user-actions";
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className =
-        Number(user.is_active) === 1
-          ? "table-action table-action-danger"
-          : "table-action";
-      toggle.textContent =
-        Number(user.is_active) === 1 ? "Deactivate" : "Activate";
-      toggle.dataset.toggleUser = String(user.id);
       if (
         can("users", "update") &&
         user.role !== "admin" &&
@@ -1567,13 +1595,21 @@
     }
   }
 
+  function titleCaseName(value) {
+    return String(value || "")
+      .toLocaleLowerCase("en-IN")
+      .replace(/(^|[\s.'-])(\p{L})/gu, function (_match, prefix, letter) {
+        return prefix + letter.toLocaleUpperCase("en-IN");
+      });
+  }
+
   function refreshDashboardGreeting() {
     const greeting = document.getElementById("dashboard-greeting");
     if (!greeting) return;
     const now = new Date();
     const hour = now.getHours();
     const salutation = hour < 12 ? "Good morning" : hour < 16 ? "Good afternoon" : "Good evening";
-    const name = greeting.dataset.name || "";
+    const name = titleCaseName(greeting.dataset.name);
     greeting.textContent = salutation + (name ? ", " + name : "");
     const date = document.getElementById("dashboard-greeting-date");
     const time = document.getElementById("dashboard-greeting-time");
@@ -1606,7 +1642,7 @@
     document
       .querySelectorAll(".app-header-profile-name")
       .forEach(function (node) {
-        node.textContent = user.full_name;
+        node.textContent = titleCaseName(user.full_name);
       });
     document
       .querySelectorAll(".app-header-profile-user")
@@ -1660,10 +1696,9 @@
       if (roleSelect) {
         roleSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
-          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           roleSelect.add(
             new Option(
-              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
+              role.name === "Standard user" ? "Standard User" : role.name,
               role.id,
             ),
           );
@@ -1673,10 +1708,9 @@
       if (assignmentSelect) {
         assignmentSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
-          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           assignmentSelect.add(
             new Option(
-              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
+              role.name === "Standard user" ? "Standard User" : role.name,
               role.id,
             ),
           );
@@ -1696,6 +1730,7 @@
       body.id = app.currentRecord.id;
     try {
       await request(resource || "", action, { method: "POST", body: body });
+      window.PortalModalForms?.saved(form.id);
       toast(success, "ok");
       if (form.id === "password-form") form.reset();
       else if (
@@ -1710,7 +1745,6 @@
         });
         if (updatedRecord) setDetail(updatedRecord);
       }
-      window.PortalModalForms?.saved(form.id);
       if (form.id === "record-create-form") location.hash = "#/requests";
       if (form.id === "user-create-form") location.hash = "#/users";
     } catch (error) {
@@ -1766,7 +1800,7 @@
     userForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       const button=document.querySelector('[form="user-create-form"][type="submit"]');
-      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:[],custom_access:collectCustomAccess(userForm)}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
+      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:[],custom_access:collectCustomAccess(userForm)}}); window.PortalModalForms?.saved("user-create-form"); toast("User created","ok"); userForm.reset(); location.hash="#/users"; await refresh(); }
       catch(error){toast(error.message,"crit");} finally {if(button)button.disabled=false;}
     });
 
@@ -1948,6 +1982,7 @@
             notes: document.getElementById("downtime-notes").value,
           },
         });
+        window.PortalModalForms?.saved("downtime-form");
         toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok");
         app.downtimeEditId = null;
         downtimeForm.reset();
@@ -1955,7 +1990,6 @@
           "false";
         window.PortalAccess.applyControls();
         await loadDowntime();
-        window.PortalModalForms?.saved("downtime-form");
       } catch (error) {
         showOeeAlert("downtime-alert", error.message, true);
         toast(error.message, "crit");
@@ -1986,6 +2020,8 @@
             gap_threshold_minutes: minutes,
           },
         });
+        window.PortalModalForms?.saved("threshold-form");
+        toast("Plant gap threshold saved", "ok");
         renderMasters(await request("oee", "masters", {}));
         showOeeAlert(
           "masters-alert",
@@ -1995,7 +2031,6 @@
             " min. Refresh the dashboard/report to recalculate automatic proposals.",
           true,
         );
-        window.PortalModalForms?.saved("threshold-form");
       } catch (error) {
         showOeeAlert("masters-alert", error.message, true);
         toast(error.message, "crit");
@@ -2021,10 +2056,10 @@
             effective_to: document.getElementById("cycle-to").value,
           },
         });
+        window.PortalModalForms?.saved("cycle-form");
         toast("Cycle time saved", "ok");
         cycleForm.reset();
         await loadMasters();
-        window.PortalModalForms?.saved("cycle-form");
       } catch (error) {
         showOeeAlert("masters-alert", error.message, true);
         toast(error.message, "crit");
@@ -2112,6 +2147,16 @@
         document.getElementById("user-role-user-id").value = selectedUser.id;
         document.getElementById("user-role-user-name").value =
           selectedUser.full_name + " (" + selectedUser.username + ")";
+        const temporaryPasswordField = document.getElementById("user-role-temporary-password-field");
+        const temporaryPasswordInput = document.getElementById("user-role-temporary-password");
+        const administratorCanResetPassword = app.user?.role === "admin";
+        if (temporaryPasswordField) temporaryPasswordField.hidden = !administratorCanResetPassword;
+        if (temporaryPasswordInput) {
+          temporaryPasswordInput.value = "";
+          temporaryPasswordInput.disabled = !administratorCanResetPassword;
+        }
+        const activeInput = document.getElementById("user-role-active");
+        if (activeInput) activeInput.checked = Number(selectedUser.is_active) === 1;
         const roleSelect = document.getElementById("user-role-select");
         const assigned =
           selectedUser.access_role_id ||
@@ -2147,19 +2192,6 @@
         toast(error.message, "crit");
       }
     }
-    const toggle = event.target.closest("[data-toggle-user]");
-    if (toggle) {
-      try {
-        await request("users", "user-toggle", {
-          method: "POST",
-          body: { id: Number(toggle.dataset.toggleUser) },
-        });
-        toast("User status updated", "ok");
-        await refresh();
-      } catch (error) {
-        toast(error.message, "crit");
-      }
-    }
     const logout = event.target.closest("[data-app-logout]");
     if (logout) {
       event.preventDefault();
@@ -2180,21 +2212,29 @@
       const button = userRoleForm.querySelector('button[type="submit"]');
       try {
         button.disabled = true;
-        await request("users", "user-role", {
+        const temporaryPasswordInput = document.getElementById("user-role-temporary-password");
+        const temporaryPassword = app.user?.role === "admin" && !temporaryPasswordInput?.disabled
+          ? temporaryPasswordInput?.value || ""
+          : "";
+        const result = await request("users", "user-role", {
           method: "POST",
           body: {
             id: Number(document.getElementById("user-role-user-id").value),
             role_id: Number(document.getElementById("user-role-select").value),
             extra_plants: [],
             custom_access: collectCustomAccess(userRoleForm),
+            temporary_password: temporaryPassword,
+            is_active: document.getElementById("user-role-active")?.checked === true,
           },
         });
+        window.PortalModalForms?.saved("user-role-form");
         toast(
-          "Role assigned; the user's existing sessions are invalidated",
+          result.password_updated
+            ? "Access saved and temporary password updated; the user's existing sessions are invalidated"
+            : "Access and account status saved; the user's existing sessions are invalidated",
           "ok",
         );
         await refresh();
-        window.PortalModalForms?.saved("user-role-form");
       } catch (error) {
         toast(error.message, "crit");
       } finally {

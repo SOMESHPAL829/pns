@@ -550,7 +550,69 @@
     });
   }
 
-  function renderCharts(series, reportType) {
+  function itemCostChart(el, items) {
+    const root = byId(el);
+    if (!root) return;
+    const usable = (items || [])
+      .filter((item) => item.total_chemical_cost != null && Number(item.total_chemical_cost) > 0)
+      .sort((left, right) => Number(right.total_chemical_cost) - Number(left.total_chemical_cost))
+      .slice(0, 6);
+    if (!usable.length) {
+      root.innerHTML = '<div class="chemical-cost-empty">No fully priced item cost data in selected range</div>';
+      return;
+    }
+
+    const namespace = "http://www.w3.org/2000/svg";
+    const W = 900;
+    const H = Math.max(270, usable.length * 47 + 58);
+    const left = 125;
+    const right = 72;
+    const top = 17;
+    const bottom = 38;
+    const plotWidth = W - left - right;
+    const plotHeight = H - top - bottom;
+    const maximum = Math.max(...usable.map((item) => Number(item.total_chemical_cost)));
+    const roughStep = maximum / 4;
+    const magnitude = 10 ** Math.floor(Math.log10(roughStep || 1));
+    const normalized = roughStep / magnitude;
+    const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) * magnitude;
+    const axisMaximum = step * 4;
+    const svg = document.createElementNS(namespace, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.setAttribute("aria-hidden", "true");
+
+    const node = function (name, attributes, textContent) {
+      const element = document.createElementNS(namespace, name);
+      Object.entries(attributes || {}).forEach(([name, value]) => element.setAttribute(name, String(value)));
+      if (textContent != null) element.textContent = String(textContent);
+      return element;
+    };
+
+    for (let index = 0; index <= 4; index += 1) {
+      const value = step * index;
+      const x = left + (value / axisMaximum) * plotWidth;
+      svg.appendChild(node("line", { x1: x, y1: top, x2: x, y2: H - bottom, class: "chemical-cost-gridline chemical-cost-item-gridline" }));
+      svg.appendChild(node("text", { x, y: H - 12, "text-anchor": "middle", class: "chemical-cost-axis" }, "₹" + fmtShort(value)));
+    }
+
+    const rowHeight = plotHeight / usable.length;
+    usable.forEach((item, index) => {
+      const cost = Number(item.total_chemical_cost);
+      const y = top + index * rowHeight + Math.max(4, (rowHeight - 27) / 2);
+      const width = Math.max(2, (cost / axisMaximum) * plotWidth);
+      const label = node("text", { x: left - 10, y: y + 18, "text-anchor": "end", class: "chemical-cost-axis chemical-cost-item-label" }, item.item_code);
+      const bar = node("rect", { x: left, y, width, height: 27, rx: 5, class: "chemical-cost-item-bar" });
+      const title = node("title", {}, `${item.item_code} · ${item.chemical_name || "Chemical"} · ${money(cost, 2)}`);
+      bar.appendChild(title);
+      svg.append(label, bar);
+      svg.appendChild(node("text", { x: Math.min(left + width + 8, W - right + 8), y: y + 18, class: "chemical-cost-item-value" }, "₹" + fmtShort(cost)));
+    });
+
+    root.replaceChildren(svg);
+  }
+
+  function renderCharts(series, reportType, itemCosts) {
     const typeLabel =
       reportType === "weekly"
         ? "weekly"
@@ -577,6 +639,7 @@
       colors: ["#1aa193"],
     });
     comboChart("chemical-cost-indexed-chart", series);
+    itemCostChart("chemical-cost-item-chart", itemCosts);
   }
 
   function renderTable(rows) {
@@ -673,7 +736,7 @@
 
     const series = chartRows(state.rows, data.report_type);
     renderKpis(series, data.report_type);
-    renderCharts(series, data.report_type);
+    renderCharts(series, data.report_type, data.item_costs || []);
     const missingRateEntries = renderTable(state.rows);
 
     state.loaded = true;

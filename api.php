@@ -584,7 +584,26 @@ try {
     if($resource==='users'&&$action==='user-role'){
         $id=filter_var($data['id']??null,FILTER_VALIDATE_INT);$roleId=filter_var($data['role_id']??null,FILTER_VALIDATE_INT);
         if(!$id||!$roleId)json_response(['error'=>'Choose a user and role.'],422);
-        portal_assign_role($pdo,$user,$id,$roleId,'update',$data['extra_plants']??[],$data['custom_access']??null);json_response(['ok'=>true]);
+        $temporaryPassword=$data['temporary_password']??'';
+        if(!is_string($temporaryPassword))json_response(['error'=>'Enter a valid temporary password.'],422);
+        if($temporaryPassword!==''&&$user['role']!=='admin')json_response(['error'=>'Only protected administrators may reset another user password.'],403);
+        if($temporaryPassword!==''&&!password_is_valid($temporaryPassword))json_response(['error'=>'Use a temporary password with at least 12 characters.'],422);
+        $requestedActive=null;
+        if(array_key_exists('is_active',$data)){
+            $requestedActive=filter_var($data['is_active'],FILTER_VALIDATE_BOOLEAN,FILTER_NULL_ON_FAILURE);
+            if($requestedActive===null)json_response(['error'=>'Choose a valid account status.'],422);
+        }
+        $pdo->beginTransaction();
+        try{
+            portal_assign_role($pdo,$user,$id,$roleId,'update',$data['extra_plants']??[],$data['custom_access']??null);
+            $statusUpdated=$requestedActive===null?false:portal_set_user_active($pdo,$user,$id,$requestedActive);
+            if($temporaryPassword!==''){
+                $pdo->prepare('UPDATE portal_users SET password_hash=? WHERE id=?')->execute([password_hash($temporaryPassword,PASSWORD_DEFAULT),$id]);
+                portal_access_audit($pdo,(int)$user['id'],'user.password.reset',$id,['temporary_password'=>true]);
+            }
+            $pdo->commit();
+        }catch(Throwable $exception){if($pdo->inTransaction())$pdo->rollBack();throw $exception;}
+        json_response(['ok'=>true,'password_updated'=>$temporaryPassword!=='','status_updated'=>$statusUpdated]);
     }
 
     if ($action === 'profile' && $method === 'POST') {

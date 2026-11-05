@@ -61,6 +61,7 @@
   justify-content: flex-end;
   gap: 0.65rem;
 }
+.pns-dashboard .dashboard-control-fields .date-control { font-weight: 400; }
 .pns-dashboard .dashboard-control-fields .btn { min-height: 2.5rem; }
 .pns-dashboard .dashboard-live-messages .oee-window-summary,
 .pns-dashboard .dashboard-live-messages .oee-status-strip,
@@ -94,6 +95,17 @@
   border-color: var(--warn);
   background: var(--warn-sft);
   color: #6f4b12;
+}
+.pns-dashboard .dashboard-live-messages .oee-window-summary,
+.pns-dashboard .dashboard-live-messages .oee-status-strip,
+.pns-dashboard .dashboard-live-messages .pns-loading,
+.pns-dashboard .dashboard-live-messages .oee-alert { cursor: help; }
+.pns-dashboard .dashboard-live-messages .oee-window-summary:focus-visible,
+.pns-dashboard .dashboard-live-messages .oee-status-strip:focus-visible,
+.pns-dashboard .dashboard-live-messages .pns-loading:focus-visible,
+.pns-dashboard .dashboard-live-messages .oee-alert:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .pns-dashboard .page-heading { gap: 1.25rem; margin-bottom: 0.75rem; align-items: center; }
 .pns-dashboard .page-heading h1 { font-size: 1.8rem; }

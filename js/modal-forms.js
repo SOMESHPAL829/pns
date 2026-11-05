@@ -124,7 +124,16 @@
     entries.set(definition.id, entry);
 
     close.addEventListener("click", function () { closeEntry(entry, true); });
-    dialog.addEventListener("click", function (event) { if (event.target === dialog) closeEntry(entry, true); });
+    let backdropPointerStarted = false;
+    dialog.addEventListener("pointerdown", function (event) {
+      backdropPointerStarted = event.target === dialog;
+    });
+    dialog.addEventListener("pointercancel", function () { backdropPointerStarted = false; });
+    dialog.addEventListener("click", function (event) {
+      const closeFromBackdrop = event.target === dialog && backdropPointerStarted;
+      backdropPointerStarted = false;
+      if (closeFromBackdrop) closeEntry(entry, true);
+    });
     dialog.addEventListener("cancel", function (event) { event.preventDefault(); closeEntry(entry, true); });
     form.querySelectorAll('[id$="-cancel"]').forEach(button => button.addEventListener("click", function () { closeEntry(entry, false); }));
 

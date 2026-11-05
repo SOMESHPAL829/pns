@@ -105,12 +105,13 @@
         loss_name: byId("breakdown-loss-name").value,
         is_active: byId("breakdown-is-active").checked,
       } });
+      window.PortalModalForms?.saved("breakdown-form");
       window.AppToast?.show(id ? "Downtime reason updated" : "Downtime reason registered", "ok");
       resetForm();
       await load();
-      window.PortalModalForms?.saved("breakdown-form");
     } catch (error) {
       alertMessage(error.message);
+      window.AppToast?.show(error.message, "crit");
     } finally { applyControls(); }
   });
 

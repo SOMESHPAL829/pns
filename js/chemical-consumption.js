@@ -2,7 +2,7 @@
   const access = window.PortalAccess;
   const api = (...args) => window.PortalRequest(...args);
   const byId = id => document.getElementById(id);
-  const state = { entries: [], items: [], processDescriptions: [], defaultOperator: "", loading: false };
+  const state = { entries: [], items: [], processDescriptions: [], processDescriptionsByPlant: {}, defaultOperator: "", loading: false };
 
   function showAlert(message) {
     const alert = byId("chemical-consumption-alert");
@@ -86,6 +86,7 @@
     byId("chemical-consumption-operator").value = state.defaultOperator;
     byId("chemical-consumption-save").textContent = "Save Entry";
     byId("chemical-consumption-cancel").hidden = true;
+    renderProcessDescriptions("");
     const uomSelect = byId("chemical-consumption-uom");
     uomSelect.replaceChildren(new Option("UOM", ""));
     if (state.items.length) {
@@ -115,9 +116,11 @@
 
   function renderProcessDescriptions(selectedValue) {
     const select = byId("chemical-consumption-process");
-    const value = String(selectedValue || select.value || "").trim();
+    const value = String(selectedValue === undefined ? (select.value || "") : selectedValue).trim();
+    const plant = String(byId("chemical-consumption-machine").value || "").trim().toLocaleUpperCase("en-IN");
+    const descriptions = state.processDescriptionsByPlant[plant] || [];
     select.replaceChildren(new Option("Select or enter a Process Description", ""));
-    state.processDescriptions.forEach(description => {
+    descriptions.forEach(description => {
       const text = String(description || "").trim();
       if (text) select.add(new Option(text, text));
     });
@@ -168,6 +171,7 @@
       state.entries = data.entries || [];
       state.items = data.items || [];
       state.processDescriptions = data.process_descriptions || [];
+      state.processDescriptionsByPlant = data.process_descriptions_by_plant || {};
       state.defaultOperator = data.default_operator || "";
       renderItems(byId("chemical-consumption-item").value);
       renderProcessDescriptions(byId("chemical-consumption-process").value);
@@ -207,18 +211,21 @@
         recommended_by: byId("chemical-consumption-recommended-by").value,
         remarks: byId("chemical-consumption-remarks").value
       } });
+      window.PortalModalForms?.saved("chemical-consumption-form");
       window.AppToast?.show(id ? "Chemical consumption entry updated" : "Chemical consumption entry recorded", "ok");
       resetForm();
       await load();
-      window.PortalModalForms?.saved("chemical-consumption-form");
     } catch (error) {
       showAlert(error.message);
+      window.AppToast?.show(error.message, "crit");
     } finally {
       applyControls();
     }
   });
 
   byId("chemical-consumption-item").addEventListener("change", updateUom);
+  byId("chemical-consumption-machine").addEventListener("input", function () { renderProcessDescriptions(""); });
+  byId("chemical-consumption-machine").addEventListener("change", function () { renderProcessDescriptions(""); });
   byId("chemical-consumption-cancel").addEventListener("click", resetForm);
   byId("chemical-consumption-refresh").addEventListener("click", load);
 

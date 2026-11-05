@@ -34,6 +34,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
             <div class="app-sidebar-brand-title">KARAM OEE</div>
             <div class="app-sidebar-brand-subtitle">PNS</div>
           </div>
+          <button type="button" id="sidebar-toggle" class="app-sidebar-brand-toggle" data-sidebar-toggle aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><span data-icon="sidebar-left"></span></button>
         </div>
       </div>
       <nav class="app-sidebar-nav">
@@ -64,13 +65,14 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <button class="app-sidebar-footer-logout" type="submit" aria-label="Sign Out" title="Sign Out"><span data-icon="arrow-right-start-on-rectangle"></span></button>
         </form>
       </div>
+      <div id="sidebar-resizer" class="app-sidebar-resizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical" aria-valuemin="84" aria-valuemax="480" tabindex="0"></div>
     </aside>
+    <button type="button" class="app-sidebar-mobile-launcher" data-sidebar-toggle aria-label="Open navigation" aria-expanded="false" title="Open navigation">K</button>
 
     <div class="app-main">
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <div class="app-topbar-leading">
-            <button type="button" id="sidebar-toggle" class="app-sidebar-mobile-toggle app-sidebar-toggle-top" aria-label="Toggle navigation" aria-expanded="true" title="Collapse sidebar"><span data-icon="bars-3"></span></button>
             <strong class="app-topbar-title" id="page-title" aria-live="polite">PNS OEE</strong>
           </div>
           <div class="app-topbar-actions">
@@ -243,7 +245,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card downtime-card"><div class="report-filters downtime-filter-bar"><label>Plant<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label><div class="downtime-filter-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
             <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" data-searchable-select data-search-placeholder="Search downtime reasons" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
-            <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
+            <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Down Time</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="scada-logs">
@@ -283,6 +285,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div class="page-heading"><div><div class="dash-eyebrow">Administration</div><h1>Users</h1><p class="page-lead">Manage account access and role assignments.</p></div></div>
           <div class="data-card"><div class="dash-card-head"><h2>User Accounts</h2><div class="table-heading-actions"><form class="table-heading-search-form" id="user-search-form"><input id="users-search" type="search" placeholder="Search Users" aria-label="Search Users"></form><button class="btn" type="button" data-modal-open="user-create-form" data-modal-mode="create" data-permission-page="users" data-permission-action="create">+ Add User</button></div></div><div class="data-scroll"><table class="data-table"><thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th><th>Plant Access</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead><tbody id="users-body"></tbody></table></div></div>
           <form id="user-role-form" class="form-stack" hidden><input id="user-role-user-id" type="hidden"><div><label class="form-label" for="user-role-user-name">User</label><input class="form-input" id="user-role-user-name" readonly></div><div><label class="form-label" for="user-role-select">Access Role</label><select class="form-select" id="user-role-select" required></select></div>
+            <div id="user-role-temporary-password-field" hidden><label class="form-label" for="user-role-temporary-password">Temporary Password</label><input class="form-input" id="user-role-temporary-password" type="password" minlength="12" maxlength="255" autocomplete="new-password" placeholder="Leave blank to keep current password"><p class="form-note">Optional. Enter at least 12 characters to replace this user's password and invalidate their existing sessions.</p></div>
+            <fieldset class="user-account-status"><legend>Account Status</legend><label><input id="user-role-active" type="checkbox" checked> Active</label><p class="form-note">Inactive users cannot sign in. Clear this checkbox to deactivate the account.</p></fieldset>
             <fieldset class="user-access-mode"><legend>Access Configuration</legend><label><input type="radio" name="user_access_mode" value="role" checked> Use Role Defaults</label><label><input type="radio" name="user_access_mode" value="custom"> Custom Access</label></fieldset>
             <fieldset class="plant-picker" data-user-default-plants><legend>Role Plant Access</legend><p class="form-note">Inherited from the selected role. Choose Custom Access to change this user's plants.</p><div id="user-role-plants" class="plant-picker-options"></div></fieldset>
             <fieldset class="plant-picker" data-user-custom-plants hidden><legend>Custom Plant Access</legend><p class="form-note">Choose the exact plants this user can access.</p><div id="user-role-custom-plants" class="plant-picker-options"></div></fieldset>
@@ -342,7 +346,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <div class="dash-card-head"><h2 id="chemical-rate-heading">INR Rate Registration</h2><div class="table-heading-actions"><input class="table-heading-search" type="search" placeholder="Search Rates" aria-label="Search Chemical Rates" data-table-search="#chemical-rates-body"></div></div>
               <form id="chemical-rate-form" class="master-form">
                 <input id="chemical-rate-id" type="hidden">
-                <label>Chemical Item<select id="chemical-rate-item" required><option value="">Select an Item</option></select></label>
+                <label>Chemical Item<select id="chemical-rate-item" data-searchable-select data-search-placeholder="Search chemical code or name" required><option value="">Select an Item</option></select></label>
                 <label>Rate (INR)<input id="chemical-rate-inr" type="number" min="0.0001" max="9999999999.9999" step="0.0001" required></label>
                 <label>Effective From<input id="chemical-rate-from" type="date" required></label>
                 <label>Effective To<input id="chemical-rate-to" type="date"></label>
@@ -386,8 +390,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <label class="chemical-consumption-wide">Process Description<select id="chemical-consumption-process" data-searchable-select data-allow-custom data-custom-maxlength="500" data-search-placeholder="Search or enter a process description" required><option value="">Select or enter a Process Description</option></select></label>
               <label>Chemical Name<select id="chemical-consumption-item" data-searchable-select data-search-placeholder="Search chemical name or code" required><option value="">Select a Chemical</option></select></label>
               <label>Consume Quantity<span class="chemical-quantity-control"><input id="chemical-consumption-quantity" type="number" min="0.0001" max="9999999999.9999" step="0.0001" required><select id="chemical-consumption-uom" class="chemical-quantity-uom" aria-label="Unit of measure" required><option value="">UOM</option></select></span></label>
-              <label class="chemical-consumption-wide">Used For<select id="chemical-consumption-used-for" required><option value="">Select a Usage</option><option value="Fresh Makeup">Fresh Makeup</option><option value="Top-Up">Top-Up</option></select></label>
-              <label>Recommended By<input id="chemical-consumption-recommended-by" maxlength="120" placeholder="Recommender Name" required></label>
+              <label class="chemical-consumption-wide">Used For<select id="chemical-consumption-used-for" required><option value="">SELECT A USAGE</option><option value="FRESH MAKEUP">FRESH MAKEUP</option><option value="TOP-UP">TOP-UP</option></select></label>
+              <label>Recommended By<select id="chemical-consumption-recommended-by" required><option value="">SELECT A RECOMMENDER</option><option value="QC MANAGER">QC MANAGER</option><option value="PRODUCTION MANAGER">PRODUCTION MANAGER</option></select></label>
               <label class="chemical-consumption-remarks">Remarks<textarea id="chemical-consumption-remarks" maxlength="1000" rows="2" placeholder="Optional Remarks"></textarea></label>
               <div class="chemical-consumption-actions"><button class="btn" id="chemical-consumption-save" type="submit">Save Entry</button><button class="btn ghost" id="chemical-consumption-cancel" type="button" hidden>Cancel Edit</button></div>
             </form>
@@ -486,6 +490,18 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <div class="chemical-cost-chartarea" id="chemical-cost-indexed-chart" role="img" aria-label="Indexed cost versus area"></div>
             </article>
           </section>
+          <section class="chemical-cost-item-chart">
+            <article class="data-card chemical-cost-chart-card chemical-cost-item-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Item-wise Chemical Cost</h2>
+                  <p class="chemical-cost-caption">Top 6 chemical items by spend</p>
+                </div>
+                <span class="chemical-cost-mini">INR</span>
+              </div>
+              <div class="chemical-cost-chartarea chemical-cost-item-chartarea" id="chemical-cost-item-chart" role="img" aria-label="Top six chemical items by spend"></div>
+            </article>
+          </section>
           <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
             <div class="dash-card-head chemical-cost-table-head">
               <div>
@@ -535,6 +551,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
   <script id="downtime-reason-catalog" type="application/json"><?= json_encode($downtimeReasonCatalog, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
   <script>window.PortalDowntimeReasons=JSON.parse(document.getElementById('downtime-reason-catalog').textContent||'[]');</script>
   <script src="js/icons.js?v=<?= filemtime(__DIR__ . '/js/icons.js') ?>"></script>
+  <script src="js/required-fields.js?v=<?= filemtime(__DIR__ . '/js/required-fields.js') ?>"></script>
   <script src="js/access.js?v=<?= filemtime(__DIR__ . '/js/access.js') ?>"></script>
   <script src="js/portal.js?v=<?= filemtime(__DIR__ . '/js/portal.js') ?>"></script>
   <script src="js/searchable-select.js?v=<?= filemtime(__DIR__ . '/js/searchable-select.js') ?>"></script>

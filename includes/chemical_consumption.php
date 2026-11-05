@@ -32,19 +32,30 @@ function chemical_consumption_list(PDO $pdo, string $defaultOperator = '', ?arra
         'e.consume_quantity,e.uom,e.used_for,e.recommended_by,e.remarks,e.created_at,e.updated_at,' .
         'i.item_code,i.description AS chemical_name,i.status AS chemical_status ' .
         'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id WHERE 1=1' . $scope . ' ' .
-        'ORDER BY e.entry_date DESC,e.id DESC LIMIT 1000'
+        'ORDER BY e.entry_date DESC,e.id DESC'
     );$query->execute($parameters);$entries=$query->fetchAll();
     $descriptionParameters=[];
     $descriptionScope=chemical_plant_filter($plants,'e.machine_code',$descriptionParameters);
     $descriptionQuery=$pdo->prepare(
-        "SELECT DISTINCT TRIM(e.process_description) AS process_description " .
+        "SELECT DISTINCT UPPER(TRIM(e.machine_code)) AS machine_code,UPPER(TRIM(e.process_description)) AS process_description " .
         "FROM chemical_consumption_entries e WHERE TRIM(e.process_description)<>''" . $descriptionScope . ' ' .
-        'ORDER BY process_description'
+        'ORDER BY machine_code,process_description'
     );
     $descriptionQuery->execute($descriptionParameters);
-    $processDescriptions=$descriptionQuery->fetchAll(PDO::FETCH_COLUMN);
+    $processDescriptionsByPlant=[];
+    foreach($descriptionQuery->fetchAll() as $descriptionRow){
+        $plant=(string)$descriptionRow['machine_code'];
+        $description=(string)$descriptionRow['process_description'];
+        if($plant!==''&&$description!=='')$processDescriptionsByPlant[$plant][]=$description;
+    }
+    $processDescriptions=[];
+    foreach($processDescriptionsByPlant as $descriptions){
+        foreach($descriptions as $description)$processDescriptions[$description]=true;
+    }
+    $processDescriptions=array_keys($processDescriptions);
+    sort($processDescriptions,SORT_NATURAL|SORT_FLAG_CASE);
     $items = $pdo->query('SELECT id,item_code,description,status,uom FROM chemical_items ORDER BY item_code LIMIT 1000')->fetchAll();
-    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'default_operator' => $defaultOperator];
+    return ['available' => true, 'entries' => $entries, 'items' => $items, 'process_descriptions' => $processDescriptions, 'process_descriptions_by_plant' => $processDescriptionsByPlant, 'default_operator' => $defaultOperator];
 }
 
 function chemical_consumption_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, ?array $plants=null): array
@@ -119,7 +130,7 @@ function chemical_cost_report_period(string $date, string $type, string $from, s
 function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, mixed $typeValue, ?array $plants=null): array
 {
     if (!chemical_cost_report_tables_ready($pdo)) {
-        return ['available' => false, 'message' => 'Chemical consumption and OEE production data must be installed before using this report.', 'rows' => [], 'machines' => []];
+        return ['available' => false, 'message' => 'Chemical consumption and OEE production data must be installed before using this report.', 'rows' => [], 'item_costs' => [], 'machines' => []];
     }
     $from = chemical_date($fromValue, 'From Date');
     $to = chemical_date($toValue, 'To Date');
@@ -156,6 +167,31 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
         'WHERE e.entry_date BETWEEN ? AND ?' . $consumptionMachineClause . ' GROUP BY e.machine_code,e.entry_date'
     );
     $cost->execute($machine === 'ALL' ? $costParameters : [$from, $to, $machine]);
+
+    $itemCostParameters=[$from,$to];
+    $itemCostMachineClause=$machine==='ALL'?chemical_plant_filter($plants,'e.machine_code',$itemCostParameters):' AND e.machine_code=?';
+    $itemCostQuery=$pdo->prepare(
+        'SELECT i.item_code,i.description AS chemical_name,' .
+        'COALESCE(SUM(CASE WHEN r.id IS NULL THEN 0 ELSE e.consume_quantity*r.rate_inr END),0) AS priced_cost,' .
+        'SUM(CASE WHEN r.id IS NULL THEN 1 ELSE 0 END) AS unpriced_entries ' .
+        'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
+        'LEFT JOIN chemical_item_rates r ON r.chemical_item_id=e.chemical_item_id ' .
+        'AND r.effective_from<=e.entry_date AND (r.effective_to IS NULL OR r.effective_to>=e.entry_date) ' .
+        'WHERE e.entry_date BETWEEN ? AND ?'.$itemCostMachineClause.' GROUP BY i.id,i.item_code,i.description'
+    );
+    $itemCostQuery->execute($machine==='ALL'?$itemCostParameters:[$from,$to,$machine]);
+    $itemCosts=$itemCostQuery->fetchAll();
+    foreach($itemCosts as &$itemCost){
+        $itemCost['unpriced_entries']=(int)$itemCost['unpriced_entries'];
+        $itemCost['total_chemical_cost']=$itemCost['unpriced_entries']>0?null:round((float)$itemCost['priced_cost'],4);
+        unset($itemCost['priced_cost']);
+    }
+    unset($itemCost);
+    usort($itemCosts,static function(array $left,array $right):int{
+        if($left['total_chemical_cost']===null)return $right['total_chemical_cost']===null?strcmp((string)$left['item_code'],(string)$right['item_code']):1;
+        if($right['total_chemical_cost']===null)return -1;
+        return $right['total_chemical_cost']<=>$left['total_chemical_cost'] ?: strcmp((string)$left['item_code'],(string)$right['item_code']);
+    });
 
     $groups = [];
     $add = static function (array $daily, string $source) use (&$groups, $type, $from, $to): void {
@@ -211,6 +247,7 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
         'report_type' => $type,
         'machines' => $machines,
         'rows' => $rows,
+        'item_costs' => array_slice($itemCosts,0,6),
         'formula' => 'Total Chemical Cost (INR) / Total Surface Area (dm²)',
     ];
 }
@@ -232,21 +269,24 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId, ?array $
     if (!chemical_consumption_tables_ready($pdo)) throw new DomainException('Chemical consumption migration is not installed yet.', 503);
     $id = filter_var($data['id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
     $entryDate = chemical_date($data['entry_date'] ?? null, 'Date');
-    $shift = chemical_text($data['shift_name'] ?? null, 'Shift', 40);
-    $operator = chemical_text($data['operator_name'] ?? null, 'Operator Name', 120);
-    $machine = strtoupper(chemical_text($data['machine_code'] ?? null, 'Plant Code', 80));
-    $process = chemical_text($data['process_description'] ?? null, 'Process Description', 500);
+    $shift = chemical_upper_text($data['shift_name'] ?? null, 'Shift', 40);
+    $operator = chemical_upper_text($data['operator_name'] ?? null, 'Operator Name', 120);
+    $machine = chemical_upper_text($data['machine_code'] ?? null, 'Plant Code', 80);
+    $process = chemical_upper_text($data['process_description'] ?? null, 'Process Description', 500);
     $chemicalId = filter_var($data['chemical_item_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
     if (!$chemicalId) throw new InvalidArgumentException('Choose a Chemical Name.');
     $quantity = chemical_consumption_quantity($data['consume_quantity'] ?? null);
-    $usedFor = chemical_text($data['used_for'] ?? null, 'Used For', 500);
-    if (!in_array($usedFor, ['Fresh Makeup', 'Top-Up'], true)) {
+    $usedFor = chemical_upper_text($data['used_for'] ?? null, 'Used For', 500);
+    if (!in_array($usedFor, ['FRESH MAKEUP', 'TOP-UP'], true)) {
         throw new InvalidArgumentException('Used For must be Fresh Makeup or Top-Up.');
     }
-    $recommendedBy = chemical_text($data['recommended_by'] ?? null, 'Recommended By', 120);
+    $recommendedBy = chemical_upper_text($data['recommended_by'] ?? null, 'Recommended By', 120);
+    if (!in_array($recommendedBy, ['QC MANAGER', 'PRODUCTION MANAGER'], true)) {
+        throw new InvalidArgumentException('Recommended By must be QC Manager or Production Manager.');
+    }
     $remarksRaw = $data['remarks'] ?? '';
     if (!is_string($remarksRaw)) throw new InvalidArgumentException('Remarks must be text.');
-    $remarks = trim($remarksRaw);
+    $remarks = mb_strtoupper(trim($remarksRaw), 'UTF-8');
     if (mb_strlen($remarks, 'UTF-8') > 1000) throw new InvalidArgumentException('Remarks is too long.');
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $machine)) throw new InvalidArgumentException('Enter a valid Plant Code.');
     if($plants!==null && !in_array($machine,$plants,true))throw new DomainException('You do not have access to this plant.',403);
@@ -256,7 +296,7 @@ function chemical_consumption_save(PDO $pdo, array $data, int $actorId, ?array $
     $item->execute([$chemicalId]);
     $chemical = $item->fetch();
     if (!$chemical) throw new DomainException('Chemical item not found.', 404);
-    $uom = strtoupper(chemical_text($data['uom'] ?? $chemical['uom'], 'UOM', 40));
+    $uom = chemical_upper_text($data['uom'] ?? $chemical['uom'], 'UOM', 40);
     if (!preg_match('/^[A-Z0-9][A-Z0-9 ._\/-]*$/', $uom)) throw new InvalidArgumentException('Enter a valid UOM.');
     if ($chemical['status'] !== 'active') {
         if ($id === null) throw new DomainException('Inactive chemical items cannot be used for new entries.', 409);

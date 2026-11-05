@@ -68,7 +68,7 @@ function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate
         $date = $row['report_date'];
         $colour = trim((string) ($row['used_colour'] ?: $row['report_colour']));
         if ($colour !== '') $colours[$date] = $colour;
-        $row['cycle_colour'] = $colour ?: ($colours[$date] ?? 'NO_COLOUR');
+        $row['cycle_colour'] = oee_cycle_colour($lineCode, $row['used_colour'], $row['report_colour'], $colours[$date] ?? '');
         $key = $date . '|' . $row['cycle_colour'];
         if (!array_key_exists($key, $cache)) {
             $standards->execute([$lineCode, $row['cycle_colour'], $date, $date]);
