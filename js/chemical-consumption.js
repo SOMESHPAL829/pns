@@ -211,12 +211,13 @@
         recommended_by: byId("chemical-consumption-recommended-by").value,
         remarks: byId("chemical-consumption-remarks").value
       } });
+      window.PortalModalForms?.saved("chemical-consumption-form");
       window.AppToast?.show(id ? "Chemical consumption entry updated" : "Chemical consumption entry recorded", "ok");
       resetForm();
       await load();
-      window.PortalModalForms?.saved("chemical-consumption-form");
     } catch (error) {
       showAlert(error.message);
+      window.AppToast?.show(error.message, "crit");
     } finally {
       applyControls();
     }

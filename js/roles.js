@@ -114,7 +114,8 @@
     try {
       button.disabled = true;
       await api("roles", "role-save", { method: "POST", body: { id, name: document.getElementById("role-name").value, permissions, plants: selectedPlants } });
-      await load(); editor(); message("Role saved. Permission changes apply on the next API request. Assign the role under Users."); window.PortalModalForms?.saved("role-form");
+      window.PortalModalForms?.saved("role-form"); window.AppToast?.show("Role saved", "ok");
+      await load(); editor(); message("Role saved. Permission changes apply on the next API request. Assign the role under Users.");
     } catch (error) { message(error.message); window.AppToast?.show(error.message, "crit"); button.disabled = false; }
   });
   window.addEventListener("portal-view-changed", function (event) { if (event.detail.route === "roles") load(); });

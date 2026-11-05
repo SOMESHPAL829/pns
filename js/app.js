@@ -1718,6 +1718,7 @@
       body.id = app.currentRecord.id;
     try {
       await request(resource || "", action, { method: "POST", body: body });
+      window.PortalModalForms?.saved(form.id);
       toast(success, "ok");
       if (form.id === "password-form") form.reset();
       else if (
@@ -1732,7 +1733,6 @@
         });
         if (updatedRecord) setDetail(updatedRecord);
       }
-      window.PortalModalForms?.saved(form.id);
       if (form.id === "record-create-form") location.hash = "#/requests";
       if (form.id === "user-create-form") location.hash = "#/users";
     } catch (error) {
@@ -1788,7 +1788,7 @@
     userForm.addEventListener("submit", async function (event) {
       event.preventDefault();
       const button=document.querySelector('[form="user-create-form"][type="submit"]');
-      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:[],custom_access:collectCustomAccess(userForm)}}); toast("User created","ok"); userForm.reset(); await refresh(); location.hash="#/users"; }
+      try { if(button)button.disabled=true; await request("users","user-create",{method:"POST",body:{username:userForm.elements.username.value,email:userForm.elements.email.value,full_name:userForm.elements.full_name.value,password:userForm.elements.password.value,role_id:Number(userForm.elements.role_id.value),extra_plants:[],custom_access:collectCustomAccess(userForm)}}); window.PortalModalForms?.saved("user-create-form"); toast("User created","ok"); userForm.reset(); location.hash="#/users"; await refresh(); }
       catch(error){toast(error.message,"crit");} finally {if(button)button.disabled=false;}
     });
 
@@ -1970,6 +1970,7 @@
             notes: document.getElementById("downtime-notes").value,
           },
         });
+        window.PortalModalForms?.saved("downtime-form");
         toast(app.downtimeEditId ? "Downtime tagged" : "Downtime saved", "ok");
         app.downtimeEditId = null;
         downtimeForm.reset();
@@ -1977,7 +1978,6 @@
           "false";
         window.PortalAccess.applyControls();
         await loadDowntime();
-        window.PortalModalForms?.saved("downtime-form");
       } catch (error) {
         showOeeAlert("downtime-alert", error.message, true);
         toast(error.message, "crit");
@@ -2008,6 +2008,8 @@
             gap_threshold_minutes: minutes,
           },
         });
+        window.PortalModalForms?.saved("threshold-form");
+        toast("Plant gap threshold saved", "ok");
         renderMasters(await request("oee", "masters", {}));
         showOeeAlert(
           "masters-alert",
@@ -2017,7 +2019,6 @@
             " min. Refresh the dashboard/report to recalculate automatic proposals.",
           true,
         );
-        window.PortalModalForms?.saved("threshold-form");
       } catch (error) {
         showOeeAlert("masters-alert", error.message, true);
         toast(error.message, "crit");
@@ -2043,10 +2044,10 @@
             effective_to: document.getElementById("cycle-to").value,
           },
         });
+        window.PortalModalForms?.saved("cycle-form");
         toast("Cycle time saved", "ok");
         cycleForm.reset();
         await loadMasters();
-        window.PortalModalForms?.saved("cycle-form");
       } catch (error) {
         showOeeAlert("masters-alert", error.message, true);
         toast(error.message, "crit");
@@ -2224,6 +2225,7 @@
             temporary_password: temporaryPassword,
           },
         });
+        window.PortalModalForms?.saved("user-role-form");
         toast(
           result.password_updated
             ? "Access saved and temporary password updated; the user's existing sessions are invalidated"
@@ -2231,7 +2233,6 @@
           "ok",
         );
         await refresh();
-        window.PortalModalForms?.saved("user-role-form");
       } catch (error) {
         toast(error.message, "crit");
       } finally {

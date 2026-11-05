@@ -168,10 +168,10 @@
     save.disabled = true;
     try {
       await api("chemicals", "item-save", { method: "POST", body: { id, item_code: byId("chemical-item-code").value, description: byId("chemical-description").value, status: byId("chemical-status").value, uom: byId("chemical-uom").value } });
+      window.PortalModalForms?.saved("chemical-item-form");
       window.AppToast?.show(id ? "Chemical item updated" : "Chemical item registered", "ok");
       resetItemForm();
       await load();
-      window.PortalModalForms?.saved("chemical-item-form");
     } catch (error) { alertMessage(error.message); window.AppToast?.show(error.message, "crit"); }
     finally { save.disabled = false; }
   });
@@ -184,10 +184,10 @@
     save.disabled = true;
     try {
       await api("chemicals", "rate-save", { method: "POST", body: { id, chemical_item_id: byId("chemical-rate-item").value, rate_inr: byId("chemical-rate-inr").value, effective_from: byId("chemical-rate-from").value, effective_to: byId("chemical-rate-to").value } });
+      window.PortalModalForms?.saved("chemical-rate-form");
       window.AppToast?.show(id ? "Chemical rate updated" : "Chemical rate registered", "ok");
       resetRateForm();
       await load();
-      window.PortalModalForms?.saved("chemical-rate-form");
     } catch (error) { alertMessage(error.message); window.AppToast?.show(error.message, "crit"); }
     finally { save.disabled = false; }
   });
