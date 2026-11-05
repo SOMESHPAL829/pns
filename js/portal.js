@@ -97,7 +97,9 @@
     if (location.hash !== routeHash) history.replaceState(null, "", routeHash);
     if (shell) shell.classList.remove("sidebar-open");
     if (window.matchMedia("(max-width: 980px)").matches) {
-      document.getElementById("sidebar-toggle")?.setAttribute("aria-expanded", "false");
+      document.querySelectorAll("[data-sidebar-toggle]").forEach(function (button) {
+        button.setAttribute("aria-expanded", "false");
+      });
     }
     closeHeaderMenus();
     window.dispatchEvent(
@@ -119,40 +121,48 @@
     });
   });
 
-  const toggle = document.getElementById("sidebar-toggle");
-  if (toggle && shell) {
+  const sidebarToggles = Array.from(document.querySelectorAll("[data-sidebar-toggle]"));
+  if (sidebarToggles.length && shell) {
     const syncSidebarToggle = function () {
       const mobileLayout = window.matchMedia("(max-width: 980px)").matches;
+      if (mobileLayout) shell.classList.remove("sidebar-collapsed");
+      else shell.classList.toggle("sidebar-collapsed", localStorage.getItem("pns-sidebar-collapsed") === "true");
       const expanded = mobileLayout
         ? shell.classList.contains("sidebar-open")
-        : !shell.classList.contains("sidebar-collapsed");
-      toggle.setAttribute("aria-expanded", String(expanded));
-      toggle.title = mobileLayout
-        ? expanded ? "Close navigation" : "Open navigation"
-        : expanded ? "Collapse sidebar" : "Expand sidebar";
+        : !shell.classList.contains("sidebar-collapsed") && !shell.classList.contains("sidebar-resized-compact");
+      sidebarToggles.forEach(function (button) {
+        const label = mobileLayout
+          ? expanded ? "Close navigation" : "Open navigation"
+          : expanded ? "Collapse sidebar" : "Expand sidebar";
+        button.setAttribute("aria-expanded", String(expanded));
+        button.setAttribute("aria-label", label);
+        button.title = label;
+      });
     };
-    if (!window.matchMedia("(max-width: 980px)").matches && localStorage.getItem("pns-sidebar-collapsed") === "true") {
-      shell.classList.add("sidebar-collapsed");
-    }
-    toggle.addEventListener("click", function () {
-      if (window.matchMedia("(max-width: 980px)").matches) {
-        shell.classList.toggle("sidebar-open");
-      } else {
-        const wasCollapsed = shell.classList.contains("sidebar-collapsed");
-        shell.classList.toggle("sidebar-collapsed");
-        localStorage.setItem("pns-sidebar-collapsed", String(shell.classList.contains("sidebar-collapsed")));
-        if (wasCollapsed) window.PortalSidebarResize?.restoreExpanded();
-      }
-      syncSidebarToggle();
+    sidebarToggles.forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (window.matchMedia("(max-width: 980px)").matches) {
+          shell.classList.toggle("sidebar-open");
+        } else {
+          const wasCollapsed = shell.classList.contains("sidebar-collapsed");
+          const wasCompact = shell.classList.contains("sidebar-resized-compact");
+          if (wasCollapsed || wasCompact) shell.classList.remove("sidebar-collapsed");
+          else shell.classList.add("sidebar-collapsed");
+          localStorage.setItem("pns-sidebar-collapsed", String(shell.classList.contains("sidebar-collapsed")));
+          if (wasCollapsed || wasCompact) window.PortalSidebarResize?.restoreExpanded();
+        }
+        syncSidebarToggle();
+      });
     });
     window.addEventListener("resize", syncSidebarToggle);
+    window.PortalSidebarToggleSync = syncSidebarToggle;
     syncSidebarToggle();
   }
   const backdrop = document.getElementById("sidebar-backdrop");
   if (backdrop && shell) {
     backdrop.addEventListener("click", function () {
       shell.classList.remove("sidebar-open");
-      if (toggle) toggle.setAttribute("aria-expanded", "false");
+      sidebarToggles.forEach(function (button) { button.setAttribute("aria-expanded", "false"); });
     });
   }
 
@@ -177,6 +187,7 @@
       shell.style.setProperty("--sidebar-w", currentWidth + "px");
       const isDesktop = !window.matchMedia("(max-width: 980px)").matches;
       shell.classList.toggle("sidebar-resized-compact", isDesktop && currentWidth < compactWidth);
+      window.PortalSidebarToggleSync?.();
       sidebarResizer.setAttribute("aria-valuenow", String(currentWidth));
       sidebarResizer.setAttribute("aria-valuemax", String(widthLimit()));
       if (save) {

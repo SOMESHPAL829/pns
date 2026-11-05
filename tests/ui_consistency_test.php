@@ -22,7 +22,10 @@ ui_check(!str_contains($shell, 'uppercase-fields.js') && str_contains($styles, '
 ui_check(!str_contains($shell, 'app-header-profile-card'), 'Profile dropdown contains content beyond Profile and Sign Out options.');
 ui_check(substr_count($shell, 'data-logout-form') === 2, 'Both portal logout actions must use loading feedback.');
 ui_check(str_contains($shell, 'class="app-sidebar-account"') && str_contains($shell, 'data-goto="profile"') && str_contains($shell, 'class="app-sidebar-footer-logout"') && str_contains($shell, 'data-icon="arrow-right-start-on-rectangle"'), 'Sidebar account footer must open Profile and expose an outward-facing logout icon.');
-ui_check(str_contains($shell, 'id="sidebar-toggle"') && !str_contains($shell, 'id="sidebar-mobile-toggle"'), 'The sidebar toggle must live in the topbar on desktop and mobile.');
+$sidebarTogglePosition = strpos($shell, 'id="sidebar-toggle"');
+$sidebarEndPosition = strpos($shell, '</aside>');
+$topbarPosition = strpos($shell, 'class="app-topbar"');
+ui_check($sidebarTogglePosition !== false && $sidebarEndPosition !== false && $topbarPosition !== false && $sidebarTogglePosition < $sidebarEndPosition && $sidebarTogglePosition < $topbarPosition, 'The desktop sidebar toggle must live beside the sidebar brand, not in the topbar.');
 ui_check(str_contains($login, 'data-loading-form') && str_contains($login, 'auth-message-transient'), 'Login/logout feedback is incomplete.');
 ui_check(str_contains($shell, 'id="welcome-message"') && str_contains($shell, 'id="page-transition"'), 'Welcome or transition UI is missing.');
 ui_check(substr_count($shell, 'class="page-transition-dialog"') === 1 && str_contains($login, 'class="page-transition-dialog"'), 'Premium login/logout transition dialogs are missing.');

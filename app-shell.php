@@ -34,6 +34,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
             <div class="app-sidebar-brand-title">KARAM OEE</div>
             <div class="app-sidebar-brand-subtitle">PNS</div>
           </div>
+          <button type="button" id="sidebar-toggle" class="app-sidebar-brand-toggle" data-sidebar-toggle aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar"><span data-icon="sidebar-left"></span></button>
         </div>
       </div>
       <nav class="app-sidebar-nav">
@@ -66,12 +67,12 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
       </div>
       <div id="sidebar-resizer" class="app-sidebar-resizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical" aria-valuemin="84" aria-valuemax="480" tabindex="0"></div>
     </aside>
+    <button type="button" class="app-sidebar-mobile-launcher" data-sidebar-toggle aria-label="Open navigation" aria-expanded="false" title="Open navigation">K</button>
 
     <div class="app-main">
       <header class="app-topbar">
         <div class="app-topbar-inner">
           <div class="app-topbar-leading">
-            <button type="button" id="sidebar-toggle" class="app-sidebar-mobile-toggle app-sidebar-toggle-top" aria-label="Toggle navigation" aria-expanded="true" title="Collapse sidebar"><span data-icon="bars-3"></span></button>
             <strong class="app-topbar-title" id="page-title" aria-live="polite">PNS OEE</strong>
           </div>
           <div class="app-topbar-actions">
