@@ -144,8 +144,22 @@
 
   function setText(id, value) {
     const node = document.getElementById(id);
-    if (node)
+    if (node) {
       node.textContent = value == null || value === "" ? "—" : String(value);
+      updateDashboardMessageTooltip(node);
+    }
+  }
+
+  function updateDashboardMessageTooltip(node) {
+    const message = node.closest(
+      ".dashboard-live-messages .oee-window-summary, .dashboard-live-messages .oee-status-strip, .dashboard-live-messages .pns-loading, .dashboard-live-messages .oee-alert",
+    );
+    if (!message) return;
+    const fullText = message.textContent.replace(/\s+/g, " ").trim();
+    if (!fullText) return;
+    message.title = fullText;
+    message.setAttribute("aria-label", fullText);
+    message.tabIndex = 0;
   }
 
   function showOeeAlert(id, message, visible) {
@@ -156,11 +170,11 @@
     if (visible && message) {
       node.title = String(message);
       node.setAttribute("aria-label", String(message));
-      if (id === "oee-dashboard-alert") node.tabIndex = 0;
+      updateDashboardMessageTooltip(node);
     } else {
       node.removeAttribute("title");
       node.removeAttribute("aria-label");
-      if (id === "oee-dashboard-alert") node.removeAttribute("tabindex");
+      node.removeAttribute("tabindex");
     }
   }
 

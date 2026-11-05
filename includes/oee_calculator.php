@@ -50,13 +50,12 @@ function oee_calculate_daily(PDO $pdo, string $lineCode, string $reportDate): ar
         $unload = $row['unloading_at'] ?: $load;
         if ($load !== null && ($first === null || $load < $first)) $first = $load;
         if ($load !== null && ($last === null || $load > $last)) $last = $load;
-        $colour = trim((string) ($row['used_colour'] ?: $row['report_colour']));
-        if ($colour !== '') $previousColour = $colour;
+        $sourceColour = trim((string) ($row['used_colour'] ?: $row['report_colour']));
+        if ($sourceColour !== '') $previousColour = $sourceColour;
         $rowFlags = [];
         if ((int) $row['is_productive'] !== 1) continue;
         $productive++;
-        $colour = $colour !== '' ? $colour : $previousColour;
-        if ($colour === '') $colour = 'NO_COLOUR';
+        $colour = oee_cycle_colour($lineCode, $row['used_colour'], $row['report_colour'], $previousColour);
         $cycleQuery->execute([$lineCode, $colour, $reportDate, $reportDate]);
         $cycle = $cycleQuery->fetchColumn();
         if ($cycle === false || (float) $cycle <= 0) {

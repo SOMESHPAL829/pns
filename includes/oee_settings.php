@@ -8,6 +8,20 @@ function oee_line_code_ok(string $line): bool
 }
 
 /**
+ * Plants whose SCADA feed legitimately leaves colour blank use their
+ * plant-specific NO COLOUR master standard. Other plants retain the existing
+ * fill-forward behaviour used by their feed.
+ */
+function oee_cycle_colour(string $lineCode, mixed $usedColour, mixed $reportColour, string $previousColour = ''): string
+{
+    $colour = trim((string) ($usedColour ?: $reportColour));
+    if ($colour !== '') return $colour;
+    $plant = preg_replace('/[^A-Z0-9]/', '', strtoupper(trim($lineCode)));
+    if (in_array($plant, ['APP03', 'APP04', 'APP07', 'APP10'], true)) return 'NO COLOUR';
+    return trim($previousColour) !== '' ? trim($previousColour) : 'NO_COLOUR';
+}
+
+/**
  * Dynamic plant list from live OEE tables — no hardcoded APP/CED codes.
  * New lines appear automatically after the first successful Unit 1 ingest
  * (or after a cycle/threshold/downtime row is saved for that line).

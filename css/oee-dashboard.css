@@ -95,8 +95,14 @@
   border-color: var(--warn);
   background: var(--warn-sft);
   color: #6f4b12;
-  cursor: help;
 }
+.pns-dashboard .dashboard-live-messages .oee-window-summary,
+.pns-dashboard .dashboard-live-messages .oee-status-strip,
+.pns-dashboard .dashboard-live-messages .pns-loading,
+.pns-dashboard .dashboard-live-messages .oee-alert { cursor: help; }
+.pns-dashboard .dashboard-live-messages .oee-window-summary:focus-visible,
+.pns-dashboard .dashboard-live-messages .oee-status-strip:focus-visible,
+.pns-dashboard .dashboard-live-messages .pns-loading:focus-visible,
 .pns-dashboard .dashboard-live-messages .oee-alert:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
