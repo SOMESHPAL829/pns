@@ -101,6 +101,19 @@
     return String(value).replace("T", " ").slice(0, 16);
   }
 
+  function downtimeMinutes(startsAt, endsAt) {
+    const parseTimestamp = function (value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+      if (!match) return NaN;
+      const milliseconds = Number((match[7] || "").padEnd(3, "0").slice(0, 3));
+      return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]), Number(match[6]), milliseconds);
+    };
+    const start = parseTimestamp(startsAt);
+    const end = parseTimestamp(endsAt);
+    const minutes = (end - start) / 60000;
+    return Number.isFinite(minutes) && minutes >= 0 ? minutes.toFixed(3) + " min" : "—";
+  }
+
   function percent(value) {
     if (value === null || value === undefined || value === "") return "—";
     return (Number(value) * 100).toFixed(1) + "%";
@@ -1068,6 +1081,7 @@
       makeCell(row, readableDateTime(item.starts_at));
       makeCell(row, readableDateTime(item.ends_at));
       makeCell(row, titleLabel(item.event_type));
+      makeCell(row, downtimeMinutes(item.starts_at, item.ends_at));
       makeCell(row, item.reason_label || item.reason_code);
       makeCell(row, titleLabel(item.source));
       makeCell(row, titleLabel(item.status));
@@ -1102,7 +1116,7 @@
         row,
         "No downtime tagged for this plant and date yet.",
       );
-      cell.colSpan = 8;
+      cell.colSpan = 9;
       body.appendChild(row);
     }
   }
