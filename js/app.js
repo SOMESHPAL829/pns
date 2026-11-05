@@ -2134,6 +2134,14 @@
         document.getElementById("user-role-user-id").value = selectedUser.id;
         document.getElementById("user-role-user-name").value =
           selectedUser.full_name + " (" + selectedUser.username + ")";
+        const temporaryPasswordField = document.getElementById("user-role-temporary-password-field");
+        const temporaryPasswordInput = document.getElementById("user-role-temporary-password");
+        const administratorCanResetPassword = app.user?.role === "admin";
+        if (temporaryPasswordField) temporaryPasswordField.hidden = !administratorCanResetPassword;
+        if (temporaryPasswordInput) {
+          temporaryPasswordInput.value = "";
+          temporaryPasswordInput.disabled = !administratorCanResetPassword;
+        }
         const roleSelect = document.getElementById("user-role-select");
         const assigned =
           selectedUser.access_role_id ||
@@ -2202,17 +2210,24 @@
       const button = userRoleForm.querySelector('button[type="submit"]');
       try {
         button.disabled = true;
-        await request("users", "user-role", {
+        const temporaryPasswordInput = document.getElementById("user-role-temporary-password");
+        const temporaryPassword = app.user?.role === "admin" && !temporaryPasswordInput?.disabled
+          ? temporaryPasswordInput?.value || ""
+          : "";
+        const result = await request("users", "user-role", {
           method: "POST",
           body: {
             id: Number(document.getElementById("user-role-user-id").value),
             role_id: Number(document.getElementById("user-role-select").value),
             extra_plants: [],
             custom_access: collectCustomAccess(userRoleForm),
+            temporary_password: temporaryPassword,
           },
         });
         toast(
-          "Role assigned; the user's existing sessions are invalidated",
+          result.password_updated
+            ? "Access saved and temporary password updated; the user's existing sessions are invalidated"
+            : "Role assigned; the user's existing sessions are invalidated",
           "ok",
         );
         await refresh();
