@@ -13,10 +13,11 @@ $dashboardStyles = file_get_contents(dirname(__DIR__) . '/css/oee-dashboard.css'
 $dashboard = file_get_contents(dirname(__DIR__) . '/includes/dashboard.php');
 $appScript = file_get_contents(dirname(__DIR__) . '/js/app.js');
 $portalScript = file_get_contents(dirname(__DIR__) . '/js/portal.js');
+$tablePaginationScript = file_get_contents(dirname(__DIR__) . '/js/table-pagination.js');
 $chemicalCostScript = file_get_contents(dirname(__DIR__) . '/js/chemical-cost-report.js');
 $requiredFields = file_get_contents(dirname(__DIR__) . '/js/required-fields.js');
 $password = file_get_contents(dirname(__DIR__) . '/password.php');
-ui_check(is_string($shell) && is_string($login) && is_string($styles) && is_string($dashboardStyles) && is_string($dashboard) && is_string($appScript) && is_string($portalScript) && is_string($chemicalCostScript) && is_string($requiredFields) && is_string($password), 'UI source files could not be read.');
+ui_check(is_string($shell) && is_string($login) && is_string($styles) && is_string($dashboardStyles) && is_string($dashboard) && is_string($appScript) && is_string($portalScript) && is_string($tablePaginationScript) && is_string($chemicalCostScript) && is_string($requiredFields) && is_string($password), 'UI source files could not be read.');
 ui_check(str_contains($requiredFields, 'form input[required]') && str_contains($requiredFields, 'required-marker') && str_contains($requiredFields, 'MutationObserver'), 'Required-field markers do not cover static and dynamic forms.');
 ui_check(str_contains($shell, 'js/required-fields.js') && str_contains($login, 'js/required-fields.js') && str_contains($password, 'js/required-fields.js'), 'Required-field markers are not loaded on every authentication and portal form page.');
 ui_check(!str_contains($shell, 'uppercase-fields.js') && str_contains($styles, '.data-table tbody td') && !str_contains($styles, '.uppercase-field'), 'Uppercase presentation must be limited to table values.');
@@ -31,6 +32,10 @@ ui_check($sidebarTogglePosition !== false && $sidebarEndPosition !== false && $t
 ui_check(str_contains($portalScript, 'event.detail > 0') && str_contains($portalScript, 'button.blur()'), 'The collapsed sidebar logo can remain hidden by stale pointer focus.');
 ui_check(str_contains($login, 'data-loading-form') && str_contains($login, 'auth-message-transient'), 'Login/logout feedback is incomplete.');
 ui_check(str_contains($login, 'Your account is inactive. Contact your administrator.'), 'Inactive users must receive the requested sign-in guidance after valid credentials.');
+ui_check(!str_contains($appScript, 'appendChild(toggle)') && str_contains($appScript, 'window.PortalFormatDateTime = readableDateTime'), 'User rendering still references the removed status toggle or table date formatting is unavailable.');
+ui_check(str_contains($appScript, 'user.username || "").toLocaleLowerCase') && str_contains($appScript, 'user.email || "").toLocaleLowerCase') && str_contains($styles, '[data-view="users"] .data-table td:nth-child(2)') && str_contains($styles, 'text-transform: lowercase;'), 'Usernames and email addresses are not consistently displayed in lowercase.');
+ui_check(str_contains($shell, 'class="data-table downtime-events-table"') && str_contains($styles, '.downtime-events-table .downtime-col-notes { width: 34rem; }') && str_contains($styles, '.data-table td.table-date-cell { white-space: nowrap; }'), 'Downtime notes sizing or one-line table dates are missing.');
+ui_check(str_contains($tablePaginationScript, 'Date.UTC(Number(match[3])'), 'DD-MM-YYYY table sorting is not date-aware.');
 ui_check(str_contains($shell, 'id="user-role-active"') && !str_contains($appScript, 'data-toggle-user') && !str_contains($appScript, '" — " + scopeLabel'), 'User status must be managed in the access modal and role selects must not repeat plant scope.');
 ui_check(str_contains($shell, 'id="welcome-message"') && str_contains($shell, 'id="page-transition"'), 'Welcome or transition UI is missing.');
 ui_check(substr_count($shell, 'class="page-transition-dialog"') === 1 && str_contains($login, 'class="page-transition-dialog"'), 'Premium login/logout transition dialogs are missing.');
@@ -56,5 +61,7 @@ ui_check(substr_count($dashboard, 'dashboard-link-button') >= 4 && str_contains(
 ui_check(str_contains($login, 'data-password-toggle="password"') && str_contains($shell, 'data-password-toggle="current-password"') && str_contains($shell, 'data-password-toggle="new-password"'), 'Login or profile password visibility controls are missing.');
 ui_check(!str_contains($dashboard, 'Reporting Window') && str_contains($shell, '>End Time</th>') && str_contains($shell, 'Calculation Time') && str_contains($appScript, '"h Utilization"'), 'Calculation-time terminology is inconsistent in the UI.');
 ui_check(str_contains($shell, 'id="chemical-cost-item-chart"') && str_contains($chemicalCostScript, 'function itemCostChart') && str_contains($chemicalCostScript, 'data.item_costs || []'), 'The item-wise chemical cost chart is not connected to report data.');
+ui_check(substr_count($shell, 'data-no-required-marker') >= 6 && str_contains($requiredFields, 'label.hasAttribute("data-no-required-marker")'), 'Report date labels cannot suppress their visual required marker.');
+ui_check(str_contains($chemicalCostScript, 'item.known_chemical_cost || 0') && str_contains($chemicalCostScript, 'complete: item.total_chemical_cost != null'), 'Chemical cost charts do not retain the known priced portion of incomplete periods.');
 
 echo "Portal UI consistency and authentication feedback tests passed\n";

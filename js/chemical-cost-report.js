@@ -18,12 +18,8 @@
 
   function displayDate(value) {
     if (!value) return "—";
-    const parts = value.split("-").map(Number);
-    return new Intl.DateTimeFormat("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(new Date(parts[0], parts[1] - 1, parts[2]));
+    const parts = String(value).slice(0, 10).split("-");
+    return parts.length === 3 ? parts[2] + "-" + parts[1] + "-" + parts[0] : String(value);
   }
 
   function showAlert(message, isError) {
@@ -120,14 +116,20 @@
         period: item.report_period,
         machine: item.machine_code,
         area: Number(item.total_surface_area) || 0,
-        cost:
+        cost: Number(
           item.total_chemical_cost == null
-            ? null
-            : Number(item.total_chemical_cost),
+            ? item.known_chemical_cost || 0
+            : item.total_chemical_cost,
+        ),
         rate:
-          item.chemical_cost_per_dm2 == null
-            ? null
-            : Number(item.chemical_cost_per_dm2),
+          Number(item.total_surface_area) > 0
+            ? Number(
+                item.total_chemical_cost == null
+                  ? item.known_chemical_cost || 0
+                  : item.total_chemical_cost,
+              ) / Number(item.total_surface_area)
+            : null,
+        complete: item.total_chemical_cost != null,
         unpriced: Number(item.unpriced_entries || 0),
       }));
     }
@@ -142,19 +144,22 @@
         area: 0,
         cost: 0,
         unpriced: 0,
-        priced: true,
+        complete: true,
       };
       existing.area += Number(item.total_surface_area) || 0;
       existing.unpriced += Number(item.unpriced_entries || 0);
-      if (item.total_chemical_cost == null) existing.priced = false;
-      else existing.cost += Number(item.total_chemical_cost);
+      if (item.total_chemical_cost == null) existing.complete = false;
+      existing.cost += Number(
+        item.total_chemical_cost == null
+          ? item.known_chemical_cost || 0
+          : item.total_chemical_cost,
+      );
       groups.set(key, existing);
     });
 
     return Array.from(groups.values()).map((item) => {
-      const cost = item.priced ? item.cost : null;
-      const rate = cost == null || !(item.area > 0) ? null : cost / item.area;
-      return { ...item, cost, rate };
+      const rate = item.area > 0 ? item.cost / item.area : null;
+      return { ...item, rate };
     });
   }
 
@@ -181,6 +186,7 @@
 
   function renderKpis(series, reportType) {
     const priced = series.filter((row) => row.cost != null);
+    const complete = series.length > 0 && series.every((row) => row.complete !== false);
     const area = series.reduce((sum, row) => sum + row.area, 0);
     const cost = priced.reduce((sum, row) => sum + row.cost, 0);
     const rate =
@@ -194,7 +200,7 @@
     const cards = [
       [
         "Total Chemical Cost",
-        priced.length === series.length ? money(cost, 0) : "Incomplete",
+        complete ? money(cost, 0) : "Incomplete",
         "Across " + series.length + " reporting periods",
       ],
       [
@@ -204,12 +210,12 @@
       ],
       [
         "Weighted Cost / dm²",
-        rate == null ? "—" : "₹" + decimal(rate, 3),
+        rate == null || !complete ? "—" : "₹" + decimal(rate, 3),
         "Total cost ÷ total surface area",
       ],
       [
         "Unit Cost Change",
-        delta == null ? "—" : pct(delta),
+        delta == null || !complete ? "—" : pct(delta),
         reportType === "weekly"
           ? "First-to-last week comparison"
           : reportType === "monthly"
@@ -220,9 +226,9 @@
     byId("chemical-cost-report-kpis").innerHTML = cards
       .map((card, index) => {
         const deltaClass =
-          index === 3 && delta != null ? (delta <= 0 ? " ok" : " warn") : "";
+          index === 3 && delta != null && complete ? (delta <= 0 ? " ok" : " warn") : "";
         const foot =
-          index === 3 && delta != null
+          index === 3 && delta != null && complete
             ? card[2] + " · " + (delta <= 0 ? "↓ improvement" : "↑ increase")
             : card[2];
         return (
@@ -405,7 +411,10 @@
             "<br>Area: " +
             decimal(row.area, 2) +
             " dm²<br>Cost / dm²: " +
-            (row.rate == null ? "—" : "₹" + decimal(row.rate, 4)),
+            (row.rate == null ? "—" : "₹" + decimal(row.rate, 4)) +
+            (row.complete === false
+              ? "<br><b>Partial:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
+              : ""),
         );
       });
       mark.addEventListener("pointerleave", tipHide);
@@ -543,7 +552,10 @@
             money(row.cost, 0) +
             "<br>Surface Area: " +
             decimal(row.area, 2) +
-            " dm²",
+            " dm²" +
+            (row.complete === false
+              ? "<br><b>Partial cost:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
+              : ""),
         );
       });
       mark.addEventListener("pointerleave", tipHide);

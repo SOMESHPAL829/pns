@@ -2137,10 +2137,24 @@ table.data tbody tr:hover {
 .data-table th[aria-sort="descending"] .table-sort-indicator::before { content: "↓"; }
 .data-table th:has(.table-sort-button):hover { background: #294b73; }
 .data-table td { padding: 0.75rem 0.9rem; vertical-align: middle; }
+.data-table td.table-date-cell { white-space: nowrap; }
 .data-table tbody tr:last-child td { border-bottom: 0; }
 .data-table tbody tr:hover td { background: #f3f7fb; }
 .row-actions { min-height: 1.75rem; gap: 0.5rem; justify-content: flex-start; flex-wrap: wrap; }
 .row-actions-cell { white-space: nowrap; }
+
+.downtime-events-table { min-width: 106rem; table-layout: fixed; }
+.downtime-events-table .downtime-col-start,
+.downtime-events-table .downtime-col-end { width: 10.5rem; }
+.downtime-events-table .downtime-col-type { width: 8.5rem; }
+.downtime-events-table .downtime-col-duration { width: 9rem; }
+.downtime-events-table .downtime-col-reason { width: 12rem; }
+.downtime-events-table .downtime-col-source { width: 8rem; }
+.downtime-events-table .downtime-col-status { width: 9rem; }
+.downtime-events-table .downtime-col-notes { width: 34rem; }
+.downtime-events-table .downtime-col-action { width: 5rem; }
+.downtime-events-table th:nth-child(8),
+.downtime-events-table td:nth-child(8) { white-space: normal; overflow-wrap: break-word; }
 .link { min-height: 1.75rem; display: inline-flex; align-items: center; color: var(--accent); }
 
 .table-action,
@@ -3458,6 +3472,10 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 [data-view="users"] .data-table th:nth-child(6),
 [data-view="users"] .data-table td:nth-child(6) {
   min-width: 7.5rem;
+}
+[data-view="users"] .data-table td:nth-child(2),
+[data-view="users"] .data-table td:nth-child(4) {
+  text-transform: lowercase;
 }
 
 /* Keep compact OEE filter headings readable instead of compressing their labels. */

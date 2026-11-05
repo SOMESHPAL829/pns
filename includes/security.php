@@ -6,6 +6,11 @@ function normalize_email(string $email): string
     return mb_strtolower(trim($email), 'UTF-8');
 }
 
+function normalize_username(string $username): string
+{
+    return mb_strtolower(trim($username), 'UTF-8');
+}
+
 function password_is_valid(string $password): bool
 {
     return mb_strlen($password, 'UTF-8') >= 12 && strlen($password) <= 4096;

@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               $userQuery = $pdo->prepare(
                 'SELECT id, username, email, full_name, password_hash, role, is_active, auth_version FROM portal_users WHERE username = ? LIMIT 1'
               );
-              $userQuery->execute([$login]);
+              $userQuery->execute([normalize_username($login)]);
               $user = $userQuery->fetch();
             }
             $dummyHash = password_hash('not-a-real-user-password', PASSWORD_DEFAULT);

@@ -221,6 +221,9 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
     usort($rows, static fn(array $left, array $right): int => [$left['period_key'], $left['machine_code']] <=> [$right['period_key'], $right['machine_code']]);
     foreach ($rows as &$row) {
         $row['total_surface_area'] = round($row['total_surface_area'], 4);
+        // Preserve the safely priced portion for charting while withholding the
+        // final total whenever any consumption entry has no effective rate.
+        $row['known_chemical_cost'] = round($row['priced_chemical_cost'], 4);
         if ($row['unpriced_entries'] > 0) {
             $row['total_chemical_cost'] = null;
             $row['chemical_cost_per_dm2'] = null;

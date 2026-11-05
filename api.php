@@ -698,7 +698,7 @@ try {
     }
 
     if ($action === 'user-create' && $method === 'POST') {
-        $username = trim(api_text($data, 'username', 80));
+        $username = normalize_username(api_text($data, 'username', 80));
         $email = normalize_email(api_text($data, 'email', 254));
         $name = api_text($data, 'full_name', 160);
         $password = (string) ($data['password'] ?? '');

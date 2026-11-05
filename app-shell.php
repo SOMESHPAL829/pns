@@ -119,8 +119,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and plant.</p></div></div>
           <section class="data-card">
             <form id="range-form" class="report-filters range-toolbar">
-              <label class="date-range-control">From Date<input id="range-from-date" type="date" required></label>
-              <label class="date-range-control">To Date<input id="range-to-date" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="range-from-date" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="range-to-date" type="date" required></label>
               <label>Plant<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
@@ -245,7 +245,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="downtime-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card downtime-card"><div class="report-filters downtime-filter-bar"><label>Plant<select id="downtime-machine"><?= oee_machine_options_html($oeeLines) ?></select></label><label>Date<input id="downtime-date" type="date"></label><div class="downtime-filter-actions"><button class="btn" id="downtime-refresh" type="button">Refresh</button></div></div>
             <form id="downtime-form" class="downtime-form"><label>Start<input id="downtime-start" type="datetime-local" required></label><label>End<input id="downtime-end" type="datetime-local" required></label><label>Type<select id="downtime-type"><option value="planned">Planned</option><option value="unplanned" selected>Unplanned</option></select></label><label>Reason<select id="downtime-reason" data-searchable-select data-search-placeholder="Search downtime reasons" required><option value="">Select a reason</option></select></label><label class="form-span">Notes<input id="downtime-notes" maxlength="500"></label><button class="btn" type="submit">Save Downtime</button></form>
-            <div class="data-scroll"><table class="data-table" data-export-title="Downtime Events"><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Down Time</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
+            <div class="data-scroll"><table class="data-table downtime-events-table" data-export-title="Downtime Events"><colgroup><col class="downtime-col-start"><col class="downtime-col-end"><col class="downtime-col-type"><col class="downtime-col-duration"><col class="downtime-col-reason"><col class="downtime-col-source"><col class="downtime-col-status"><col class="downtime-col-notes"><col class="downtime-col-action"></colgroup><thead><tr><th>Start Time</th><th>End Time</th><th>Type</th><th>Down Time</th><th>Reason</th><th>Source</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead><tbody id="downtime-body"></tbody></table></div></section>
         </section>
 
         <section class="view" data-view="scada-logs">
@@ -404,8 +404,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="chemical-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-report-filter-card" aria-label="Chemical Consumption Report Controls">
             <form id="chemical-report-filter-form" class="master-form chemical-report-toolbar">
-              <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
-              <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="chemical-report-from" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="chemical-report-to" type="date" required></label>
               <label>Plant<select id="chemical-report-machine"><option value="ALL">All Plants</option></select></label>
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
               <button class="btn ghost" id="chemical-report-print" type="button">Print Report</button>
@@ -433,8 +433,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="chemical-cost-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-cost-report-filter-card" aria-label="Chemical Cost Controls">
             <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
-              <label class="date-range-control">From Date<input id="chemical-cost-report-from" type="date" required></label>
-              <label class="date-range-control">To Date<input id="chemical-cost-report-to" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="chemical-cost-report-from" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Plant<select id="chemical-cost-report-machine"><option value="ALL">All Plants</option></select></label>
               <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
               <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>

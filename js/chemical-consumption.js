@@ -16,10 +16,16 @@
     return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   }
 
+  function displayDate(value) {
+    const parts = String(value || "").slice(0, 10).split("-");
+    return parts.length === 3 ? parts[2] + "-" + parts[1] + "-" + parts[0] : String(value || "—");
+  }
+
   function cell(row, value, className) {
     const td = document.createElement("td");
     if (className) td.className = className;
     td.textContent = value === "" ? "" : (value == null ? "—" : String(value));
+    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(td.textContent)) td.classList.add("table-date-cell");
     row.appendChild(td);
     return td;
   }
@@ -138,7 +144,7 @@
     body.replaceChildren();
     state.entries.forEach(entry => {
       const row = document.createElement("tr");
-      cell(row, entry.entry_date);
+      cell(row, displayDate(entry.entry_date));
       cell(row, entry.shift_name);
       cell(row, entry.operator_name);
       cell(row, entry.machine_code, "mono");
