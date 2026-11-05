@@ -73,6 +73,9 @@
     const cell = document.createElement("td");
     if (className) cell.className = className;
     cell.textContent = value == null ? "" : String(value);
+    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(cell.textContent)) {
+      cell.classList.add("table-date-cell");
+    }
     row.appendChild(cell);
     return cell;
   }
@@ -87,19 +90,20 @@
 
   function readableDate(value) {
     if (!value) return "—";
-    const date = new Date(
-      String(value).replace(" ", "T") +
-        (String(value).includes("Z") ? "" : "Z"),
-    );
-    return Number.isNaN(date.getTime())
-      ? String(value)
-      : date.toLocaleDateString();
+    const text = String(value);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? match[3] + "-" + match[2] + "-" + match[1] : text;
   }
 
   function readableDateTime(value) {
     if (!value) return "—";
-    return String(value).replace("T", " ").slice(0, 16);
+    const text = String(value);
+    const match = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (!match) return text;
+    return match[3] + "-" + match[2] + "-" + match[1] + (match[4] ? " " + match[4] + ":" + match[5] : "");
   }
+  window.PortalFormatDate = readableDate;
+  window.PortalFormatDateTime = readableDateTime;
 
   function downtimeMinutes(startsAt, endsAt) {
     const parseTimestamp = function (value) {
@@ -340,7 +344,7 @@
       detail.textContent =
         (item.last_batch_id || "No Batch") +
         " · " +
-        (item.last_report_date || "No Report Date");
+        (item.last_report_date ? readableDate(item.last_report_date) : "No Report Date");
       left.append(source, detail);
       const state = document.createElement("span");
       state.className =
@@ -500,7 +504,7 @@
       (data.imports || []).forEach(function (item) {
         const row = document.createElement("tr");
         makeCell(row, item.batch_id, "mono");
-        makeCell(row, item.report_date);
+        makeCell(row, readableDate(item.report_date));
         makeCell(row, item.row_count);
         makeCell(row, titleLabel(item.status));
         makeCell(row, readableDateTime(item.received_at));
@@ -552,8 +556,8 @@
       makeCell(row, item.part_code);
       makeCell(row, item.grade);
       makeCell(row, item.used_colour || item.report_colour);
-      makeCell(row, item.loading_at);
-      makeCell(row, item.unloading_at);
+      makeCell(row, readableDateTime(item.loading_at));
+      makeCell(row, readableDateTime(item.unloading_at));
       makeCell(row, item.pcs);
       makeCell(
         row,
@@ -796,7 +800,7 @@
       makeCell(row, readableDateTime(item.received_at));
       makeCell(row, item.source);
       makeCell(row, item.batch_id, "mono");
-      makeCell(row, item.report_date);
+      makeCell(row, readableDate(item.report_date));
       makeCell(row, item.row_count);
       makeCell(row, titleLabel(item.status));
       makeCell(row, item.error_message || "—");
@@ -993,7 +997,7 @@
     (data.window_metrics || []).forEach(function (line) {
       const row = document.createElement("tr");
       [
-        line.report_date,
+        readableDate(line.report_date),
         line.line_code,
         readableDateTime(line.window_end),
         line.productive_fb,
@@ -1296,8 +1300,8 @@
         makeCell(row, item.line_code);
         makeCell(row, item.colour);
         makeCell(row, Number(item.minutes_per_fb).toFixed(3));
-        makeCell(row, item.effective_from);
-        makeCell(row, item.effective_to || "—");
+        makeCell(row, readableDate(item.effective_from));
+        makeCell(row, item.effective_to ? readableDate(item.effective_to) : "—");
         const cell = makeCell(row, "");
         const button = document.createElement("button");
         button.type = "button";
@@ -1454,7 +1458,6 @@
         user.role !== "admin" &&
         Number(user.id) !== Number(app.user.id)
       ) {
-        actionGroup.appendChild(toggle);
         const assign = document.createElement("button");
         assign.type = "button";
         assign.className = "table-action";

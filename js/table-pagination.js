@@ -102,8 +102,14 @@
     function compareValues(left, right) {
       const numeric = /^[₹$€£]?\s*-?[\d,]+(?:\.\d+)?\s*%?$/;
       if (numeric.test(left) && numeric.test(right)) return Number(left.replace(/[^\d.-]/g, "")) - Number(right.replace(/[^\d.-]/g, ""));
-      const leftDate = Date.parse(left);
-      const rightDate = Date.parse(right);
+      const tableDate = function (value) {
+        const match = String(value).match(/^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+        return match
+          ? Date.UTC(Number(match[3]), Number(match[2]) - 1, Number(match[1]), Number(match[4] || 0), Number(match[5] || 0))
+          : Date.parse(value);
+      };
+      const leftDate = tableDate(left);
+      const rightDate = tableDate(right);
       if (/\d/.test(left) && /\d/.test(right) && Number.isFinite(leftDate) && Number.isFinite(rightDate)) return leftDate - rightDate;
       return left.localeCompare(right, undefined, { numeric: true, sensitivity: "base" });
     }

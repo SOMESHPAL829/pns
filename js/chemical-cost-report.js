@@ -18,12 +18,8 @@
 
   function displayDate(value) {
     if (!value) return "—";
-    const parts = value.split("-").map(Number);
-    return new Intl.DateTimeFormat("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }).format(new Date(parts[0], parts[1] - 1, parts[2]));
+    const parts = String(value).slice(0, 10).split("-");
+    return parts.length === 3 ? parts[2] + "-" + parts[1] + "-" + parts[0] : String(value);
   }
 
   function showAlert(message, isError) {

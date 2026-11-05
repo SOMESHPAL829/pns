@@ -22,6 +22,7 @@
   function cell(row, value, detail) {
     const td = document.createElement("td");
     td.textContent = value ?? "—";
+    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(td.textContent)) td.classList.add("table-date-cell");
     if (detail) {
       const small = document.createElement("span");
       small.className = "pns-cell-detail";
@@ -172,7 +173,7 @@
     stopEvents = data.recent_downtime || [];
     stopEvents.forEach(function (item) {
       const row = document.createElement("tr");
-      cell(row, String(item.ends_at || "—").slice(0, 16), item.line_code);
+      cell(row, window.PortalFormatDateTime?.(item.ends_at) || String(item.ends_at || "—").slice(0, 16), item.line_code);
       cell(
         row,
         titleLabel(

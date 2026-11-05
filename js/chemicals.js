@@ -15,6 +15,7 @@
     const td = document.createElement("td");
     if (className) td.className = className;
     td.textContent = value === "" ? "" : (value == null ? "—" : String(value));
+    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(td.textContent)) td.classList.add("table-date-cell");
     row.appendChild(td);
     return td;
   }
@@ -35,6 +36,11 @@
   function today() {
     const now = new Date();
     return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  }
+
+  function displayDate(value) {
+    const parts = String(value || "").slice(0, 10).split("-");
+    return parts.length === 3 ? parts[2] + "-" + parts[1] + "-" + parts[0] : String(value || "—");
   }
 
   function periodStatus(rate, date) {
@@ -124,8 +130,8 @@
       const row = document.createElement("tr");
       cell(row, rate.item_code, "mono");
       cell(row, money(rate.rate_inr));
-      cell(row, rate.effective_from);
-      cell(row, rate.effective_to || "Open-Ended");
+      cell(row, displayDate(rate.effective_from));
+      cell(row, rate.effective_to ? displayDate(rate.effective_to) : "Open-Ended");
       cell(row, periodStatus(rate, date));
       const actions = cell(row, "", "row-actions-cell");
       if (access.can("chemical-registration", "update")) actions.appendChild(button("Edit Rate", "editChemicalRate", rate.id));
