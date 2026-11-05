@@ -140,7 +140,7 @@
       });
     };
     sidebarToggles.forEach(function (button) {
-      button.addEventListener("click", function () {
+      button.addEventListener("click", function (event) {
         if (window.matchMedia("(max-width: 980px)").matches) {
           shell.classList.toggle("sidebar-open");
         } else {
@@ -152,6 +152,13 @@
           if (wasCollapsed || wasCompact) window.PortalSidebarResize?.restoreExpanded();
         }
         syncSidebarToggle();
+        // A pointer click leaves the now-overlaid toggle focused. That keeps
+        // :focus-within active after collapse and hides the K logo until the
+        // user clicks elsewhere. Release pointer focus immediately; keyboard
+        // activation keeps focus so the control remains accessible.
+        if (event.detail > 0 && shell.classList.contains("sidebar-collapsed")) {
+          button.blur();
+        }
       });
     });
     window.addEventListener("resize", syncSidebarToggle);
