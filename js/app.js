@@ -153,6 +153,15 @@
     if (!node) return;
     node.hidden = !visible;
     node.textContent = message || "";
+    if (visible && message) {
+      node.title = String(message);
+      node.setAttribute("aria-label", String(message));
+      if (id === "oee-dashboard-alert") node.tabIndex = 0;
+    } else {
+      node.removeAttribute("title");
+      node.removeAttribute("aria-label");
+      if (id === "oee-dashboard-alert") node.removeAttribute("tabindex");
+    }
   }
 
   function applyAppearance(settings) {
