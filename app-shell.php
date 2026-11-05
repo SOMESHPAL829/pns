@@ -119,8 +119,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div class="page-heading"><div><div class="dash-eyebrow">Period Intelligence</div><h1>Date-Range OEE</h1><p class="page-lead">Combined OEE for the selected dates. Duration applies to each day and plant.</p></div></div>
           <section class="data-card">
             <form id="range-form" class="report-filters range-toolbar">
-              <label class="date-range-control">From Date<input id="range-from-date" type="date" required></label>
-              <label class="date-range-control">To Date<input id="range-to-date" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="range-from-date" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="range-to-date" type="date" required></label>
               <label>Plant<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
@@ -404,8 +404,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="chemical-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-report-filter-card" aria-label="Chemical Consumption Report Controls">
             <form id="chemical-report-filter-form" class="master-form chemical-report-toolbar">
-              <label class="date-range-control">From Date<input id="chemical-report-from" type="date" required></label>
-              <label class="date-range-control">To Date<input id="chemical-report-to" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="chemical-report-from" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="chemical-report-to" type="date" required></label>
               <label>Plant<select id="chemical-report-machine"><option value="ALL">All Plants</option></select></label>
               <button class="btn" id="chemical-report-run" type="submit">Generate Report</button>
               <button class="btn ghost" id="chemical-report-print" type="button">Print Report</button>
@@ -433,8 +433,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <div id="chemical-cost-report-alert" class="oee-alert" role="status" hidden></div>
           <section class="data-card chemical-cost-report-filter-card" aria-label="Chemical Cost Controls">
             <form id="chemical-cost-report-filter-form" class="master-form chemical-cost-filters">
-              <label class="date-range-control">From Date<input id="chemical-cost-report-from" type="date" required></label>
-              <label class="date-range-control">To Date<input id="chemical-cost-report-to" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>From Date<input id="chemical-cost-report-from" type="date" required></label>
+              <label class="date-range-control" data-no-required-marker>To Date<input id="chemical-cost-report-to" type="date" required></label>
               <label>Plant<select id="chemical-cost-report-machine"><option value="ALL">All Plants</option></select></label>
               <label>Analysis View<select id="chemical-cost-report-type"><option value="weekly">Week on Week</option><option value="monthly">Month on Month</option><option value="consolidated">Consolidated</option></select></label>
               <button class="btn" id="chemical-cost-report-run" type="submit">Generate Dashboard</button>

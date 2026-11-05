@@ -6,6 +6,7 @@
   }
 
   function labelRequiresMarker(label) {
+    if (label.hasAttribute("data-no-required-marker")) return false;
     const associated = label.htmlFor ? document.getElementById(label.htmlFor) : null;
     if (associated?.matches?.(REQUIRED_SELECTOR)) return true;
     return Boolean(label.querySelector(REQUIRED_SELECTOR));

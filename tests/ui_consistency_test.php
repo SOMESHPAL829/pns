@@ -61,5 +61,7 @@ ui_check(substr_count($dashboard, 'dashboard-link-button') >= 4 && str_contains(
 ui_check(str_contains($login, 'data-password-toggle="password"') && str_contains($shell, 'data-password-toggle="current-password"') && str_contains($shell, 'data-password-toggle="new-password"'), 'Login or profile password visibility controls are missing.');
 ui_check(!str_contains($dashboard, 'Reporting Window') && str_contains($shell, '>End Time</th>') && str_contains($shell, 'Calculation Time') && str_contains($appScript, '"h Utilization"'), 'Calculation-time terminology is inconsistent in the UI.');
 ui_check(str_contains($shell, 'id="chemical-cost-item-chart"') && str_contains($chemicalCostScript, 'function itemCostChart') && str_contains($chemicalCostScript, 'data.item_costs || []'), 'The item-wise chemical cost chart is not connected to report data.');
+ui_check(substr_count($shell, 'data-no-required-marker') >= 6 && str_contains($requiredFields, 'label.hasAttribute("data-no-required-marker")'), 'Report date labels cannot suppress their visual required marker.');
+ui_check(str_contains($chemicalCostScript, 'item.known_chemical_cost || 0') && str_contains($chemicalCostScript, 'complete: item.total_chemical_cost != null'), 'Chemical cost charts do not retain the known priced portion of incomplete periods.');
 
 echo "Portal UI consistency and authentication feedback tests passed\n";

@@ -123,6 +123,7 @@ $pdo->exec("INSERT INTO chemical_consumption_entries(entry_date,shift_name,opera
 $missingRateReport = chemical_cost_report($pdo, '2026-10-01', '2026-10-31', 'APP-07', 'consolidated');
 consumption_check($missingRateReport['rows'][0]['unpriced_entries'] === 1, 'Chemical cost report did not flag a missing effective rate.');
 consumption_check($missingRateReport['rows'][0]['total_chemical_cost'] === null && $missingRateReport['rows'][0]['chemical_cost_per_dm2'] === null, 'Incomplete chemical cost was reported as final.');
+consumption_check($missingRateReport['rows'][0]['known_chemical_cost'] === 200.0, 'The safely priced portion was not returned for incomplete chart data.');
 $missingItem=array_values(array_filter($missingRateReport['item_costs'],static fn(array $item):bool=>$item['item_code']==='CHEM-002'))[0]??null;
 consumption_check($missingItem!==null&&$missingItem['total_chemical_cost']===null&&$missingItem['unpriced_entries']===1,'Item-wise cost must withhold totals when an effective rate is missing.');
 
