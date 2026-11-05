@@ -490,6 +490,18 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <div class="chemical-cost-chartarea" id="chemical-cost-indexed-chart" role="img" aria-label="Indexed cost versus area"></div>
             </article>
           </section>
+          <section class="chemical-cost-item-chart">
+            <article class="data-card chemical-cost-chart-card chemical-cost-item-chart-card">
+              <div class="dash-card-head">
+                <div>
+                  <h2>Item-wise Chemical Cost</h2>
+                  <p class="chemical-cost-caption">Top 6 chemical items by spend</p>
+                </div>
+                <span class="chemical-cost-mini">INR</span>
+              </div>
+              <div class="chemical-cost-chartarea chemical-cost-item-chartarea" id="chemical-cost-item-chart" role="img" aria-label="Top six chemical items by spend"></div>
+            </article>
+          </section>
           <section class="data-card chemical-cost-report-card" aria-labelledby="chemical-cost-report-table-heading">
             <div class="dash-card-head chemical-cost-table-head">
               <div>

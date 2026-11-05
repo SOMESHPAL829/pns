@@ -130,7 +130,7 @@ function chemical_cost_report_period(string $date, string $type, string $from, s
 function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed $machineValue, mixed $typeValue, ?array $plants=null): array
 {
     if (!chemical_cost_report_tables_ready($pdo)) {
-        return ['available' => false, 'message' => 'Chemical consumption and OEE production data must be installed before using this report.', 'rows' => [], 'machines' => []];
+        return ['available' => false, 'message' => 'Chemical consumption and OEE production data must be installed before using this report.', 'rows' => [], 'item_costs' => [], 'machines' => []];
     }
     $from = chemical_date($fromValue, 'From Date');
     $to = chemical_date($toValue, 'To Date');
@@ -167,6 +167,31 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
         'WHERE e.entry_date BETWEEN ? AND ?' . $consumptionMachineClause . ' GROUP BY e.machine_code,e.entry_date'
     );
     $cost->execute($machine === 'ALL' ? $costParameters : [$from, $to, $machine]);
+
+    $itemCostParameters=[$from,$to];
+    $itemCostMachineClause=$machine==='ALL'?chemical_plant_filter($plants,'e.machine_code',$itemCostParameters):' AND e.machine_code=?';
+    $itemCostQuery=$pdo->prepare(
+        'SELECT i.item_code,i.description AS chemical_name,' .
+        'COALESCE(SUM(CASE WHEN r.id IS NULL THEN 0 ELSE e.consume_quantity*r.rate_inr END),0) AS priced_cost,' .
+        'SUM(CASE WHEN r.id IS NULL THEN 1 ELSE 0 END) AS unpriced_entries ' .
+        'FROM chemical_consumption_entries e JOIN chemical_items i ON i.id=e.chemical_item_id ' .
+        'LEFT JOIN chemical_item_rates r ON r.chemical_item_id=e.chemical_item_id ' .
+        'AND r.effective_from<=e.entry_date AND (r.effective_to IS NULL OR r.effective_to>=e.entry_date) ' .
+        'WHERE e.entry_date BETWEEN ? AND ?'.$itemCostMachineClause.' GROUP BY i.id,i.item_code,i.description'
+    );
+    $itemCostQuery->execute($machine==='ALL'?$itemCostParameters:[$from,$to,$machine]);
+    $itemCosts=$itemCostQuery->fetchAll();
+    foreach($itemCosts as &$itemCost){
+        $itemCost['unpriced_entries']=(int)$itemCost['unpriced_entries'];
+        $itemCost['total_chemical_cost']=$itemCost['unpriced_entries']>0?null:round((float)$itemCost['priced_cost'],4);
+        unset($itemCost['priced_cost']);
+    }
+    unset($itemCost);
+    usort($itemCosts,static function(array $left,array $right):int{
+        if($left['total_chemical_cost']===null)return $right['total_chemical_cost']===null?strcmp((string)$left['item_code'],(string)$right['item_code']):1;
+        if($right['total_chemical_cost']===null)return -1;
+        return $right['total_chemical_cost']<=>$left['total_chemical_cost'] ?: strcmp((string)$left['item_code'],(string)$right['item_code']);
+    });
 
     $groups = [];
     $add = static function (array $daily, string $source) use (&$groups, $type, $from, $to): void {
@@ -222,6 +247,7 @@ function chemical_cost_report(PDO $pdo, mixed $fromValue, mixed $toValue, mixed 
         'report_type' => $type,
         'machines' => $machines,
         'rows' => $rows,
+        'item_costs' => array_slice($itemCosts,0,6),
         'formula' => 'Total Chemical Cost (INR) / Total Surface Area (dm²)',
     ];
 }

@@ -117,11 +117,14 @@ $costRow = $costReport['rows'][0];
 consumption_check($costRow['report_period'] === 'October 2026' && $costRow['total_surface_area'] === 110.0, 'Chemical cost report surface area is incorrect.');
 consumption_check($costRow['total_chemical_cost'] === 200.0, 'Chemical cost report did not apply the effective INR rate.');
 consumption_check(abs($costRow['chemical_cost_per_dm2'] - (200 / 110)) < 0.000001, 'Chemical cost per dm2 formula is incorrect.');
+consumption_check(count($costReport['item_costs'])===1&&$costReport['item_costs'][0]['item_code']==='CHEM-001'&&$costReport['item_costs'][0]['total_chemical_cost']===200.0,'Item-wise chemical cost summary is incomplete or incorrectly priced.');
 
 $pdo->exec("INSERT INTO chemical_consumption_entries(entry_date,shift_name,operator_name,machine_code,process_description,chemical_item_id,consume_quantity,uom,used_for,recommended_by) VALUES ('2026-10-28','Shift A','Operator','APP-07','Test',2,1,'LTR','Top-Up','Manager')");
 $missingRateReport = chemical_cost_report($pdo, '2026-10-01', '2026-10-31', 'APP-07', 'consolidated');
 consumption_check($missingRateReport['rows'][0]['unpriced_entries'] === 1, 'Chemical cost report did not flag a missing effective rate.');
 consumption_check($missingRateReport['rows'][0]['total_chemical_cost'] === null && $missingRateReport['rows'][0]['chemical_cost_per_dm2'] === null, 'Incomplete chemical cost was reported as final.');
+$missingItem=array_values(array_filter($missingRateReport['item_costs'],static fn(array $item):bool=>$item['item_code']==='CHEM-002'))[0]??null;
+consumption_check($missingItem!==null&&$missingItem['total_chemical_cost']===null&&$missingItem['unpriced_entries']===1,'Item-wise cost must withhold totals when an effective rate is missing.');
 
 $invalidReportTypeRejected = false;
 try {
