@@ -64,7 +64,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
           <button class="app-sidebar-footer-logout" type="submit" aria-label="Sign Out" title="Sign Out"><span data-icon="arrow-right-start-on-rectangle"></span></button>
         </form>
       </div>
-      <div id="sidebar-resizer" class="app-sidebar-resizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="480" tabindex="0"></div>
+      <div id="sidebar-resizer" class="app-sidebar-resizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical" aria-valuemin="84" aria-valuemax="480" tabindex="0"></div>
     </aside>
 
     <div class="app-main">

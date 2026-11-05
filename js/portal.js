@@ -138,8 +138,10 @@
       if (window.matchMedia("(max-width: 980px)").matches) {
         shell.classList.toggle("sidebar-open");
       } else {
+        const wasCollapsed = shell.classList.contains("sidebar-collapsed");
         shell.classList.toggle("sidebar-collapsed");
         localStorage.setItem("pns-sidebar-collapsed", String(shell.classList.contains("sidebar-collapsed")));
+        if (wasCollapsed) window.PortalSidebarResize?.restoreExpanded();
       }
       syncSidebarToggle();
     });
@@ -156,11 +158,16 @@
 
   const sidebarResizer = document.getElementById("sidebar-resizer");
   if (sidebarResizer && shell) {
-    const minimumWidth = 240;
+    const minimumWidth = 84;
     const maximumWidth = 480;
     const defaultWidth = 264;
+    const compactWidth = 190;
     const storedWidth = Number.parseFloat(localStorage.getItem("pns-sidebar-width") || "");
+    const storedExpandedWidth = Number.parseFloat(localStorage.getItem("pns-sidebar-expanded-width") || "");
     let currentWidth = Number.isFinite(storedWidth) ? storedWidth : defaultWidth;
+    let expandedWidth = Number.isFinite(storedExpandedWidth) && storedExpandedWidth >= compactWidth
+      ? storedExpandedWidth
+      : defaultWidth;
 
     const widthLimit = function () {
       return Math.max(minimumWidth, Math.min(maximumWidth, Math.floor(window.innerWidth * 0.45)));
@@ -168,9 +175,17 @@
     const applySidebarWidth = function (width, save) {
       currentWidth = Math.min(widthLimit(), Math.max(minimumWidth, Math.round(width)));
       shell.style.setProperty("--sidebar-w", currentWidth + "px");
+      const isDesktop = !window.matchMedia("(max-width: 980px)").matches;
+      shell.classList.toggle("sidebar-resized-compact", isDesktop && currentWidth < compactWidth);
       sidebarResizer.setAttribute("aria-valuenow", String(currentWidth));
       sidebarResizer.setAttribute("aria-valuemax", String(widthLimit()));
-      if (save) localStorage.setItem("pns-sidebar-width", String(currentWidth));
+      if (save) {
+        localStorage.setItem("pns-sidebar-width", String(currentWidth));
+        if (currentWidth >= compactWidth) {
+          expandedWidth = currentWidth;
+          localStorage.setItem("pns-sidebar-expanded-width", String(expandedWidth));
+        }
+      }
     };
     const finishResize = function (event) {
       if (!shell.classList.contains("sidebar-is-resizing")) return;
@@ -180,6 +195,10 @@
         sidebarResizer.releasePointerCapture(event.pointerId);
       }
       localStorage.setItem("pns-sidebar-width", String(currentWidth));
+      if (currentWidth >= compactWidth) {
+        expandedWidth = currentWidth;
+        localStorage.setItem("pns-sidebar-expanded-width", String(expandedWidth));
+      }
     };
 
     applySidebarWidth(currentWidth, false);
@@ -213,6 +232,11 @@
     window.addEventListener("resize", function () {
       applySidebarWidth(currentWidth, false);
     });
+    window.PortalSidebarResize = {
+      restoreExpanded: function () {
+        if (currentWidth < compactWidth) applySidebarWidth(expandedWidth, true);
+      },
+    };
   }
 
   document.querySelectorAll("[data-header-menu]").forEach(function (menu) {
