@@ -1438,9 +1438,9 @@
     visibleUsers.forEach(function (user) {
       const row = document.createElement("tr");
       makeCell(row, user.id, "mono");
-      makeCell(row, user.username);
+      makeCell(row, String(user.username || "").toLocaleLowerCase("en-IN"));
       makeCell(row, user.full_name);
-      makeCell(row, user.email);
+      makeCell(row, String(user.email || "").toLocaleLowerCase("en-IN"));
       makeCell(
         row,
         (user.access_role_name === "Standard user"

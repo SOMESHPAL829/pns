@@ -12,6 +12,7 @@ function expect(bool $condition, string $message): void
 }
 
 expect(normalize_email(' User@Example.COM ') === 'user@example.com', 'email is trimmed and normalized');
+expect(normalize_username(' Portal.Admin ') === 'portal.admin', 'username is trimmed and normalized to lowercase');
 expect(!password_is_valid('short'), 'short passwords are rejected');
 expect(password_is_valid('correct horse battery staple'), 'long passphrases are accepted');
 

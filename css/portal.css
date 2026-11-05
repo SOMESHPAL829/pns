@@ -3473,6 +3473,10 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 [data-view="users"] .data-table td:nth-child(6) {
   min-width: 7.5rem;
 }
+[data-view="users"] .data-table td:nth-child(2),
+[data-view="users"] .data-table td:nth-child(4) {
+  text-transform: lowercase;
+}
 
 /* Keep compact OEE filter headings readable instead of compressing their labels. */
 [data-view="oee-range"] .range-lines-table {
