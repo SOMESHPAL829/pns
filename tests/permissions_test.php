@@ -72,6 +72,14 @@ $pdo->prepare("DELETE FROM portal_role_permissions WHERE role_id=? AND page_code
 $access = portal_user_access($pdo, ['id' => 2, 'role' => 'user']);
 permission_check(portal_can($access['permissions'], 'oee-report', 'view') && !portal_can($access['permissions'], 'records', 'view'), 'Assignment grants wrong page');
 permission_check((int) $pdo->query('SELECT auth_version FROM portal_users WHERE id=2')->fetchColumn() === 2, 'Assignment must invalidate sessions');
+$versionBeforeStatus=(int)$pdo->query('SELECT auth_version FROM portal_users WHERE id=2')->fetchColumn();
+permission_check(portal_set_user_active($pdo,$actor,2,false),'Explicit deactivation must report a status change');
+permission_check((int)$pdo->query('SELECT is_active FROM portal_users WHERE id=2')->fetchColumn()===0,'Explicit deactivation was not persisted');
+$versionAfterStatus=(int)$pdo->query('SELECT auth_version FROM portal_users WHERE id=2')->fetchColumn();
+permission_check($versionAfterStatus===$versionBeforeStatus+1,'Status changes must invalidate existing sessions');
+permission_check(!portal_set_user_active($pdo,$actor,2,false),'Saving an unchanged status must be idempotent');
+permission_check((int)$pdo->query('SELECT auth_version FROM portal_users WHERE id=2')->fetchColumn()===$versionAfterStatus,'Unchanged status must not invalidate sessions again');
+permission_check(portal_set_user_active($pdo,$actor,2,true),'Explicit activation must report a status change');
 portal_save_role($pdo, $actor, $id, 'Report viewer', []);
 permission_check(!portal_can(portal_user_access($pdo, ['id'=>2,'role'=>'user'])['permissions'], 'oee-report','view'), 'Permission edit must affect next request');
 foreach ([static fn()=>portal_assign_role($pdo,$actor,1,$id), static fn()=>portal_delete_role($pdo,$actor,$id), static fn()=>portal_save_role($pdo,['id'=>2,'role'=>'user'],null,'Escalation',[]) ] as $action) {

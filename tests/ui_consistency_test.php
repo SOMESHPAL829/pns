@@ -27,6 +27,8 @@ $sidebarEndPosition = strpos($shell, '</aside>');
 $topbarPosition = strpos($shell, 'class="app-topbar"');
 ui_check($sidebarTogglePosition !== false && $sidebarEndPosition !== false && $topbarPosition !== false && $sidebarTogglePosition < $sidebarEndPosition && $sidebarTogglePosition < $topbarPosition, 'The desktop sidebar toggle must live beside the sidebar brand, not in the topbar.');
 ui_check(str_contains($login, 'data-loading-form') && str_contains($login, 'auth-message-transient'), 'Login/logout feedback is incomplete.');
+ui_check(str_contains($login, 'Your account is inactive. Contact your administrator.'), 'Inactive users must receive the requested sign-in guidance after valid credentials.');
+ui_check(str_contains($shell, 'id="user-role-active"') && !str_contains($appScript, 'data-toggle-user') && !str_contains($appScript, '" — " + scopeLabel'), 'User status must be managed in the access modal and role selects must not repeat plant scope.');
 ui_check(str_contains($shell, 'id="welcome-message"') && str_contains($shell, 'id="page-transition"'), 'Welcome or transition UI is missing.');
 ui_check(substr_count($shell, 'class="page-transition-dialog"') === 1 && str_contains($login, 'class="page-transition-dialog"'), 'Premium login/logout transition dialogs are missing.');
 ui_check(str_contains($styles, '.data-table th') && str_contains($styles, 'background: var(--accent-deep)'), 'Shared table headers do not use the blue theme.');

@@ -67,6 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($isLocked) {
                 $pdo->commit();
                 $error = 'This account was temporarily locked after multiple failed sign-in attempts. Please try again shortly.';
+            } elseif ($user && (int) $user['is_active'] !== 1 && $passwordMatches) {
+                $pdo->prepare('DELETE FROM portal_login_attempts WHERE attempt_key = ?')->execute([$attemptKey]);
+                $pdo->commit();
+                $error = 'Your account is inactive. Contact your administrator.';
             } else {
                 $inWindow = empty($attempt['locked_until'])
                   && strtotime($attempt['window_started_at']) >= time() - 900;

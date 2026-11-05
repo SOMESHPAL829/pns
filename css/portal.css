@@ -3528,6 +3528,11 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 .user-access-mode label{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border,#dbe3ec);border-radius:9px;background:var(--surface,#fff);cursor:pointer}
 .user-access-mode label:has(input:checked){border-color:var(--brand,#1f4c7e);background:var(--brand-soft,#eef5fb);color:var(--navy,#183b68)}
 .user-access-mode input{accent-color:var(--brand,#1f4c7e)}
+.user-account-status{border:1px solid var(--border,#dbe3ec);border-radius:10px;padding:14px;margin:4px 0;background:var(--surface,#fff)}
+.user-account-status legend{font-weight:700;color:var(--navy,#183b68);padding:0 6px}
+.user-account-status label{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.user-account-status input{accent-color:var(--brand,#1f4c7e)}
+.user-account-status .form-note{margin:8px 0 0}
 .user-permission-preview{border:1px solid var(--border,#dbe3ec);border-radius:10px;overflow:hidden;background:var(--surface,#fff)}
 .user-permission-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 16px;background:var(--surface-soft,#f5f8fb);border-bottom:1px solid var(--border,#dbe3ec)}
 .user-permission-heading h3{margin:0;color:var(--navy,#183b68);font-size:1rem}

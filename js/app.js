@@ -1426,15 +1426,6 @@
       const actions = makeCell(row, "", "user-actions-cell");
       const actionGroup = document.createElement("div");
       actionGroup.className = "user-actions";
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className =
-        Number(user.is_active) === 1
-          ? "table-action table-action-danger"
-          : "table-action";
-      toggle.textContent =
-        Number(user.is_active) === 1 ? "Deactivate" : "Activate";
-      toggle.dataset.toggleUser = String(user.id);
       if (
         can("users", "update") &&
         user.role !== "admin" &&
@@ -1682,10 +1673,9 @@
       if (roleSelect) {
         roleSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
-          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           roleSelect.add(
             new Option(
-              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
+              role.name === "Standard user" ? "Standard User" : role.name,
               role.id,
             ),
           );
@@ -1695,10 +1685,9 @@
       if (assignmentSelect) {
         assignmentSelect.replaceChildren();
         app.assignableRoles.forEach(function (role) {
-          const scopeLabel = role.all_plants ? "All Plants" : (role.plants || []).join(", ");
           assignmentSelect.add(
             new Option(
-              (role.name === "Standard user" ? "Standard User" : role.name) + " — " + scopeLabel,
+              role.name === "Standard user" ? "Standard User" : role.name,
               role.id,
             ),
           );
@@ -2143,6 +2132,8 @@
           temporaryPasswordInput.value = "";
           temporaryPasswordInput.disabled = !administratorCanResetPassword;
         }
+        const activeInput = document.getElementById("user-role-active");
+        if (activeInput) activeInput.checked = Number(selectedUser.is_active) === 1;
         const roleSelect = document.getElementById("user-role-select");
         const assigned =
           selectedUser.access_role_id ||
@@ -2173,19 +2164,6 @@
           body: { id: Number(remove.dataset.deleteRecord) },
         });
         toast("Record deleted", "ok");
-        await refresh();
-      } catch (error) {
-        toast(error.message, "crit");
-      }
-    }
-    const toggle = event.target.closest("[data-toggle-user]");
-    if (toggle) {
-      try {
-        await request("users", "user-toggle", {
-          method: "POST",
-          body: { id: Number(toggle.dataset.toggleUser) },
-        });
-        toast("User status updated", "ok");
         await refresh();
       } catch (error) {
         toast(error.message, "crit");
@@ -2223,13 +2201,14 @@
             extra_plants: [],
             custom_access: collectCustomAccess(userRoleForm),
             temporary_password: temporaryPassword,
+            is_active: document.getElementById("user-role-active")?.checked === true,
           },
         });
         window.PortalModalForms?.saved("user-role-form");
         toast(
           result.password_updated
             ? "Access saved and temporary password updated; the user's existing sessions are invalidated"
-            : "Role assigned; the user's existing sessions are invalidated",
+            : "Access and account status saved; the user's existing sessions are invalidated",
           "ok",
         );
         await refresh();
