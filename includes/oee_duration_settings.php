@@ -37,3 +37,28 @@ function oee_save_duration_setting(PDO $pdo, array $data, int $userId): array
     $query->execute([$date, $duration, $userId]);
     return oee_duration_setting($pdo, $date);
 }
+
+/** Return report_date => duration_minutes for inclusive range; missing days default to 1440. */
+function oee_duration_settings_map(PDO $pdo, string $from, string $to): array
+{
+    $from = oee_validate_date($from);
+    $to = oee_validate_date($to);
+    if ($to < $from) throw new InvalidArgumentException('Choose From date before or equal to To date.');
+    $map = [];
+    for ($day = new DateTimeImmutable($from); $day->format('Y-m-d') <= $to; $day = $day->modify('+1 day')) {
+        $map[$day->format('Y-m-d')] = 1440;
+    }
+    $query = $pdo->prepare(
+        'SELECT report_date, duration_minutes FROM oee_daily_duration_settings WHERE report_date BETWEEN ? AND ?'
+    );
+    $query->execute([$from, $to]);
+    $supported = array_map(static fn (int $hours): int => $hours * 60, oee_supported_window_hours());
+    foreach ($query->fetchAll() as $row) {
+        $date = (string) $row['report_date'];
+        $minutes = (int) $row['duration_minutes'];
+        if (isset($map[$date]) && in_array($minutes, $supported, true)) {
+            $map[$date] = $minutes;
+        }
+    }
+    return $map;
+}

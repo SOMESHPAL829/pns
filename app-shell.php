@@ -122,7 +122,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <label class="date-range-control" data-no-required-marker>From Date<input id="range-from-date" type="date" required></label>
               <label class="date-range-control" data-no-required-marker>To Date<input id="range-to-date" type="date" required></label>
               <label>Plant<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
-              <label>Minutes per Day<select id="range-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
+              <label>Minutes per Day<select id="range-duration" title="Saved daily durations come from OEE Dashboard → Save Duration"><option value="saved">Use Saved Daily Duration</option><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
               <button class="btn ghost" type="button" id="range-export" data-permission-page="oee-range" data-permission-action="export" hidden>Export Excel</button>
             </form>

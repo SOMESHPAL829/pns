@@ -33,7 +33,41 @@ function oee_date_range_definition(string $from, string $to, int $hours = 24, st
         $windows[] = oee_window_definition($day->format('Y-m-d'), $hours, $startTime);
     }
     return array_replace($first, ['from_date' => $from, 'to_date' => $to, 'day_count' => $days,
-        'calendar_minutes' => $days * $hours * 60, 'window_end' => $last['window_end'], 'windows' => $windows]);
+        'calendar_minutes' => $days * $hours * 60, 'window_end' => $last['window_end'], 'windows' => $windows,
+        'duration_mode' => 'fixed', 'duration_minutes' => $hours * 60]);
+}
+
+/**
+ * Inclusive date range where each day uses its own duration map (minutes).
+ * Missing map entries fall back to 1440.
+ */
+function oee_date_range_definition_from_map(string $from, string $to, array $dayMinutes, string $startTime = '00:00'): array
+{
+    $days = (int) (new DateTimeImmutable($from))->diff(new DateTimeImmutable($to))->format('%r%a') + 1;
+    if ($days < 1 || $days > 93) throw new InvalidArgumentException('Choose From date before or equal to To date, up to 93 days inclusive.');
+    $windows = [];
+    $calendar = 0;
+    for ($day = new DateTimeImmutable($from); $day->format('Y-m-d') <= $to; $day = $day->modify('+1 day')) {
+        $date = $day->format('Y-m-d');
+        $minutes = (int) ($dayMinutes[$date] ?? 1440);
+        $hours = intdiv($minutes, 60);
+        $windows[] = oee_window_definition($date, $hours, $startTime);
+        $calendar += $minutes;
+    }
+    $first = $windows[0];
+    $last = $windows[array_key_last($windows)];
+    $uniqueMinutes = array_values(array_unique(array_map(static fn (array $window): int => (int) $window['duration_minutes'], $windows)));
+    return array_replace($first, [
+        'from_date' => $from,
+        'to_date' => $to,
+        'day_count' => $days,
+        'calendar_minutes' => $calendar,
+        'window_end' => $last['window_end'],
+        'windows' => $windows,
+        'duration_mode' => 'saved',
+        'duration_minutes' => count($uniqueMinutes) === 1 ? $uniqueMinutes[0] : $calendar,
+        'saved_duration_minutes' => array_map(static fn (array $window): int => (int) $window['duration_minutes'], $windows),
+    ]);
 }
 
 function oee_window_metrics(array $window, array $rows, array $events, array $quality): array

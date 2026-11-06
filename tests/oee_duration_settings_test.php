@@ -31,4 +31,10 @@ try {
 }
 duration_check($rejected, 'Unsupported duration was accepted.');
 
+$map = oee_duration_settings_map($pdo, '2026-10-01', '2026-10-03');
+duration_check($map['2026-10-01'] === 720 && $map['2026-10-02'] === 1440 && $map['2026-10-03'] === 1440, 'Saved duration map must keep configured days and default the rest to 1440.');
+$range = oee_date_range_definition_from_map('2026-10-01', '2026-10-02', $map);
+duration_check($range['duration_mode'] === 'saved' && $range['calendar_minutes'] === 2160, 'Saved-duration date range must apply each day window separately.');
+duration_check($range['windows'][0]['duration_minutes'] === 720 && $range['windows'][1]['duration_minutes'] === 1440, 'Saved-duration windows did not follow the daily map.');
+
 echo "OEE date-specific duration setting tests passed\n";

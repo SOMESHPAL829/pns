@@ -378,13 +378,34 @@ try {
             $requestedDate = oee_requested_date();
             $requestedMachine = oee_requested_machine();
             api_require_plant($user,$requestedMachine);
-            [$durationHours, $startTime] = oee_requested_window_selection();
+            $useSavedDuration = in_array($action, ['range-dashboard', 'range-export'], true)
+                && (
+                    strtolower(trim((string) ($_GET['duration_minutes'] ?? ''))) === 'saved'
+                    || strtolower(trim((string) ($_GET['duration_mode'] ?? ''))) === 'saved'
+                );
+            if ($useSavedDuration) {
+                $durationHours = 24;
+                $startTime = is_string($_GET['start_time'] ?? null) ? (string) $_GET['start_time'] : '00:00';
+                if ($startTime === '') $startTime = '00:00';
+                try {
+                    oee_window_definition('2000-01-01', 24, $startTime);
+                } catch (InvalidArgumentException $exception) {
+                    json_response(['error' => $exception->getMessage()], 422);
+                }
+            } else {
+                [$durationHours, $startTime] = oee_requested_window_selection();
+            }
             if (in_array($action, ['range-dashboard', 'range-export'], true)) {
                 $from = $_GET['from_date'] ?? null;
                 $to = $_GET['to_date'] ?? null;
                 if (!is_string($from) || !is_string($to)) json_response(['error' => 'Choose both From date and To date.'], 422);
                 try {
-                    $range = oee_date_range_definition($from, $to, $durationHours, $startTime);
+                    if ($useSavedDuration) {
+                        require_once __DIR__ . '/includes/oee_duration_settings.php';
+                        $range = oee_date_range_definition_from_map($from, $to, oee_duration_settings_map($pdo, $from, $to), $startTime);
+                    } else {
+                        $range = oee_date_range_definition($from, $to, $durationHours, $startTime);
+                    }
                 } catch (InvalidArgumentException $exception) {
                     json_response(['error' => $exception->getMessage()], 422);
                 }
@@ -396,7 +417,8 @@ try {
                 }
                 $report['line_metrics'] = $report['window_metrics'];
                 $workbook = oee_export_xlsx($report);
-                $filename = 'pns-oee-' . $from . '-to-' . $to . '-' . strtolower($requestedMachine) . '-' . ($durationHours * 60) . 'min-' . str_replace(':', '', $startTime) . '.xlsx';
+                $durationLabel = $useSavedDuration ? 'saved' : (string) ($durationHours * 60);
+                $filename = 'pns-oee-' . $from . '-to-' . $to . '-' . strtolower($requestedMachine) . '-' . $durationLabel . 'min-' . str_replace(':', '', $startTime) . '.xlsx';
                 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 header('Content-Disposition: attachment; filename="' . $filename . '"');
                 header('Cache-Control: no-store');
