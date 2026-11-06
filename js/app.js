@@ -549,7 +549,7 @@
   function renderReportRows(rows) {
     const body = document.getElementById("oee-report-body");
     if (!body) return;
-    body.replaceChildren();
+    const fragment = document.createDocumentFragment();
     const search = (document.getElementById("report-search")?.value || "")
       .trim()
       .toLowerCase();
@@ -592,14 +592,15 @@
           : Number(item.total_surface_area).toFixed(2),
       );
       makeCell(row, Number(item.is_productive) === 1 ? "Productive" : "Empty");
-      body.appendChild(row);
+      fragment.appendChild(row);
     });
     if (filtered.length === 0) {
       const row = document.createElement("tr");
       const cell = makeCell(row, "No rows match these filters.");
       cell.colSpan = 11;
-      body.appendChild(row);
+      fragment.appendChild(row);
     }
+    body.replaceChildren(fragment);
     const data = app.reportData || {};
     const snapshot = data.oee || {};
     const kpis =
@@ -881,23 +882,33 @@
 
   async function loadOeeReport() {
     if (!can("oee-report")) return;
+    const requestId = ++app.reportRequest;
     const date =
       document.getElementById("report-date")?.value ||
       document.getElementById("dashboard-date")?.value ||
       "";
     const machine =
       document.getElementById("report-machine-filter")?.value || "APP-06";
-    const query = oeeWindowQuery("report");
-    const requestId = ++app.reportRequest;
-    setText(
-      "report-window",
-      "Calculating " + query.duration_minutes + " min duration…",
-    );
+    setText("report-window", "Loading saved calculation duration…");
     try {
+      const dashboardDuration =
+        app.oee?.date === date ? app.oee?.window?.duration_minutes : null;
+      const query = dashboardDuration
+        ? { duration_minutes: String(dashboardDuration), start_time: "00:00" }
+        : { duration_minutes: "saved", duration_mode: "saved", start_time: "00:00" };
+      setText(
+        "report-window",
+        dashboardDuration
+          ? "Calculating " + query.duration_minutes + " min duration…"
+          : "Calculating with the saved duration for this date…",
+      );
       const data = await request("oee", "report", {
         query: { machine: machine, ...query, ...(date ? { date: date } : {}) },
       });
-      if (requestId === app.reportRequest) renderReport(data);
+      if (requestId === app.reportRequest) {
+        app.durationMinutes = String(data.window?.duration_minutes || dashboardDuration || 1440);
+        renderReport(data);
+      }
     } catch (error) {
       if (requestId === app.reportRequest)
         showOeeAlert("oee-report-alert", error.message, true);
@@ -1695,8 +1706,9 @@
     if (!form) return;
     form.addEventListener("change", function (event) {
       const input = event.target;
+      const plantPicker = input.closest(".plant-picker-options");
       if (input.dataset.userPlant === "ALL") {
-        form
+        plantPicker
           .querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])")
           .forEach((node) => {
             node.checked = input.checked;
@@ -1705,11 +1717,11 @@
       }
       if (input.dataset.userPlant) {
         const individual = [
-          ...form.querySelectorAll(
+          ...plantPicker.querySelectorAll(
             "[data-user-plant]:not([data-user-plant='ALL'])",
           ),
         ];
-        const all = form.querySelector("[data-user-plant='ALL']");
+        const all = plantPicker.querySelector("[data-user-plant='ALL']");
         if (all)
           all.checked =
             individual.length > 0 && individual.every((node) => node.checked);
@@ -2152,6 +2164,7 @@
     });
   const reportMachine = document.getElementById("report-machine-filter");
   if (reportMachine) reportMachine.addEventListener("change", loadOeeReport);
+  let reportSearchTimer = 0;
   [
     "report-search",
     "report-grade-filter",
@@ -2159,9 +2172,12 @@
     "report-state-filter",
   ].forEach(function (id) {
     const control = document.getElementById(id);
-    if (control)
+    if (control && control.tagName !== "SELECT")
       control.addEventListener("input", function () {
-        renderReportRows(app.reportRows);
+        window.clearTimeout(reportSearchTimer);
+        reportSearchTimer = window.setTimeout(function () {
+          renderReportRows(app.reportRows);
+        }, 100);
       });
     if (control && control.tagName === "SELECT")
       control.addEventListener("change", function () {

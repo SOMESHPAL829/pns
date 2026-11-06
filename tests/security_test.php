@@ -15,6 +15,7 @@ expect(normalize_email(' User@Example.COM ') === 'user@example.com', 'email is t
 expect(normalize_username(' Portal.Admin ') === 'portal.admin', 'username is trimmed and normalized to lowercase');
 expect(!password_is_valid('short'), 'short passwords are rejected');
 expect(password_is_valid('correct horse battery staple'), 'long passphrases are accepted');
+expect(PORTAL_SESSION_IDLE_TIMEOUT === 15 * 60, 'authenticated sessions use a 15-minute inactivity timeout');
 
 $firstToken = generate_reset_token();
 $secondToken = generate_reset_token();

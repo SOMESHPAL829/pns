@@ -96,7 +96,7 @@
       if (checkbox) return checkbox.checked ? "1" : "0";
       const select = cell.querySelector("select");
       if (select) return normalizedValue(select.options[select.selectedIndex]?.text || select.value);
-      return normalizedValue(cell.dataset.sortValue || cell.innerText || "");
+      return normalizedValue(cell.dataset.sortValue || cell.textContent || "");
     }
 
     function compareValues(left, right) {
@@ -183,8 +183,7 @@
           if (select.value) state.filters.set(headingIndex, select.value);
           else state.filters.delete(headingIndex);
           state.page = 1;
-          applyFilters();
-          update();
+          applyFiltersInBatches();
         });
         cell.classList.add("is-filter-heading");
         cell.replaceChildren(select);
@@ -197,7 +196,9 @@
         const cellIndex = Number(select.dataset.columnIndex);
         const selected = select.value;
         const label = select.dataset.headingLabel || "Filter";
-        const values = Array.from(new Set(rows.map(row => cellValue(row, cellIndex)).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+        const values = normalizedHeading(label).startsWith("recommendedby")
+          ? ["PRODUCTION MANAGER", "QC MANAGER"]
+          : Array.from(new Set(rows.map(row => cellValue(row, cellIndex)).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
         select.replaceChildren(new Option(label, ""));
         values.slice(0, 100).forEach(value => select.add(new Option(label + ": " + value, value)));
         if (values.includes(selected)) select.value = selected;
@@ -206,13 +207,33 @@
       });
     }
 
-    function applyFilters() {
-      prepareRows().forEach(function (row) {
+    let filterRun = 0;
+
+    function applyFilterToRow(row) {
         const matchesColumns = Array.from(state.filters).every(([cellIndex, expected]) => cellValue(row, cellIndex) === expected);
-        const matchesSearch = !state.search || normalizedValue(row.innerText).toLowerCase().includes(state.search);
-        const visible = matchesColumns && matchesSearch;
-        row.classList.toggle("is-column-filtered", !visible);
-      });
+        if (!row.__portalSearchText) row.__portalSearchText = normalizedValue(row.textContent).toLowerCase();
+        const matchesSearch = !state.search || row.__portalSearchText.includes(state.search);
+        const filtered = !(matchesColumns && matchesSearch);
+        if (row.classList.contains("is-column-filtered") !== filtered) row.classList.toggle("is-column-filtered", filtered);
+    }
+
+    function applyFilters() {
+      filterRun += 1;
+      prepareRows().forEach(applyFilterToRow);
+    }
+
+    function applyFiltersInBatches() {
+      const run = ++filterRun;
+      const rows = sourceRows().filter(isDataRow);
+      let rowIndex = 0;
+      const nextBatch = function () {
+        if (run !== filterRun) return;
+        const batchEnd = Math.min(rowIndex + 120, rows.length);
+        for (; rowIndex < batchEnd; rowIndex += 1) applyFilterToRow(rows[rowIndex]);
+        if (rowIndex < rows.length) window.requestAnimationFrame(nextBatch);
+        else update();
+      };
+      window.requestAnimationFrame(nextBatch);
     }
 
     function pageButton(label, page, disabled, current) {
@@ -227,13 +248,11 @@
     }
 
     function update() {
-      const rows = sourceRows();
-      const available = rows.filter(row => !row.hidden && !row.classList.contains("is-column-filtered") && isDataRow(row));
+      const available = sourceRows().filter(row => !row.hidden && !row.classList.contains("is-column-filtered") && isDataRow(row));
       const totalPages = Math.max(1, Math.ceil(available.length / state.size));
       state.page = Math.min(Math.max(1, state.page), totalPages);
       const start = (state.page - 1) * state.size;
       const end = Math.min(start + state.size, available.length);
-      rows.forEach(row => row.classList.remove("is-pagination-hidden"));
       available.forEach((row, rowIndex) => row.classList.toggle("is-pagination-hidden", rowIndex < start || rowIndex >= end));
       summary.textContent = available.length ? "Showing " + (start + 1) + "–" + end + " of " + available.length + " rows" : "No rows to display";
       navigation.replaceChildren();
@@ -279,8 +298,7 @@
       search: function (value) {
         state.search = normalizedValue(value).toLowerCase();
         state.page = 1;
-        applyFilters();
-        update();
+        applyFiltersInBatches();
       },
     };
     prepareRows();
@@ -296,14 +314,28 @@
     const target = document.querySelector(input.dataset.tableSearch || "");
     const table = target?.closest("table") || (target?.matches("table") ? target : null);
     if (!table?.__portalPagination) return;
-    input.addEventListener("input", function () {
+    let searchTimer = 0;
+    const applySearch = function () {
+      window.clearTimeout(searchTimer);
+      searchTimer = 0;
       table.__portalPagination.search(input.value);
+    };
+    input.addEventListener("input", function () {
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(applySearch, 90);
+    });
+    input.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      applySearch();
     });
   });
   ["input", "change"].forEach(function (eventName) {
     document.addEventListener(eventName, function (event) {
       const table = event.target.closest("table");
       if (table?.__portalPagination && !event.target.classList.contains("table-heading-filter")) {
+        const row = event.target.closest("tr");
+        if (row) row.__portalSearchText = "";
         window.setTimeout(function () { table.__portalPagination.update(true); }, 0);
       }
     });

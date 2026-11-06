@@ -437,7 +437,7 @@
       if (target === "report") {
         node("report-date").value = date;
         node("report-machine-filter").value = node("dashboard-machine").value;
-        node("report-duration").value = node("dashboard-duration").value;
+        if (node("report-duration")) node("report-duration").value = node("dashboard-duration").value;
       } else {
         node("downtime-date").value = date;
         if (node("dashboard-machine").value !== "ALL")

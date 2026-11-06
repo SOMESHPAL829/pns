@@ -378,24 +378,27 @@ try {
             $requestedDate = oee_requested_date();
             $requestedMachine = oee_requested_machine();
             api_require_plant($user,$requestedMachine);
-            $useSavedDuration = in_array($action, ['range-dashboard', 'range-export'], true)
+            $rangeAction = in_array($action, ['range-dashboard', 'range-export'], true);
+            $useSavedDuration = in_array($action, ['range-dashboard', 'range-export', 'report', 'export'], true)
                 && (
                     strtolower(trim((string) ($_GET['duration_minutes'] ?? ''))) === 'saved'
                     || strtolower(trim((string) ($_GET['duration_mode'] ?? ''))) === 'saved'
                 );
             if ($useSavedDuration) {
-                $durationHours = 24;
                 $startTime = is_string($_GET['start_time'] ?? null) ? (string) $_GET['start_time'] : '00:00';
                 if ($startTime === '') $startTime = '00:00';
+                $durationHours = $rangeAction
+                    ? 24
+                    : intdiv((int) oee_duration_setting($pdo, $requestedDate)['duration_minutes'], 60);
                 try {
-                    oee_window_definition('2000-01-01', 24, $startTime);
+                    oee_window_definition($rangeAction ? '2000-01-01' : $requestedDate, $durationHours, $startTime);
                 } catch (InvalidArgumentException $exception) {
                     json_response(['error' => $exception->getMessage()], 422);
                 }
             } else {
                 [$durationHours, $startTime] = oee_requested_window_selection();
             }
-            if (in_array($action, ['range-dashboard', 'range-export'], true)) {
+            if ($rangeAction) {
                 $from = $_GET['from_date'] ?? null;
                 $to = $_GET['to_date'] ?? null;
                 if (!is_string($from) || !is_string($to)) json_response(['error' => 'Choose both From date and To date.'], 422);

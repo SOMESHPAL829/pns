@@ -949,6 +949,7 @@ table.data tbody tr:hover {
   display: grid;
   gap: 0.5rem;
   z-index: 50;
+  pointer-events: none;
 }
 
 .app-toast {
@@ -958,6 +959,7 @@ table.data tbody tr:hover {
   background: var(--accent-deep);
   color: #fff;
   box-shadow: 0 10px 24px rgba(31, 41, 51, 0.18);
+  pointer-events: none;
 }
 
 .app-toast.ok { background: var(--ok); }
@@ -1632,12 +1634,25 @@ table.data tbody tr:hover {
   margin-bottom: 1rem;
 }
 .chemical-cost-chart-grid.equal { grid-template-columns: 1fr 1fr; }
-.chemical-cost-chart-card { overflow: hidden; min-width: 0; }
+.chemical-cost-chart-card {
+  overflow: hidden;
+  min-width: 0;
+  border-color: color-mix(in srgb, var(--accent) 17%, var(--line));
+  background: linear-gradient(155deg, color-mix(in srgb, var(--card) 96%, var(--accent-sft)), var(--card));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent-deep) 8%, transparent);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+.chemical-cost-chart-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--accent-deep) 13%, transparent);
+  transform: translateY(-1px);
+}
 .chemical-cost-chart-card .dash-card-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent-sft) 85%, var(--card)), var(--card));
 }
 .chemical-cost-chart-card .dash-card-head h2 { margin: 0; font: inherit; font-weight: 750; color: var(--accent-deep); }
 .chemical-cost-caption { margin: 0.2rem 0 0; color: var(--mut); font-size: 0.72rem; }
@@ -1686,18 +1701,51 @@ table.data tbody tr:hover {
   height: 285px;
   padding: 0.55rem 0.7rem 0.9rem;
   color: var(--mut);
+  background:
+    radial-gradient(circle at 85% 5%, color-mix(in srgb, var(--accent-sft) 58%, transparent), transparent 42%),
+    var(--card);
 }
 .chemical-cost-chartarea svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .chemical-cost-item-chart { margin-bottom: 1rem; }
 .chemical-cost-item-chart-card { width: 100%; }
 .chemical-cost-item-chartarea { height: 350px; padding: 1rem 1.25rem 0.75rem; }
 .chemical-cost-gridline.chemical-cost-item-gridline { stroke: var(--line); stroke-dasharray: 4 5; opacity: 0.9; }
-.chemical-cost-item-bar { fill: #3979b8; }
+.chemical-cost-item-bar { fill: url(#chemical-item-cost-gradient); }
 .chemical-cost-item-label { font-size: 12px; }
 .chemical-cost-item-value { fill: var(--ink); font-size: 11px; font-weight: 750; }
-.chemical-cost-gridline { opacity: 0.35; }
+.chemical-cost-gridline { opacity: 0.28; }
 .chemical-cost-axis { fill: currentColor; font-size: 11px; }
 .chemical-combo-axis-title { font-size: 10px; font-weight: 750; }
+.chemical-cost-mark {
+  cursor: crosshair;
+  outline: none;
+  transition: opacity 150ms ease, filter 150ms ease, stroke-width 150ms ease;
+}
+.chemical-cost-mark:hover,
+.chemical-cost-mark:focus {
+  opacity: 1;
+  filter: brightness(1.08) drop-shadow(0 3px 4px color-mix(in srgb, var(--accent-deep) 25%, transparent));
+}
+.chemical-cost-point:hover,
+.chemical-cost-point:focus { stroke-width: 4; }
+.chemical-cost-area-fill { pointer-events: none; }
+.chemical-cost-series-line {
+  stroke-linecap: round;
+  filter: drop-shadow(0 2px 2px color-mix(in srgb, var(--accent) 20%, transparent));
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chemical-combo-line-draw 850ms 80ms ease-out forwards;
+}
+.chemical-cost-chartarea .chemical-cost-bar:not(.chemical-combo-bar) {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: chemical-combo-bar-grow 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.chemical-cost-item-bar {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: chemical-item-bar-grow 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .chemical-combo-bar {
   transform-box: fill-box;
   transform-origin: center bottom;
@@ -1718,10 +1766,17 @@ table.data tbody tr:hover {
 }
 @keyframes chemical-combo-line-draw { to { stroke-dashoffset: 0; } }
 @keyframes chemical-combo-point-in { to { opacity: 1; } }
+@keyframes chemical-item-bar-grow {
+  from { transform: scaleX(0); opacity: 0.3; }
+  to { transform: scaleX(1); opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
   .chemical-combo-bar,
   .chemical-combo-line,
-  .chemical-combo-point { animation: none; opacity: 1; stroke-dashoffset: 0; }
+  .chemical-combo-point,
+  .chemical-cost-series-line,
+  .chemical-cost-chartarea .chemical-cost-bar,
+  .chemical-cost-item-bar { animation: none; opacity: 1; stroke-dashoffset: 0; }
 }
 .chemical-cost-empty {
   display: grid;
@@ -1784,13 +1839,16 @@ table.data tbody tr:hover {
   position: fixed;
   z-index: 40;
   pointer-events: none;
-  max-width: 240px;
-  padding: 0.55rem 0.75rem;
-  border-radius: 7px;
-  background: var(--accent-deep, #1d3b63);
+  width: max-content;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 0.65rem 0.8rem;
+  border: 1px solid color-mix(in srgb, #fff 18%, transparent);
+  border-radius: 10px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent-deep, #1d3b63) 92%, #0d1726), var(--accent-deep, #1d3b63));
   color: #fff;
   font-size: 0.78rem;
-  box-shadow: 0 5px 16px color-mix(in srgb, #000 25%, transparent);
+  line-height: 1.45;
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 30%, transparent);
 }
 
 @media (max-width: 1200px) {

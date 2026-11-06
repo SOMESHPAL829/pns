@@ -39,7 +39,7 @@
     stack.appendChild(toast);
     setTimeout(function () {
       toast.remove();
-    }, 2800);
+    }, kind === "crit" ? 4200 : kind === "warn" ? 2600 : 1600);
   }
 
   function closeHeaderMenus(except) {
