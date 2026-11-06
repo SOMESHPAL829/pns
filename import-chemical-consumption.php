@@ -8,8 +8,15 @@ require_once __DIR__ . '/includes/chemical_consumption.php';
 
 $source = $argv[1] ?? '';
 $dryRun = in_array('--dry-run', $argv, true);
+$allowSourceDuplicates = in_array('--allow-source-duplicates', $argv, true);
+$expectedPlant = null;
+foreach ($argv as $argument) {
+    if (str_starts_with($argument, '--expected-plant=')) {
+        $expectedPlant = mb_strtoupper(trim(substr($argument, strlen('--expected-plant='))), 'UTF-8');
+    }
+}
 if ($source === '' || !is_file($source)) {
-    fwrite(STDERR, "Usage: php import-chemical-consumption.php <xlsx-or-tab-separated-file> [--dry-run]\n");
+    fwrite(STDERR, "Usage: php import-chemical-consumption.php <xlsx-or-tab-separated-file> [--dry-run] [--allow-source-duplicates] [--expected-plant=APP-06]\n");
     exit(1);
 }
 
@@ -139,6 +146,7 @@ if (count($canonicalHeader) !== count(array_unique($canonicalHeader))) throw new
 
 $rows = [];
 $sourceKeys = [];
+$sourceDuplicateRows = 0;
 $line = 1;
 foreach ($sourceRows as $values) {
     $line++;
@@ -158,7 +166,7 @@ foreach ($sourceRows as $values) {
         'process_description'=>mb_strtoupper($row['Process'], 'UTF-8'),
         'chemical_code'=>mb_strtoupper($row['Chemical Code'], 'UTF-8'),
         'chemical_name'=>mb_strtoupper($row['Chemical Name'], 'UTF-8'),
-        'consume_quantity'=>chemical_consumption_quantity($row['Consumption Qty']),
+        'consume_quantity'=>chemical_consumption_quantity((string)preg_replace('/^0+(?=\d)/', '', $row['Consumption Qty'])),
         'uom'=>mb_strtoupper($row['UOM'], 'UTF-8'),
         'used_for'=>mb_strtoupper($row['Used For'], 'UTF-8'),
         'recommended_by'=>mb_strtoupper($row['Recommended By'], 'UTF-8'),
@@ -168,11 +176,18 @@ foreach ($sourceRows as $values) {
     if (!in_array($normalized['used_for'], ['FRESH MAKEUP','TOP-UP'], true)) throw new RuntimeException("Line {$line} has an invalid Used For value.");
     if (!in_array($normalized['recommended_by'], ['QC MANAGER','PRODUCTION MANAGER'], true)) throw new RuntimeException("Line {$line} has an invalid Recommended By value.");
     $key = json_encode(array_diff_key($normalized, ['source_line'=>true]), JSON_THROW_ON_ERROR);
-    if (isset($sourceKeys[$key])) throw new RuntimeException("Lines {$sourceKeys[$key]} and {$line} are exact duplicates.");
+    if (isset($sourceKeys[$key])) {
+        if (!$allowSourceDuplicates) throw new RuntimeException("Lines {$sourceKeys[$key]} and {$line} are exact duplicates.");
+        $sourceDuplicateRows++;
+    }
     $sourceKeys[$key] = $line;
     $rows[] = $normalized;
 }
 if ($rows === []) throw new RuntimeException('The import file contains no data rows.');
+if ($expectedPlant !== null && $expectedPlant !== '') {
+    $unexpectedPlants = array_values(array_diff(array_unique(array_column($rows, 'machine_code')), [$expectedPlant]));
+    if ($unexpectedPlants !== []) throw new RuntimeException('The import contains unexpected plants: ' . implode(', ', $unexpectedPlants));
+}
 
 $pdo = db();
 $codes = array_values(array_unique(array_column($rows, 'chemical_code')));
@@ -206,6 +221,8 @@ foreach ($rows as $row) {
 }
 
 echo 'Validated rows: ' . count($rows) . PHP_EOL;
+echo 'Plant rows: ' . json_encode(array_count_values(array_column($rows, 'machine_code')), JSON_UNESCAPED_SLASHES) . PHP_EOL;
+echo 'Preserved source duplicate rows: ' . $sourceDuplicateRows . PHP_EOL;
 echo 'Registered chemical codes: ' . count($codes) . PHP_EOL;
 echo 'Already present: ' . $existing . PHP_EOL;
 echo 'Ready to insert: ' . count($ready) . PHP_EOL;
