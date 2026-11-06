@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+const PORTAL_SESSION_IDLE_TIMEOUT = 900;
+
 function normalize_email(string $email): string
 {
     return mb_strtolower(trim($email), 'UTF-8');
@@ -38,13 +40,37 @@ function start_app_session(): void
 
     ini_set('session.use_strict_mode', '1');
     ini_set('session.use_only_cookies', '1');
+    ini_set('session.gc_maxlifetime', (string) PORTAL_SESSION_IDLE_TIMEOUT);
     session_set_cookie_params([
+        'lifetime' => 0,
         'httponly' => true,
         'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'samesite' => 'Lax',
         'path' => '/',
     ]);
     session_start();
+
+    $now = time();
+    $lastActivity = isset($_SESSION['last_activity_at']) ? (int) $_SESSION['last_activity_at'] : 0;
+    if (isset($_SESSION['user_id']) && $lastActivity > 0 && ($now - $lastActivity) >= PORTAL_SESSION_IDLE_TIMEOUT) {
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', [
+                'expires' => $now - 42000,
+                'path' => $params['path'],
+                'domain' => $params['domain'],
+                'secure' => $params['secure'],
+                'httponly' => $params['httponly'],
+                'samesite' => 'Lax',
+            ]);
+        }
+        session_destroy();
+        return;
+    }
+    if (isset($_SESSION['user_id'])) {
+        $_SESSION['last_activity_at'] = $now;
+    }
 }
 
 function csrf_token(): string

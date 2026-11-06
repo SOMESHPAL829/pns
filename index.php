@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['auth_version'] = (int) $user['auth_version'];
+                $_SESSION['last_activity_at'] = time();
                 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 $_SESSION['welcome_message'] = 'Welcome, ' . $user['full_name'] . '!';
                 header('Location: app.php');

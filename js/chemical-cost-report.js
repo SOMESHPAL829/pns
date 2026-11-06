@@ -58,6 +58,12 @@
     return (value > 0 ? "+" : "") + value.toFixed(1) + "%";
   }
 
+  function safeHtml(value) {
+    const span = document.createElement("span");
+    span.textContent = value == null ? "" : String(value);
+    return span.innerHTML;
+  }
+
   function fmtShort(value) {
     const abs = Math.abs(value);
     if (abs >= 1e5) return (value / 1e5).toFixed(1) + "L";
@@ -96,17 +102,39 @@
     return item.machine_code || "Period";
   }
 
-  function tipShow(event, text) {
+  function tipShow(event, text, anchor) {
     const tip = byId("chemical-cost-tip");
     tip.innerHTML = text;
     tip.hidden = false;
-    tip.style.left =
-      Math.min(event.clientX + 12, window.innerWidth - 230) + "px";
-    tip.style.top = Math.max(8, event.clientY - 75) + "px";
+    const anchorBox = (anchor || event.currentTarget)?.getBoundingClientRect?.();
+    const pointerX = Number.isFinite(event.clientX) && event.clientX > 0
+      ? event.clientX
+      : (anchorBox ? anchorBox.left + anchorBox.width / 2 : window.innerWidth / 2);
+    const pointerY = Number.isFinite(event.clientY) && event.clientY > 0
+      ? event.clientY
+      : (anchorBox ? anchorBox.top + anchorBox.height / 2 : window.innerHeight / 2);
+    const bounds = tip.getBoundingClientRect();
+    const edge = 8;
+    const gap = 10;
+    let left = pointerX + gap;
+    if (left + bounds.width > window.innerWidth - edge) left = pointerX - bounds.width - gap;
+    left = Math.max(edge, Math.min(left, window.innerWidth - bounds.width - edge));
+    const top = Math.max(edge, Math.min(pointerY - bounds.height / 2, window.innerHeight - bounds.height - edge));
+    tip.style.left = Math.round(left) + "px";
+    tip.style.top = Math.round(top) + "px";
   }
 
   function tipHide() {
     byId("chemical-cost-tip").hidden = true;
+  }
+
+  function bindTooltip(mark, content) {
+    const show = (event) => tipShow(event, content(), mark);
+    mark.addEventListener("pointerenter", show);
+    mark.addEventListener("pointermove", show);
+    mark.addEventListener("pointerleave", tipHide);
+    mark.addEventListener("focus", show);
+    mark.addEventListener("blur", tipHide);
   }
 
   function chartRows(rows, reportType) {
@@ -294,7 +322,11 @@
       W +
       " " +
       H +
-      '" preserveAspectRatio="none" role="img">';
+      '" preserveAspectRatio="none" role="img">' +
+      '<defs>' +
+      '<linearGradient id="' + el + '-bar-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + ((opts.colors && opts.colors[0]) || "#5698d5") + '"/><stop offset="1" stop-color="' + (opts.keys[0] === "area" ? "#118b80" : "#255d96") + '"/></linearGradient>' +
+      '<linearGradient id="' + el + '-area-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c91d0" stop-opacity=".3"/><stop offset="1" stop-color="#4c91d0" stop-opacity=".02"/></linearGradient>' +
+      '</defs>';
     for (let step = 0; step < 5; step += 1) {
       const gy = top + (step * plotH) / 4;
       out +=
@@ -329,13 +361,12 @@
     });
 
     if (opts.kind === "bar") {
-      const color = (opts.colors && opts.colors[0]) || "#3976b4";
       usable.forEach((row, index) => {
         const xx = xbar(index);
         const width = Math.min(48, (plotW / usable.length) * 0.57);
         const yy = y(row[opts.keys[0]]);
         out +=
-          '<rect class="chemical-cost-mark" data-i="' +
+          '<rect class="chemical-cost-mark chemical-cost-bar" tabindex="0" data-i="' +
           index +
           '" x="' +
           (xx - width / 2) +
@@ -345,9 +376,7 @@
           width +
           '" height="' +
           (top + plotH - yy) +
-          '" rx="4" fill="' +
-          color +
-          '" opacity=".9"/>';
+          '" rx="5" fill="url(#' + el + '-bar-gradient)"/>';
       });
     } else {
       opts.keys.forEach((key, keyIndex) => {
@@ -375,17 +404,17 @@
             x(0) +
             " " +
             (top + plotH) +
-            ' Z" fill="#3976b4" opacity=".08"/>';
+            ' Z" fill="url(#' + el + '-area-gradient)" class="chemical-cost-area-fill"/>';
         }
         out +=
-          '<path d="' +
+          '<path class="chemical-cost-series-line" pathLength="1" d="' +
           path +
           '" stroke="' +
           color +
           '" fill="none" stroke-width="3" stroke-linejoin="round"/>';
         usable.forEach((row, index) => {
           out +=
-            '<circle class="chemical-cost-mark" data-i="' +
+            '<circle class="chemical-cost-mark chemical-cost-point" tabindex="0" data-i="' +
             index +
             '" cx="' +
             x(index) +
@@ -400,12 +429,11 @@
     out += "</svg>";
     root.innerHTML = out;
     root.querySelectorAll(".chemical-cost-mark").forEach((mark) => {
-      mark.addEventListener("pointermove", (event) => {
+      bindTooltip(mark, () => {
         const row = usable[Number(mark.dataset.i)];
-        tipShow(
-          event,
+        return (
           "<b>" +
-            row.period +
+            safeHtml(row.period) +
             "</b><br>Cost: " +
             money(row.cost, 0) +
             "<br>Area: " +
@@ -414,10 +442,9 @@
             (row.rate == null ? "—" : "₹" + decimal(row.rate, 4)) +
             (row.complete === false
               ? "<br><b>Partial:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
-              : ""),
+              : "")
         );
       });
-      mark.addEventListener("pointerleave", tipHide);
     });
   }
 
@@ -458,7 +485,8 @@
       W +
       " " +
       H +
-      '" preserveAspectRatio="none" role="img" aria-label="Chemical cost bars with processed surface area trend">';
+      '" preserveAspectRatio="none" role="img" aria-label="Chemical cost bars with processed surface area trend">' +
+      '<defs><linearGradient id="chemical-combo-cost-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5899d3"/><stop offset="1" stop-color="#285c90"/></linearGradient></defs>';
     out +=
       '<text x="' +
       left +
@@ -503,7 +531,7 @@
       const xx = x(index);
       const yy = costY(row.cost);
       out +=
-        '<rect class="chemical-cost-mark chemical-combo-bar" data-i="' +
+        '<rect class="chemical-cost-mark chemical-combo-bar chemical-cost-bar" tabindex="0" data-i="' +
         index +
         '" x="' +
         (xx - barWidth / 2) +
@@ -513,7 +541,7 @@
         barWidth +
         '" height="' +
         (top + plotH - yy) +
-        '" rx="4" fill="#315f8f" opacity=".88"/>';
+        '" rx="5" fill="url(#chemical-combo-cost-gradient)"/>';
       out +=
         '<text x="' +
         xx +
@@ -530,7 +558,7 @@
       '" pathLength="1" stroke="#17a18f" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
     usable.forEach((row, index) => {
       out +=
-        '<circle class="chemical-cost-mark chemical-combo-point" data-i="' +
+        '<circle class="chemical-cost-mark chemical-combo-point chemical-cost-point" tabindex="0" data-i="' +
         index +
         '" cx="' +
         x(index) +
@@ -542,12 +570,11 @@
     root.innerHTML = out;
 
     root.querySelectorAll(".chemical-cost-mark").forEach((mark) => {
-      mark.addEventListener("pointermove", (event) => {
+      bindTooltip(mark, () => {
         const row = usable[Number(mark.dataset.i)];
-        tipShow(
-          event,
+        return (
           "<b>" +
-            row.period +
+            safeHtml(row.period) +
             "</b><br>Chemical Cost: " +
             money(row.cost, 0) +
             "<br>Surface Area: " +
@@ -555,10 +582,9 @@
             " dm²" +
             (row.complete === false
               ? "<br><b>Partial cost:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
-              : ""),
+              : "")
         );
       });
-      mark.addEventListener("pointerleave", tipHide);
     });
   }
 
@@ -601,6 +627,15 @@
       return element;
     };
 
+    const defs = node("defs");
+    const gradient = node("linearGradient", { id: "chemical-item-cost-gradient", x1: "0", y1: "0", x2: "1", y2: "0" });
+    gradient.append(
+      node("stop", { offset: "0", "stop-color": "#285f99" }),
+      node("stop", { offset: "1", "stop-color": "#61a6df" }),
+    );
+    defs.appendChild(gradient);
+    svg.appendChild(defs);
+
     for (let index = 0; index <= 4; index += 1) {
       const value = step * index;
       const x = left + (value / axisMaximum) * plotWidth;
@@ -614,7 +649,7 @@
       const y = top + index * rowHeight + Math.max(4, (rowHeight - 27) / 2);
       const width = Math.max(2, (cost / axisMaximum) * plotWidth);
       const label = node("text", { x: left - 10, y: y + 18, "text-anchor": "end", class: "chemical-cost-axis chemical-cost-item-label" }, item.item_code);
-      const bar = node("rect", { x: left, y, width, height: 27, rx: 5, class: "chemical-cost-item-bar" });
+      const bar = node("rect", { x: left, y, width, height: 27, rx: 6, class: "chemical-cost-item-bar chemical-cost-mark", tabindex: 0, "data-i": index });
       const title = node("title", {}, `${item.item_code} · ${item.chemical_name || "Chemical"} · ${money(cost, 2)}`);
       bar.appendChild(title);
       svg.append(label, bar);
@@ -622,6 +657,20 @@
     });
 
     root.replaceChildren(svg);
+    const total = usable.reduce((sum, item) => sum + Number(item.total_chemical_cost || 0), 0);
+    root.querySelectorAll(".chemical-cost-item-bar").forEach((bar) => {
+      bindTooltip(bar, () => {
+        const item = usable[Number(bar.dataset.i)];
+        const cost = Number(item.total_chemical_cost || 0);
+        const share = total > 0 ? (cost / total) * 100 : 0;
+        return (
+          "<b>" + safeHtml(item.item_code) + "</b><br>" +
+          safeHtml(item.chemical_name || "Chemical") +
+          "<br>Cost: " + money(cost, 2) +
+          "<br>Top-item share: " + decimal(share, 1) + "%"
+        );
+      });
+    });
   }
 
   function renderCharts(series, reportType, itemCosts) {
