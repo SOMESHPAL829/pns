@@ -24,9 +24,9 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
         if (q.get('action') === 'duration-setting') return route.fulfill({ json: { date: q.get('date') || '2026-10-22', configured: false, duration_minutes: 1440, updated_at: null } });
         if (q.get('action') === 'range-export') return route.fulfill({ contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', body: Buffer.from([80, 75, 3, 4]) });
         const days = (Date.parse(q.get('to_date')) - Date.parse(q.get('from_date'))) / 86400000 + 1 || 1;
-        const minutes = Number(q.get('duration_minutes') || 1440);
+        const minutes = q.get('duration_minutes') === 'saved' ? 1440 : Number(q.get('duration_minutes') || 1440);
         return route.fulfill({ json: { available: true, date: '2026-10-22', from_date: q.get('from_date'), to_date: q.get('to_date'), machine: q.get('machine') || 'ALL',
-          window: { duration_minutes: minutes, duration_hours: minutes / 60, start_time: q.get('start_time') || '00:00', day_count: days, window_start: '2026-10-22 00:00:00', window_end: '2026-10-23 00:00:00' },
+          window: { duration_minutes: minutes, duration_hours: minutes / 60, duration_mode: 'saved', start_time: q.get('start_time') || '00:00', day_count: days, window_start: '2026-10-22 00:00:00', window_end: '2026-10-23 00:00:00' },
           metrics: { total_fb: days * 10, productive_fb: days * 10, pcs: days * 100 },
           oee: { oee: 0.5, availability: 0.8, performance: 0.625, quality: 1, utilization_window: 0.8, calendar_minutes: days * minutes, calculation_flags: {} },
           rows: [], line_metrics: [{ line_code: 'APP-06', productive_fb: days * 10, run_minutes: days * 600, ideal_output_minutes: days * 300, availability: 0.8, performance: 0.625, quality: 1, oee: 0.5, utilization_window: 0.8 }], window_metrics: [], sync: [], imports: [] } });
@@ -43,19 +43,19 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     assert.equal(await page.locator('#dashboard-date').inputValue(), '2026-10-22');
     await page.locator('#range-from-date').fill('2026-10-21');
     await page.locator('#range-to-date').fill('2026-10-22');
-    await page.locator('#range-duration').selectOption('720');
     await page.locator('#range-load').click();
     await page.waitForFunction(() => document.getElementById('range-days').textContent === '2');
-    assert((await page.locator('#range-window').textContent()).includes('2 Day(s) × 720 Min'));
+    assert((await page.locator('#range-window').textContent()).includes('2 Day(s) · Saved Daily Duration'));
     assert.equal(await page.locator('#range-total-fb').textContent(), '20');
-    assert.equal(await page.locator('#range-calendar').textContent(), '1440.0 min');
+    assert.equal(await page.locator('#range-calendar').textContent(), '2880.0 min');
     assert.equal(await page.locator('#dashboard-duration').inputValue(), '1440', 'daily controls must stay independent');
     const downloadPromise = page.waitForEvent('download');
     await page.locator('#range-export').click();
     const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), 'pns-oee-2026-10-21-to-2026-10-22-ALL-720min-0000.xlsx');
+    assert.equal(download.suggestedFilename(), 'pns-oee-2026-10-21-to-2026-10-22-ALL-savedmin-0000.xlsx');
     const exported = requests.find(r => r.action === 'range-export');
     assert.equal(exported.from_date, '2026-10-21'); assert.equal(exported.to_date, '2026-10-22'); assert.equal(exported.start_time, '00:00');
+    assert.equal(exported.duration_minutes, 'saved');
     await page.locator('#range-from-date').fill('2026-10-23');
     const before = requests.filter(r => r.action === 'range-dashboard').length;
     await page.locator('#range-load').click();
@@ -68,7 +68,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.waitForFunction(() => document.getElementById('range-window').textContent.includes('APP-07'));
     for (const width of [1440, 1024, 768, 320]) {
       await page.setViewportSize({ width, height: 1000 }); await page.waitForTimeout(250);
-      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-duration', 'range-load', 'range-export']) {
+      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-load', 'range-export']) {
         const box = await page.locator('#' + id).boundingBox();
         assert(box && box.x >= 0 && box.x + box.width <= width + 1, id + ' overflows at ' + width);
       }

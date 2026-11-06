@@ -915,13 +915,12 @@
       throw new Error(
         "Choose From date before or equal to To date, up to 93 days inclusive.",
       );
-    const minutes = document.getElementById("range-duration").value;
     return {
       from_date: from,
       to_date: to,
       machine: document.getElementById("range-machine").value,
-      duration_minutes: minutes,
-      duration_mode: minutes === "saved" ? "saved" : "fixed",
+      duration_minutes: "saved",
+      duration_mode: "saved",
       start_time: "00:00",
     };
   }
@@ -973,11 +972,6 @@
       (window.duration_hours || Number(window.duration_minutes || 1440) / 60) +
         "h Utilization",
     );
-    const durationMode = window.duration_mode || "fixed";
-    const durationLabel =
-      durationMode === "saved"
-        ? "Saved Daily Duration (missing days = 1440)"
-        : window.duration_minutes + " Min per Plant";
     setText(
       "range-window",
       data.from_date +
@@ -985,9 +979,7 @@
         data.to_date +
         " (Inclusive) · " +
         window.day_count +
-        " Day(s) · " +
-        durationLabel +
-        " · " +
+        " Day(s) · Saved Daily Duration · " +
         (data.machine === "ALL" ? "All Plants" : data.machine),
     );
     const flags = oee.calculation_flags || {},
