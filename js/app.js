@@ -1001,39 +1001,68 @@
     showOeeAlert("range-alert", warnings.join(" "), warnings.length > 0);
     const body = document.getElementById("range-lines-body");
     body.replaceChildren();
-    (data.line_metrics || []).forEach(function (line) {
-      const row = document.createElement("tr");
-      [
-        line.line_code,
-        line.productive_fb,
-        Number(line.run_minutes).toFixed(1),
-        Number(line.ideal_output_minutes).toFixed(1),
-        percent(line.availability),
-        percent(line.performance),
-        percent(line.quality),
-        percent(line.oee),
-        percent(line.utilization_window),
-      ].forEach(function (value) {
-        makeCell(row, value);
+    const dailyLines = (data.window_metrics || [])
+      .slice()
+      .sort(function (left, right) {
+        return (
+          String(left.report_date || "").localeCompare(
+            String(right.report_date || ""),
+          ) ||
+          String(left.line_code || "").localeCompare(
+            String(right.line_code || ""),
+          )
+        );
       });
-      body.appendChild(row);
-    });
-    const daily = document.getElementById("range-days-body");
-    daily.replaceChildren();
-    (data.window_metrics || []).forEach(function (line) {
-      const row = document.createElement("tr");
-      [
-        readableDate(line.report_date),
-        line.line_code,
-        readableDateTime(line.window_end),
-        line.productive_fb,
-        Number(line.run_minutes).toFixed(1),
-        percent(line.oee),
-      ].forEach(function (value) {
-        makeCell(row, value);
+    if (!dailyLines.length) {
+      const empty = document.createElement("tr");
+      makeCell(empty, "No plant OEE rows for this date range.", "empty");
+      empty.querySelector("td").colSpan = 10;
+      body.appendChild(empty);
+    } else {
+      dailyLines.forEach(function (line) {
+        const row = document.createElement("tr");
+        [
+          readableDate(line.report_date),
+          line.line_code,
+          line.productive_fb,
+          Number(line.run_minutes).toFixed(1),
+          Number(line.ideal_output_minutes).toFixed(1),
+          percent(line.availability),
+          percent(line.performance),
+          percent(line.quality),
+          percent(line.oee),
+          percent(line.utilization_window),
+        ].forEach(function (value) {
+          makeCell(row, value);
+        });
+        body.appendChild(row);
       });
-      daily.appendChild(row);
-    });
+    }
+    const downtimeBody = document.getElementById("range-downtime-body");
+    downtimeBody.replaceChildren();
+    const downtimeRows = data.downtime_events || [];
+    if (!downtimeRows.length) {
+      const empty = document.createElement("tr");
+      makeCell(empty, "No downtime events for this date range.", "empty");
+      empty.querySelector("td").colSpan = 5;
+      downtimeBody.appendChild(empty);
+    } else {
+      downtimeRows.forEach(function (event) {
+        const row = document.createElement("tr");
+        [
+          readableDate(
+            event.window_date || String(event.starts_at || "").slice(0, 10),
+          ),
+          event.line_code || "—",
+          event.reason_label || event.reason_code || "—",
+          readableDateTime(event.starts_at),
+          readableDateTime(event.ends_at),
+        ].forEach(function (value) {
+          makeCell(row, value);
+        });
+        downtimeBody.appendChild(row);
+      });
+    }
   }
 
   async function loadRangeDashboard() {

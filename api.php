@@ -412,7 +412,29 @@ try {
                 if (!oee_tables_ready($pdo)) json_response(['available' => false, 'message' => 'OEE database migration is not installed yet.'], 503);
                 $report = oee_date_range_report($pdo, $requestedMachine, $range);
                 if ($action === 'range-dashboard') {
-                    unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
+                    unset($report['rows'], $report['quality_entries']);
+                    $seenDowntime = [];
+                    $slimEvents = [];
+                    foreach ($report['downtime_events'] ?? [] as $event) {
+                        $key = implode('|', [
+                            (string) ($event['line_code'] ?? ''),
+                            (string) ($event['starts_at'] ?? ''),
+                            (string) ($event['ends_at'] ?? ''),
+                            (string) ($event['reason_code'] ?? ''),
+                        ]);
+                        if (isset($seenDowntime[$key])) continue;
+                        $seenDowntime[$key] = true;
+                        $starts = (string) ($event['starts_at'] ?? '');
+                        $slimEvents[] = [
+                            'window_date' => $event['window_date'] ?? substr($starts, 0, 10),
+                            'line_code' => $event['line_code'] ?? '',
+                            'reason_label' => ($event['reason_label'] ?? '') ?: (($event['reason_code'] ?? '') ?: '—'),
+                            'starts_at' => $starts,
+                            'ends_at' => (string) ($event['ends_at'] ?? ''),
+                        ];
+                    }
+                    usort($slimEvents, static fn (array $left, array $right): int => [$left['window_date'], $left['line_code'], $left['starts_at']] <=> [$right['window_date'], $right['line_code'], $right['starts_at']]);
+                    $report['downtime_events'] = $slimEvents;
                     json_response($report);
                 }
                 $exportType = strtolower(trim((string) ($_GET['export_type'] ?? 'oee')));

@@ -29,7 +29,10 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
           window: { duration_minutes: minutes, duration_hours: minutes / 60, duration_mode: 'saved', start_time: q.get('start_time') || '00:00', day_count: days, window_start: '2026-10-22 00:00:00', window_end: '2026-10-23 00:00:00' },
           metrics: { total_fb: days * 10, productive_fb: days * 10, pcs: days * 100 },
           oee: { oee: 0.5, availability: 0.8, performance: 0.625, quality: 1, utilization_window: 0.8, calendar_minutes: days * minutes, calculation_flags: {} },
-          rows: [], line_metrics: [{ line_code: 'APP-06', productive_fb: days * 10, run_minutes: days * 600, ideal_output_minutes: days * 300, availability: 0.8, performance: 0.625, quality: 1, oee: 0.5, utilization_window: 0.8 }], window_metrics: [], sync: [], imports: [] } });
+          rows: [], line_metrics: [{ line_code: 'APP-06', productive_fb: days * 10, run_minutes: days * 600, ideal_output_minutes: days * 300, availability: 0.8, performance: 0.625, quality: 1, oee: 0.5, utilization_window: 0.8 }],
+          window_metrics: [{ report_date: q.get('from_date') || '2026-10-22', line_code: 'APP-06', productive_fb: days * 10, run_minutes: days * 600, ideal_output_minutes: days * 300, availability: 0.8, performance: 0.625, quality: 1, oee: 0.5, utilization_window: 0.8 }],
+          downtime_events: [{ window_date: q.get('from_date') || '2026-10-22', line_code: 'APP-06', reason_label: 'Breakdown', starts_at: (q.get('from_date') || '2026-10-22') + ' 08:00:00', ends_at: (q.get('from_date') || '2026-10-22') + ' 09:00:00' }],
+          sync: [], imports: [] } });
       }
       const file = path.resolve(root, '.' + decodeURIComponent(url.pathname));
       if (!file.startsWith(root + path.sep) || !fs.existsSync(file)) return route.fulfill({ status: 404, body: '' });
@@ -49,6 +52,10 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     assert.equal(await page.locator('#range-total-fb').textContent(), '20');
     assert.equal(await page.locator('#range-calendar').textContent(), '2880.0 min');
     assert.equal(await page.locator('#dashboard-duration').inputValue(), '1440', 'daily controls must stay independent');
+    assert.equal(await page.locator('#range-lines-body tr').first().locator('td').nth(0).textContent(), '21-10-2026');
+    assert.equal(await page.locator('#range-lines-body tr').first().locator('td').nth(1).textContent(), 'APP-06');
+    assert.equal(await page.locator('#range-downtime-body tr').first().locator('td').nth(2).textContent(), 'Breakdown');
+    assert((await page.locator('#range-downtime-body tr').first().locator('td').nth(3).textContent()).includes('08:00'));
     const oeeDownloadPromise = page.waitForEvent('download');
     await page.locator('#range-export-oee').click();
     const oeeDownload = await oeeDownloadPromise;
