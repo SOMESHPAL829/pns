@@ -139,10 +139,7 @@
     window.PortalSearchableSelect?.refresh(select);
   }
 
-  function renderEntries() {
-    const body = byId("chemical-consumption-body");
-    body.replaceChildren();
-    state.entries.forEach(entry => {
+  function entryRow(entry) {
       const row = document.createElement("tr");
       cell(row, displayDate(entry.entry_date));
       cell(row, entry.shift_name);
@@ -156,14 +153,29 @@
       cell(row, entry.remarks);
       const actions = cell(row, "", "row-actions-cell");
       if (access.can("chemical-consumption", "update")) actions.appendChild(editButton(entry.id));
-      body.appendChild(row);
-    });
+      return row;
+  }
+
+  function renderSavedEntry(entry, isNew) {
+    const body = byId("chemical-consumption-body");
+    const existing = body.querySelector('[data-edit-chemical-consumption="' + CSS.escape(String(entry.id)) + '"]')?.closest("tr");
+    const row = entryRow(entry);
+    if (existing) existing.replaceWith(row);
+    else if (isNew) body.prepend(row);
+    applyControls();
+  }
+
+  function renderEntries() {
+    const body = byId("chemical-consumption-body");
+    const fragment = document.createDocumentFragment();
+    state.entries.forEach(entry => fragment.appendChild(entryRow(entry)));
     if (!state.entries.length) {
       const row = document.createElement("tr");
       const empty = cell(row, "No chemical consumption entries have been recorded yet.");
       empty.colSpan = 11;
-      body.appendChild(row);
+      fragment.appendChild(row);
     }
+    body.replaceChildren(fragment);
     applyControls();
   }
 
@@ -202,25 +214,53 @@
     if (!access.can("chemical-consumption", id ? "update" : "create")) return;
     const save = byId("chemical-consumption-save");
     save.disabled = true;
+    const payload = {
+      id,
+      entry_date: byId("chemical-consumption-date").value,
+      shift_name: byId("chemical-consumption-shift").value,
+      operator_name: byId("chemical-consumption-operator").value,
+      machine_code: byId("chemical-consumption-machine").value,
+      process_description: byId("chemical-consumption-process").value,
+      chemical_item_id: byId("chemical-consumption-item").value,
+      consume_quantity: byId("chemical-consumption-quantity").value,
+      uom: byId("chemical-consumption-uom").value,
+      used_for: byId("chemical-consumption-used-for").value,
+      recommended_by: byId("chemical-consumption-recommended-by").value,
+      remarks: byId("chemical-consumption-remarks").value
+    };
     try {
-      await api("chemical-consumption", "save", { method: "POST", body: {
-        id,
-        entry_date: byId("chemical-consumption-date").value,
-        shift_name: byId("chemical-consumption-shift").value,
-        operator_name: byId("chemical-consumption-operator").value,
-        machine_code: byId("chemical-consumption-machine").value,
-        process_description: byId("chemical-consumption-process").value,
-        chemical_item_id: byId("chemical-consumption-item").value,
-        consume_quantity: byId("chemical-consumption-quantity").value,
-        uom: byId("chemical-consumption-uom").value,
-        used_for: byId("chemical-consumption-used-for").value,
-        recommended_by: byId("chemical-consumption-recommended-by").value,
-        remarks: byId("chemical-consumption-remarks").value
-      } });
+      const result = await api("chemical-consumption", "save", { method: "POST", body: payload });
+      const item = state.items.find(candidate => String(candidate.id) === String(payload.chemical_item_id));
+      const normalizedEntry = {
+        ...(id ? state.entries.find(entry => Number(entry.id) === id) : {}),
+        id: Number(result.id),
+        entry_date: payload.entry_date,
+        shift_name: payload.shift_name.toLocaleUpperCase("en-IN"),
+        operator_name: payload.operator_name.toLocaleUpperCase("en-IN"),
+        machine_code: payload.machine_code.toLocaleUpperCase("en-IN"),
+        process_description: payload.process_description.toLocaleUpperCase("en-IN"),
+        chemical_item_id: Number(payload.chemical_item_id),
+        chemical_name: item?.description || "",
+        item_code: item?.item_code || "",
+        consume_quantity: payload.consume_quantity,
+        uom: payload.uom.toLocaleUpperCase("en-IN"),
+        used_for: payload.used_for.toLocaleUpperCase("en-IN"),
+        recommended_by: payload.recommended_by.toLocaleUpperCase("en-IN"),
+        remarks: payload.remarks.trim().toLocaleUpperCase("en-IN")
+      };
+      const existingIndex = state.entries.findIndex(entry => Number(entry.id) === Number(result.id));
+      const isNew = existingIndex < 0;
+      if (existingIndex >= 0) state.entries[existingIndex] = normalizedEntry;
+      else state.entries.unshift(normalizedEntry);
+      const plantDescriptions = state.processDescriptionsByPlant[normalizedEntry.machine_code] || [];
+      if (!plantDescriptions.includes(normalizedEntry.process_description)) {
+        state.processDescriptionsByPlant[normalizedEntry.machine_code] = [...plantDescriptions, normalizedEntry.process_description].sort();
+      }
       window.PortalModalForms?.saved("chemical-consumption-form");
       window.AppToast?.show(id ? "Chemical consumption entry updated" : "Chemical consumption entry recorded", "ok");
+      showAlert("");
       resetForm();
-      await load();
+      window.setTimeout(function () { renderSavedEntry(normalizedEntry, isNew); }, 0);
     } catch (error) {
       showAlert(error.message);
       window.AppToast?.show(error.message, "crit");

@@ -186,7 +186,6 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               </label>
               <div class="report-primary-controls" aria-label="Report calculation controls">
                 <label class="date-control">Report Date <input id="report-date" type="date"></label>
-                <label class="date-control">Calculation Duration <select id="report-duration"><option value="1440">1440 Min (24 Hours)</option><option value="960">960 Min (16 Hours)</option><option value="720">720 Min (12 Hours)</option><option value="600">600 Min (10 Hours)</option><option value="480">480 Min (8 Hours)</option></select></label>
                 <button class="btn" id="report-load" type="button">Load Report</button>
                 <button class="btn ghost" id="report-export" data-permission-page="oee-report" data-permission-action="export" hidden type="button">Export Excel</button>
               </div>

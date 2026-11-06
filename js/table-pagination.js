@@ -96,7 +96,7 @@
       if (checkbox) return checkbox.checked ? "1" : "0";
       const select = cell.querySelector("select");
       if (select) return normalizedValue(select.options[select.selectedIndex]?.text || select.value);
-      return normalizedValue(cell.dataset.sortValue || cell.innerText || "");
+      return normalizedValue(cell.dataset.sortValue || cell.textContent || "");
     }
 
     function compareValues(left, right) {
@@ -197,7 +197,9 @@
         const cellIndex = Number(select.dataset.columnIndex);
         const selected = select.value;
         const label = select.dataset.headingLabel || "Filter";
-        const values = Array.from(new Set(rows.map(row => cellValue(row, cellIndex)).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+        const values = normalizedHeading(label).startsWith("recommendedby")
+          ? ["PRODUCTION MANAGER", "QC MANAGER"]
+          : Array.from(new Set(rows.map(row => cellValue(row, cellIndex)).filter(Boolean))).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
         select.replaceChildren(new Option(label, ""));
         values.slice(0, 100).forEach(value => select.add(new Option(label + ": " + value, value)));
         if (values.includes(selected)) select.value = selected;
@@ -209,7 +211,8 @@
     function applyFilters() {
       prepareRows().forEach(function (row) {
         const matchesColumns = Array.from(state.filters).every(([cellIndex, expected]) => cellValue(row, cellIndex) === expected);
-        const matchesSearch = !state.search || normalizedValue(row.innerText).toLowerCase().includes(state.search);
+        if (!row.__portalSearchText) row.__portalSearchText = normalizedValue(row.textContent).toLowerCase();
+        const matchesSearch = !state.search || row.__portalSearchText.includes(state.search);
         const visible = matchesColumns && matchesSearch;
         row.classList.toggle("is-column-filtered", !visible);
       });
@@ -296,14 +299,28 @@
     const target = document.querySelector(input.dataset.tableSearch || "");
     const table = target?.closest("table") || (target?.matches("table") ? target : null);
     if (!table?.__portalPagination) return;
-    input.addEventListener("input", function () {
+    let searchTimer = 0;
+    const applySearch = function () {
+      window.clearTimeout(searchTimer);
+      searchTimer = 0;
       table.__portalPagination.search(input.value);
+    };
+    input.addEventListener("input", function () {
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(applySearch, 90);
+    });
+    input.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      applySearch();
     });
   });
   ["input", "change"].forEach(function (eventName) {
     document.addEventListener(eventName, function (event) {
       const table = event.target.closest("table");
       if (table?.__portalPagination && !event.target.classList.contains("table-heading-filter")) {
+        const row = event.target.closest("tr");
+        if (row) row.__portalSearchText = "";
         window.setTimeout(function () { table.__portalPagination.update(true); }, 0);
       }
     });

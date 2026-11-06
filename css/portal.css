@@ -949,6 +949,7 @@ table.data tbody tr:hover {
   display: grid;
   gap: 0.5rem;
   z-index: 50;
+  pointer-events: none;
 }
 
 .app-toast {
@@ -958,6 +959,7 @@ table.data tbody tr:hover {
   background: var(--accent-deep);
   color: #fff;
   box-shadow: 0 10px 24px rgba(31, 41, 51, 0.18);
+  pointer-events: none;
 }
 
 .app-toast.ok { background: var(--ok); }

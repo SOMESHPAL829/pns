@@ -104,7 +104,7 @@ const html=execFileSync('php',['-r','require "includes/security.php";start_app_s
   exportMode='error';await page.locator('#dashboard-export').click();await page.waitForFunction(()=>document.getElementById('dashboard-export-alert').textContent.includes('Test export unavailable'));assert(!(await page.locator('#dashboard-export').isDisabled()));
   exportMode='invalid';await page.locator('#dashboard-export').click();await page.waitForFunction(()=>document.getElementById('dashboard-export-alert').textContent.includes('valid Excel workbook'));exportMode='ok';
   await page.locator('[data-dashboard-link="report"]').first().click();
-  assert.equal(await page.locator('#report-machine-filter').inputValue(),'APP-07');assert.equal(await page.locator('#report-date').inputValue(),'2026-10-21');assert.equal(await page.locator('#report-duration').inputValue(),'720');
+  assert.equal(await page.locator('#report-machine-filter').inputValue(),'APP-07');assert.equal(await page.locator('#report-date').inputValue(),'2026-10-21');assert.equal(await page.locator('#report-duration').count(),0,'Production Report must not expose Calculation Duration');
   await page.waitForFunction(()=>document.getElementById('report-summary').textContent.includes('2026-10-21'));
   const reportDownload=page.waitForEvent('download');await page.locator('#report-export').click();assert.equal((await reportDownload).suggestedFilename(),'pns-oee-2026-10-21-APP-07-720min-0000.xlsx','Existing report export must still work');
   await page.locator('[data-nav="dashboard"]').click();
