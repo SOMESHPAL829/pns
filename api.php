@@ -415,10 +415,12 @@ try {
                     unset($report['rows'], $report['downtime_events'], $report['quality_entries']);
                     json_response($report);
                 }
-                $report['line_metrics'] = $report['window_metrics'];
-                $workbook = oee_export_xlsx($report);
-                $durationLabel = $useSavedDuration ? 'saved' : (string) ($durationHours * 60);
-                $filename = 'pns-oee-' . $from . '-to-' . $to . '-' . strtolower($requestedMachine) . '-' . $durationLabel . 'min-' . str_replace(':', '', $startTime) . '.xlsx';
+                $exportType = strtolower(trim((string) ($_GET['export_type'] ?? 'oee')));
+                if (!in_array($exportType, ['oee', 'downtime'], true)) {
+                    json_response(['error' => 'Export type must be oee or downtime.'], 422);
+                }
+                $workbook = oee_range_report_xlsx($report, $exportType);
+                $filename = 'pns-range-' . $exportType . '-' . $from . '-to-' . $to . '-' . strtolower($requestedMachine) . '.xlsx';
                 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                 header('Content-Disposition: attachment; filename="' . $filename . '"');
                 header('Cache-Control: no-store');

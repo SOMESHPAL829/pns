@@ -123,7 +123,8 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <label class="date-range-control" data-no-required-marker>To Date<input id="range-to-date" type="date" required></label>
               <label>Plant<select id="range-machine"><?= oee_machine_options_html($oeeLines, true) ?></select></label>
               <button class="btn" type="submit" id="range-load">Calculate OEE</button>
-              <button class="btn ghost" type="button" id="range-export" data-permission-page="oee-range" data-permission-action="export" hidden>Export Excel</button>
+              <button class="btn ghost" type="button" id="range-export-oee" data-permission-page="oee-range" data-permission-action="export" hidden>Export OEE Report</button>
+              <button class="btn ghost" type="button" id="range-export-downtime" data-permission-page="oee-range" data-permission-action="export" hidden>Export Downtime Report</button>
             </form>
           </section>
           <div id="range-window" class="oee-window-summary" role="status" aria-live="polite"></div>

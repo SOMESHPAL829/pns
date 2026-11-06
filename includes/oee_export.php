@@ -189,3 +189,97 @@ function oee_export_xlsx(array $report): string
     if ($contents === false) throw new RuntimeException('Could not read the Excel workbook.');
     return $contents;
 }
+
+function oee_simple_xlsx_workbook(string $sheetName, array $headers, array $rows): string
+{
+    if (!class_exists('ZipArchive')) {
+        throw new RuntimeException('Excel export is not available on this server.');
+    }
+    $temporary = tempnam(sys_get_temp_dir(), 'pns-range-');
+    if ($temporary === false) throw new RuntimeException('Could not create the Excel export.');
+    $zip = new ZipArchive();
+    if ($zip->open($temporary, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        @unlink($temporary);
+        throw new RuntimeException('Could not create the Excel workbook.');
+    }
+    $sheetRows = [];
+    $headerCells = [];
+    foreach ($headers as $index => $label) {
+        $headerCells[] = oee_xlsx_cell(chr(65 + $index) . '1', $label, 1);
+    }
+    $sheetRows[] = oee_xlsx_row(1, $headerCells);
+    $rowNumber = 2;
+    foreach ($rows as $row) {
+        $cells = [];
+        foreach (array_values($row) as $index => $value) {
+            $numeric = is_int($value) || is_float($value);
+            $cells[] = oee_xlsx_cell(chr(65 + $index) . $rowNumber, $value, $numeric ? 3 : 0);
+        }
+        $sheetRows[] = oee_xlsx_row($rowNumber, $cells);
+        $rowNumber++;
+    }
+    $lastRow = max(1, $rowNumber - 1);
+    $lastCol = chr(64 + max(1, count($headers)));
+    $sheet = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:' . $lastCol . $lastRow . '"/><sheetViews><sheetView workbookViewId="0"/></sheetViews><sheetFormatPr defaultRowHeight="15"/><sheetData>' . implode('', $sheetRows) . '</sheetData></worksheet>';
+    $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFD9EAF7"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0"/><xf numFmtId="10" fontId="0" fillId="0" borderId="0"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>';
+    $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>');
+    $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+    $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' . oee_xml_text($sheetName) . '" sheetId="1" r:id="rId1"/></sheets></workbook>');
+    $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>');
+    $zip->addFromString('xl/worksheets/sheet1.xml', $sheet);
+    $zip->addFromString('xl/styles.xml', $styles);
+    $zip->close();
+    $contents = file_get_contents($temporary);
+    @unlink($temporary);
+    if ($contents === false) throw new RuntimeException('Could not read the Excel workbook.');
+    return $contents;
+}
+
+/** Date-Range OEE exports: oee = Date/Plant/OEE; downtime = Date/Plant/Reason/From/To. */
+function oee_range_report_xlsx(array $report, string $exportType): string
+{
+    $type = strtolower(trim($exportType));
+    if ($type === 'downtime') {
+        $seen = [];
+        $rows = [];
+        foreach ($report['downtime_events'] ?? [] as $event) {
+            $key = implode('|', [
+                (string) ($event['line_code'] ?? ''),
+                (string) ($event['starts_at'] ?? ''),
+                (string) ($event['ends_at'] ?? ''),
+                (string) ($event['reason_code'] ?? ''),
+            ]);
+            if (isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $starts = (string) ($event['starts_at'] ?? '');
+            $rows[] = [
+                $event['window_date'] ?? substr($starts, 0, 10),
+                $event['line_code'] ?? '',
+                ($event['reason_label'] ?? '') ?: (($event['reason_code'] ?? '') ?: '—'),
+                $starts,
+                (string) ($event['ends_at'] ?? ''),
+            ];
+        }
+        usort($rows, static fn (array $left, array $right): int => [$left[0], $left[1], $left[3]] <=> [$right[0], $right[1], $right[3]]);
+        return oee_simple_xlsx_workbook(
+            'Downtime Report',
+            ['Date', 'Plant', 'Downtime Reason', 'From Date Time', 'To Date Time'],
+            $rows
+        );
+    }
+
+    $rows = [];
+    foreach ($report['window_metrics'] ?? [] as $line) {
+        $rows[] = [
+            (string) ($line['report_date'] ?? ''),
+            (string) ($line['line_code'] ?? ''),
+            round(((float) ($line['oee'] ?? 0)) * 100, 1),
+        ];
+    }
+    usort($rows, static fn (array $left, array $right): int => [$left[0], $left[1]] <=> [$right[0], $right[1]]);
+    return oee_simple_xlsx_workbook(
+        'OEE Report',
+        ['Date', 'Plant', 'OEE %'],
+        $rows
+    );
+}

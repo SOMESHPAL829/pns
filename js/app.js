@@ -1061,7 +1061,7 @@
     }
   }
 
-  async function exportRangeExcel() {
+  async function exportRangeExcel(exportType) {
     if (!can("oee-range", "export")) {
       showOeeAlert(
         "range-alert",
@@ -1070,14 +1070,22 @@
       );
       return;
     }
-    const button = document.getElementById("range-export");
+    const type = exportType === "downtime" ? "downtime" : "oee";
+    const button = document.getElementById(
+      type === "downtime" ? "range-export-downtime" : "range-export-oee",
+    );
+    const label =
+      type === "downtime" ? "Export Downtime Report" : "Export OEE Report";
     try {
       const query = rangeQuery();
-      button.disabled = true;
-      button.textContent = "Exporting…";
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Exporting…";
+      }
       const params = new URLSearchParams({
         resource: "oee",
         action: "range-export",
+        export_type: type,
         ...query,
       });
       const response = await fetch(apiUrl + "?" + params, {
@@ -1102,16 +1110,14 @@
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download =
-        "pns-oee-" +
+        "pns-range-" +
+        type +
+        "-" +
         query.from_date +
         "-to-" +
         query.to_date +
         "-" +
         query.machine +
-        "-" +
-        query.duration_minutes +
-        "min-" +
-        query.start_time.replace(":", "") +
         ".xlsx";
       link.click();
       setTimeout(function () {
@@ -1120,8 +1126,10 @@
     } catch (error) {
       showOeeAlert("range-alert", error.message, true);
     } finally {
-      button.disabled = false;
-      button.textContent = "Export Excel";
+      if (button) {
+        button.disabled = false;
+        button.textContent = label;
+      }
     }
   }
 
@@ -2059,8 +2067,15 @@
     });
   }
   document
-    .getElementById("range-export")
-    ?.addEventListener("click", exportRangeExcel);
+    .getElementById("range-export-oee")
+    ?.addEventListener("click", function () {
+      exportRangeExcel("oee");
+    });
+  document
+    .getElementById("range-export-downtime")
+    ?.addEventListener("click", function () {
+      exportRangeExcel("downtime");
+    });
   if (dashboardRefresh)
     dashboardRefresh.addEventListener("click", loadOeeDashboard);
   document

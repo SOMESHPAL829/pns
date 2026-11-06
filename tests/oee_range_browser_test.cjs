@@ -49,13 +49,19 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     assert.equal(await page.locator('#range-total-fb').textContent(), '20');
     assert.equal(await page.locator('#range-calendar').textContent(), '2880.0 min');
     assert.equal(await page.locator('#dashboard-duration').inputValue(), '1440', 'daily controls must stay independent');
-    const downloadPromise = page.waitForEvent('download');
-    await page.locator('#range-export').click();
-    const download = await downloadPromise;
-    assert.equal(download.suggestedFilename(), 'pns-oee-2026-10-21-to-2026-10-22-ALL-savedmin-0000.xlsx');
-    const exported = requests.find(r => r.action === 'range-export');
-    assert.equal(exported.from_date, '2026-10-21'); assert.equal(exported.to_date, '2026-10-22'); assert.equal(exported.start_time, '00:00');
-    assert.equal(exported.duration_minutes, 'saved');
+    const oeeDownloadPromise = page.waitForEvent('download');
+    await page.locator('#range-export-oee').click();
+    const oeeDownload = await oeeDownloadPromise;
+    assert.equal(oeeDownload.suggestedFilename(), 'pns-range-oee-2026-10-21-to-2026-10-22-ALL.xlsx');
+    const oeeExport = requests.find(r => r.action === 'range-export' && r.export_type === 'oee');
+    assert.equal(oeeExport.from_date, '2026-10-21'); assert.equal(oeeExport.to_date, '2026-10-22'); assert.equal(oeeExport.start_time, '00:00');
+    assert.equal(oeeExport.duration_minutes, 'saved');
+    const downtimeDownloadPromise = page.waitForEvent('download');
+    await page.locator('#range-export-downtime').click();
+    const downtimeDownload = await downtimeDownloadPromise;
+    assert.equal(downtimeDownload.suggestedFilename(), 'pns-range-downtime-2026-10-21-to-2026-10-22-ALL.xlsx');
+    const downtimeExport = requests.find(r => r.action === 'range-export' && r.export_type === 'downtime');
+    assert.equal(downtimeExport.from_date, '2026-10-21'); assert.equal(downtimeExport.to_date, '2026-10-22');
     await page.locator('#range-from-date').fill('2026-10-23');
     const before = requests.filter(r => r.action === 'range-dashboard').length;
     await page.locator('#range-load').click();
@@ -68,7 +74,7 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.waitForFunction(() => document.getElementById('range-window').textContent.includes('APP-07'));
     for (const width of [1440, 1024, 768, 320]) {
       await page.setViewportSize({ width, height: 1000 }); await page.waitForTimeout(250);
-      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-load', 'range-export']) {
+      for (const id of ['range-from-date', 'range-to-date', 'range-machine', 'range-load', 'range-export-oee', 'range-export-downtime']) {
         const box = await page.locator('#' + id).boundingBox();
         assert(box && box.x >= 0 && box.x + box.width <= width + 1, id + ' overflows at ' + width);
       }

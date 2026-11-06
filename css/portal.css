@@ -3094,15 +3094,18 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 [data-view="oee-range"] .range-toolbar input,
 [data-view="oee-range"] .range-toolbar select { width: 100%; min-height: 2.5rem; }
 [data-view="oee-range"] #range-load,
-[data-view="oee-range"] #range-export { min-height: 2.5rem; white-space: nowrap; }
-[data-view="oee-range"] #range-export { margin-left: 0; }
+[data-view="oee-range"] #range-export-oee,
+[data-view="oee-range"] #range-export-downtime { min-height: 2.5rem; white-space: nowrap; }
+[data-view="oee-range"] #range-export-oee,
+[data-view="oee-range"] #range-export-downtime { margin-left: 0; }
 
 @media (max-width: 900px) {
   [data-view="oee-range"] .range-toolbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   [data-view="oee-range"] #range-load,
-  [data-view="oee-range"] #range-export { width: 100%; }
+  [data-view="oee-range"] #range-export-oee,
+  [data-view="oee-range"] #range-export-downtime { width: 100%; }
 }
 
 @media (max-width: 560px) {
@@ -3169,7 +3172,8 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   [data-view="oee-range"] .range-toolbar,
   .chemical-cost-filters,
   .chemical-report-toolbar { flex-wrap: wrap; }
-  [data-view="oee-range"] #range-export,
+  [data-view="oee-range"] #range-export-oee,
+  [data-view="oee-range"] #range-export-downtime,
   .chemical-cost-toolbar-actions,
   .chemical-report-toolbar #chemical-report-print { margin-left: 0; }
   .chemical-cost-toolbar-actions { flex: 1 1 100%; justify-content: flex-end; }

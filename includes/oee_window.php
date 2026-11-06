@@ -169,7 +169,12 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         return $result;
     }
     $rowsQuery = $pdo->prepare('SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code = ? AND loading_at >= ? AND loading_at < ? ORDER BY loading_at, si_no');
-    $eventQuery = $pdo->prepare('SELECT line_code, starts_at, ends_at, event_type, status, source, reason_code, notes FROM oee_downtime_events WHERE line_code = ? AND starts_at < ? AND ends_at > ? ORDER BY starts_at, id');
+    $eventQuery = $pdo->prepare(
+        'SELECT e.line_code,e.starts_at,e.ends_at,e.event_type,e.status,e.source,e.reason_code,e.notes,' .
+        'COALESCE(r.label,e.reason_code) AS reason_label ' .
+        'FROM oee_downtime_events e LEFT JOIN oee_reason_codes r ON r.code=e.reason_code ' .
+        'WHERE e.line_code = ? AND e.starts_at < ? AND e.ends_at > ? ORDER BY e.starts_at, e.id'
+    );
     $qualityQuery = $pdo->prepare('SELECT line_code, report_date, shift_code, rejected_fb, reworked_fb, notes FROM oee_quality_entries WHERE line_code = ? AND report_date = ?' . ($window['duration_hours'] !== 24 ? ' AND shift_code = ?' : ''));
     foreach ($lines as $line) {
         // Refresh colour-cycle snapshots and inferred events for every day the

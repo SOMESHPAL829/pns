@@ -83,10 +83,12 @@ const html = execFileSync('php', ['-r', 'require "includes/security.php"; start_
     await page.goto('http://127.0.0.1:4173/app.php?scenario=export#/oee-report');
     await page.locator('#report-export').waitFor();
     await page.locator('[data-nav="oee-range"]').click();
-    assert(!(await page.locator('#range-export').isVisible()),'Daily Export must not show range Export');
+    assert(!(await page.locator('#range-export-oee').isVisible()),'Daily Export must not show range OEE Export');
+    assert(!(await page.locator('#range-export-downtime').isVisible()),'Daily Export must not show range Downtime Export');
     permissions={'oee-range':{view:true,export:true}};
     await page.goto('http://127.0.0.1:4173/app.php?scenario=range-export#/oee-range');
-    await page.locator('#range-export').waitFor();
+    await page.locator('#range-export-oee').waitFor();
+    await page.locator('#range-export-downtime').waitFor();
     permissions={records:{view:true},profile:{view:true}};await page.goto('http://127.0.0.1:4173/app.php?scenario=records#/requests');
     await page.locator('#records-body tr').first().waitFor();
     assert(!(await page.locator('[data-goto="create"]').isVisible()));
