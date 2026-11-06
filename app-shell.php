@@ -394,7 +394,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
               <label class="chemical-consumption-remarks">Remarks<textarea id="chemical-consumption-remarks" maxlength="1000" rows="2" placeholder="Optional Remarks"></textarea></label>
               <div class="chemical-consumption-actions"><button class="btn" id="chemical-consumption-save" type="submit">Save Entry</button><button class="btn ghost" id="chemical-consumption-cancel" type="button" hidden>Cancel Edit</button></div>
             </form>
-            <div class="data-scroll"><table class="data-table chemical-consumption-table"><thead><tr><th>Date</th><th>Shift</th><th>Operator Name</th><th>Plant Code</th><th>Process Description</th><th>Chemical Name</th><th>Consume Quantity</th><th>Used For</th><th>Recommended By</th><th>Remarks</th><th>Action</th></tr></thead><tbody id="chemical-consumption-body"><tr><td colspan="11">Loading Chemical Consumption Entries…</td></tr></tbody></table></div>
+            <div class="data-scroll"><table class="data-table chemical-consumption-table"><thead><tr><th>Date</th><th>Shift</th><th>Operator Name</th><th>Plant Code</th><th>Process Description</th><th>Chemical Code</th><th>Chemical Name</th><th>Consume Quantity</th><th>Used For</th><th>Recommended By</th><th>Remarks</th><th>Action</th></tr></thead><tbody id="chemical-consumption-body"><tr><td colspan="12">Loading Chemical Consumption Entries…</td></tr></tbody></table></div>
           </section>
         </section>
 

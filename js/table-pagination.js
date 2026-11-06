@@ -183,8 +183,7 @@
           if (select.value) state.filters.set(headingIndex, select.value);
           else state.filters.delete(headingIndex);
           state.page = 1;
-          applyFilters();
-          update();
+          applyFiltersInBatches();
         });
         cell.classList.add("is-filter-heading");
         cell.replaceChildren(select);
@@ -208,14 +207,33 @@
       });
     }
 
-    function applyFilters() {
-      prepareRows().forEach(function (row) {
+    let filterRun = 0;
+
+    function applyFilterToRow(row) {
         const matchesColumns = Array.from(state.filters).every(([cellIndex, expected]) => cellValue(row, cellIndex) === expected);
         if (!row.__portalSearchText) row.__portalSearchText = normalizedValue(row.textContent).toLowerCase();
         const matchesSearch = !state.search || row.__portalSearchText.includes(state.search);
-        const visible = matchesColumns && matchesSearch;
-        row.classList.toggle("is-column-filtered", !visible);
-      });
+        const filtered = !(matchesColumns && matchesSearch);
+        if (row.classList.contains("is-column-filtered") !== filtered) row.classList.toggle("is-column-filtered", filtered);
+    }
+
+    function applyFilters() {
+      filterRun += 1;
+      prepareRows().forEach(applyFilterToRow);
+    }
+
+    function applyFiltersInBatches() {
+      const run = ++filterRun;
+      const rows = sourceRows().filter(isDataRow);
+      let rowIndex = 0;
+      const nextBatch = function () {
+        if (run !== filterRun) return;
+        const batchEnd = Math.min(rowIndex + 120, rows.length);
+        for (; rowIndex < batchEnd; rowIndex += 1) applyFilterToRow(rows[rowIndex]);
+        if (rowIndex < rows.length) window.requestAnimationFrame(nextBatch);
+        else update();
+      };
+      window.requestAnimationFrame(nextBatch);
     }
 
     function pageButton(label, page, disabled, current) {
@@ -230,13 +248,11 @@
     }
 
     function update() {
-      const rows = sourceRows();
-      const available = rows.filter(row => !row.hidden && !row.classList.contains("is-column-filtered") && isDataRow(row));
+      const available = sourceRows().filter(row => !row.hidden && !row.classList.contains("is-column-filtered") && isDataRow(row));
       const totalPages = Math.max(1, Math.ceil(available.length / state.size));
       state.page = Math.min(Math.max(1, state.page), totalPages);
       const start = (state.page - 1) * state.size;
       const end = Math.min(start + state.size, available.length);
-      rows.forEach(row => row.classList.remove("is-pagination-hidden"));
       available.forEach((row, rowIndex) => row.classList.toggle("is-pagination-hidden", rowIndex < start || rowIndex >= end));
       summary.textContent = available.length ? "Showing " + (start + 1) + "–" + end + " of " + available.length + " rows" : "No rows to display";
       navigation.replaceChildren();
@@ -282,8 +298,7 @@
       search: function (value) {
         state.search = normalizedValue(value).toLowerCase();
         state.page = 1;
-        applyFilters();
-        update();
+        applyFiltersInBatches();
       },
     };
     prepareRows();

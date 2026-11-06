@@ -146,6 +146,7 @@
       cell(row, entry.operator_name);
       cell(row, entry.machine_code, "mono");
       cell(row, entry.process_description);
+      cell(row, entry.item_code, "mono");
       cell(row, entry.chemical_name);
       cell(row, formatQuantity(entry.consume_quantity, entry.uom));
       cell(row, entry.used_for);
@@ -172,7 +173,7 @@
     if (!state.entries.length) {
       const row = document.createElement("tr");
       const empty = cell(row, "No chemical consumption entries have been recorded yet.");
-      empty.colSpan = 11;
+      empty.colSpan = 12;
       fragment.appendChild(row);
     }
     body.replaceChildren(fragment);
