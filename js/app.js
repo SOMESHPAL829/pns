@@ -1706,8 +1706,9 @@
     if (!form) return;
     form.addEventListener("change", function (event) {
       const input = event.target;
+      const plantPicker = input.closest(".plant-picker-options");
       if (input.dataset.userPlant === "ALL") {
-        form
+        plantPicker
           .querySelectorAll("[data-user-plant]:not([data-user-plant='ALL'])")
           .forEach((node) => {
             node.checked = input.checked;
@@ -1716,11 +1717,11 @@
       }
       if (input.dataset.userPlant) {
         const individual = [
-          ...form.querySelectorAll(
+          ...plantPicker.querySelectorAll(
             "[data-user-plant]:not([data-user-plant='ALL'])",
           ),
         ];
-        const all = form.querySelector("[data-user-plant='ALL']");
+        const all = plantPicker.querySelector("[data-user-plant='ALL']");
         if (all)
           all.checked =
             individual.length > 0 && individual.every((node) => node.checked);
