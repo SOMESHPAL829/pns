@@ -99,7 +99,7 @@
     if (!value) return "—";
     const text = String(value);
     const match = text.match(
-      /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/,
+      /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/,
     );
     if (!match) return text;
     return (
@@ -108,7 +108,13 @@
       match[2] +
       "-" +
       match[1] +
-      (match[4] ? " " + match[4] + ":" + match[5] : "")
+      (match[4]
+        ? " " +
+          match[4] +
+          ":" +
+          match[5] +
+          (match[6] != null ? ":" + match[6] : "")
+        : "")
     );
   }
   window.PortalFormatDate = readableDate;
