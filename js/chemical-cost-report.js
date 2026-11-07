@@ -19,7 +19,9 @@
   function displayDate(value) {
     if (!value) return "—";
     const parts = String(value).slice(0, 10).split("-");
-    return parts.length === 3 ? parts[2] + "-" + parts[1] + "-" + parts[0] : String(value);
+    return parts.length === 3
+      ? parts[2] + "-" + parts[1] + "-" + parts[0]
+      : String(value);
   }
 
   function showAlert(message, isError) {
@@ -106,20 +108,38 @@
     const tip = byId("chemical-cost-tip");
     tip.innerHTML = text;
     tip.hidden = false;
-    const anchorBox = (anchor || event.currentTarget)?.getBoundingClientRect?.();
-    const pointerX = Number.isFinite(event.clientX) && event.clientX > 0
-      ? event.clientX
-      : (anchorBox ? anchorBox.left + anchorBox.width / 2 : window.innerWidth / 2);
-    const pointerY = Number.isFinite(event.clientY) && event.clientY > 0
-      ? event.clientY
-      : (anchorBox ? anchorBox.top + anchorBox.height / 2 : window.innerHeight / 2);
+    const anchorBox = (
+      anchor || event.currentTarget
+    )?.getBoundingClientRect?.();
+    const pointerX =
+      Number.isFinite(event.clientX) && event.clientX > 0
+        ? event.clientX
+        : anchorBox
+          ? anchorBox.left + anchorBox.width / 2
+          : window.innerWidth / 2;
+    const pointerY =
+      Number.isFinite(event.clientY) && event.clientY > 0
+        ? event.clientY
+        : anchorBox
+          ? anchorBox.top + anchorBox.height / 2
+          : window.innerHeight / 2;
     const bounds = tip.getBoundingClientRect();
     const edge = 8;
     const gap = 10;
     let left = pointerX + gap;
-    if (left + bounds.width > window.innerWidth - edge) left = pointerX - bounds.width - gap;
-    left = Math.max(edge, Math.min(left, window.innerWidth - bounds.width - edge));
-    const top = Math.max(edge, Math.min(pointerY - bounds.height / 2, window.innerHeight - bounds.height - edge));
+    if (left + bounds.width > window.innerWidth - edge)
+      left = pointerX - bounds.width - gap;
+    left = Math.max(
+      edge,
+      Math.min(left, window.innerWidth - bounds.width - edge),
+    );
+    const top = Math.max(
+      edge,
+      Math.min(
+        pointerY - bounds.height / 2,
+        window.innerHeight - bounds.height - edge,
+      ),
+    );
     tip.style.left = Math.round(left) + "px";
     tip.style.top = Math.round(top) + "px";
   }
@@ -214,7 +234,8 @@
 
   function renderKpis(series, reportType) {
     const priced = series.filter((row) => row.cost != null);
-    const complete = series.length > 0 && series.every((row) => row.complete !== false);
+    const complete =
+      series.length > 0 && series.every((row) => row.complete !== false);
     const area = series.reduce((sum, row) => sum + row.area, 0);
     const cost = priced.reduce((sum, row) => sum + row.cost, 0);
     const rate =
@@ -254,7 +275,11 @@
     byId("chemical-cost-report-kpis").innerHTML = cards
       .map((card, index) => {
         const deltaClass =
-          index === 3 && delta != null && complete ? (delta <= 0 ? " ok" : " warn") : "";
+          index === 3 && delta != null && complete
+            ? delta <= 0
+              ? " ok"
+              : " warn"
+            : "";
         const foot =
           index === 3 && delta != null && complete
             ? card[2] + " · " + (delta <= 0 ? "↓ improvement" : "↑ increase")
@@ -278,6 +303,15 @@
       .join("");
   }
 
+  function chartDataLabel(value, opts, key) {
+    const amount = Number(value) || 0;
+    if (opts.percent) return String(Math.round(amount));
+    if (opts.currency || key === "cost") return "₹" + fmtShort(amount);
+    if (opts.rate || key === "rate")
+      return "₹" + decimal(amount, amount >= 10 ? 1 : 3);
+    return fmtShort(amount);
+  }
+
   function svgChart(el, values, opts) {
     const root = byId(el);
     const usable = values.filter((row) =>
@@ -293,7 +327,7 @@
     const H = 286;
     const left = opts.percent ? 47 : 65;
     const right = 12;
-    const top = 19;
+    const top = 28;
     const bottom = 42;
     const plotW = W - left - right;
     const plotH = H - top - bottom;
@@ -303,7 +337,7 @@
           opts.keys.map((key) => Number(row[key]) || 0),
         ),
         0,
-      ) * 1.17 || 1;
+      ) * 1.22 || 1;
     const y = (value) => top + plotH - (value / max) * plotH;
     const x = (index) =>
       left +
@@ -323,10 +357,18 @@
       " " +
       H +
       '" preserveAspectRatio="none" role="img">' +
-      '<defs>' +
-      '<linearGradient id="' + el + '-bar-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + ((opts.colors && opts.colors[0]) || "#5698d5") + '"/><stop offset="1" stop-color="' + (opts.keys[0] === "area" ? "#118b80" : "#255d96") + '"/></linearGradient>' +
-      '<linearGradient id="' + el + '-area-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c91d0" stop-opacity=".3"/><stop offset="1" stop-color="#4c91d0" stop-opacity=".02"/></linearGradient>' +
-      '</defs>';
+      "<defs>" +
+      '<linearGradient id="' +
+      el +
+      '-bar-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' +
+      ((opts.colors && opts.colors[0]) || "#5698d5") +
+      '"/><stop offset="1" stop-color="' +
+      (opts.keys[0] === "area" ? "#118b80" : "#255d96") +
+      '"/></linearGradient>' +
+      '<linearGradient id="' +
+      el +
+      '-area-gradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4c91d0" stop-opacity=".3"/><stop offset="1" stop-color="#4c91d0" stop-opacity=".02"/></linearGradient>' +
+      "</defs>";
     for (let step = 0; step < 5; step += 1) {
       const gy = top + (step * plotH) / 4;
       out +=
@@ -362,9 +404,10 @@
 
     if (opts.kind === "bar") {
       usable.forEach((row, index) => {
+        const key = opts.keys[0];
         const xx = xbar(index);
         const width = Math.min(48, (plotW / usable.length) * 0.57);
-        const yy = y(row[opts.keys[0]]);
+        const yy = y(row[key]);
         out +=
           '<rect class="chemical-cost-mark chemical-cost-bar" tabindex="0" data-i="' +
           index +
@@ -376,7 +419,17 @@
           width +
           '" height="' +
           (top + plotH - yy) +
-          '" rx="5" fill="url(#' + el + '-bar-gradient)"/>';
+          '" rx="5" fill="url(#' +
+          el +
+          '-bar-gradient)"/>';
+        out +=
+          '<text x="' +
+          xx +
+          '" y="' +
+          Math.max(12, yy - 7) +
+          '" text-anchor="middle" class="chemical-cost-data-label">' +
+          chartDataLabel(row[key], opts, key) +
+          "</text>";
       });
     } else {
       opts.keys.forEach((key, keyIndex) => {
@@ -404,7 +457,9 @@
             x(0) +
             " " +
             (top + plotH) +
-            ' Z" fill="url(#' + el + '-area-gradient)" class="chemical-cost-area-fill"/>';
+            ' Z" fill="url(#' +
+            el +
+            '-area-gradient)" class="chemical-cost-area-fill"/>';
         }
         out +=
           '<path class="chemical-cost-series-line" pathLength="1" d="' +
@@ -413,16 +468,25 @@
           color +
           '" fill="none" stroke-width="3" stroke-linejoin="round"/>';
         usable.forEach((row, index) => {
+          const yy = y(row[key]);
           out +=
             '<circle class="chemical-cost-mark chemical-cost-point" tabindex="0" data-i="' +
             index +
             '" cx="' +
             x(index) +
             '" cy="' +
-            y(row[key]) +
+            yy +
             '" r="5" fill="white" stroke="' +
             color +
             '" stroke-width="2.7"/>';
+          out +=
+            '<text x="' +
+            x(index) +
+            '" y="' +
+            Math.max(12, yy - 10) +
+            '" text-anchor="middle" class="chemical-cost-data-label">' +
+            chartDataLabel(row[key], opts, key) +
+            "</text>";
         });
       });
     }
@@ -433,16 +497,19 @@
         const row = usable[Number(mark.dataset.i)];
         return (
           "<b>" +
-            safeHtml(row.period) +
-            "</b><br>Cost: " +
-            money(row.cost, 0) +
-            "<br>Area: " +
-            decimal(row.area, 2) +
-            " dm²<br>Cost / dm²: " +
-            (row.rate == null ? "—" : "₹" + decimal(row.rate, 4)) +
-            (row.complete === false
-              ? "<br><b>Partial:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
-              : "")
+          safeHtml(row.period) +
+          "</b><br>Cost: " +
+          money(row.cost, 0) +
+          "<br>Area: " +
+          decimal(row.area, 2) +
+          " dm²<br>Cost / dm²: " +
+          (row.rate == null ? "—" : "₹" + decimal(row.rate, 4)) +
+          (row.complete === false
+            ? "<br><b>Partial:</b> " +
+              row.unpriced +
+              " missing rate" +
+              (row.unpriced === 1 ? "" : "s")
+            : "")
         );
       });
     });
@@ -451,7 +518,8 @@
   function comboChart(el, values) {
     const root = byId(el);
     const usable = values.filter(
-      (row) => row.cost != null && !Number.isNaN(row.cost) && !Number.isNaN(row.area),
+      (row) =>
+        row.cost != null && !Number.isNaN(row.cost) && !Number.isNaN(row.area),
     );
     if (!usable.length) {
       root.innerHTML =
@@ -463,20 +531,27 @@
     const H = 286;
     const left = 68;
     const right = 68;
-    const top = 25;
+    const top = 32;
     const bottom = 44;
     const plotW = W - left - right;
     const plotH = H - top - bottom;
-    const maxCost = Math.max(...usable.map((row) => Number(row.cost) || 0), 0) * 1.15 || 1;
-    const maxArea = Math.max(...usable.map((row) => Number(row.area) || 0), 0) * 1.15 || 1;
+    const maxCost =
+      Math.max(...usable.map((row) => Number(row.cost) || 0), 0) * 1.22 || 1;
+    const maxArea =
+      Math.max(...usable.map((row) => Number(row.area) || 0), 0) * 1.28 || 1;
     const x = (index) => left + ((index + 0.5) * plotW) / usable.length;
-    const costY = (value) => top + plotH - ((Number(value) || 0) / maxCost) * plotH;
-    const areaY = (value) => top + plotH - ((Number(value) || 0) / maxArea) * plotH;
+    const costY = (value) =>
+      top + plotH - ((Number(value) || 0) / maxCost) * plotH;
+    const areaY = (value) =>
+      top + plotH - ((Number(value) || 0) / maxArea) * plotH;
     const barWidth = Math.min(46, (plotW / usable.length) * 0.5);
     const areaPath = usable
       .map(
         (row, index) =>
-          (index ? "L" : "M") + x(index).toFixed(1) + " " + areaY(row.area).toFixed(1),
+          (index ? "L" : "M") +
+          x(index).toFixed(1) +
+          " " +
+          areaY(row.area).toFixed(1),
       )
       .join(" ");
 
@@ -546,6 +621,14 @@
         '<text x="' +
         xx +
         '" y="' +
+        Math.max(14, yy - 7) +
+        '" text-anchor="middle" class="chemical-cost-data-label">' +
+        chartDataLabel(row.cost, { currency: true }, "cost") +
+        "</text>";
+      out +=
+        '<text x="' +
+        xx +
+        '" y="' +
         (H - 10) +
         '" text-anchor="middle" class="chemical-cost-axis">' +
         row.label +
@@ -557,14 +640,24 @@
       areaPath +
       '" pathLength="1" stroke="#17a18f" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
     usable.forEach((row, index) => {
+      const xx = x(index);
+      const yy = areaY(row.area);
       out +=
         '<circle class="chemical-cost-mark chemical-combo-point chemical-cost-point" tabindex="0" data-i="' +
         index +
         '" cx="' +
-        x(index) +
+        xx +
         '" cy="' +
-        areaY(row.area) +
+        yy +
         '" r="5" fill="white" stroke="#17a18f" stroke-width="3"/>';
+      out +=
+        '<text x="' +
+        xx +
+        '" y="' +
+        Math.max(14, yy - 10) +
+        '" text-anchor="middle" class="chemical-cost-data-label chemical-cost-data-label-area">' +
+        chartDataLabel(row.area, {}, "area") +
+        "</text>";
     });
     out += "</svg>";
     root.innerHTML = out;
@@ -574,15 +667,18 @@
         const row = usable[Number(mark.dataset.i)];
         return (
           "<b>" +
-            safeHtml(row.period) +
-            "</b><br>Chemical Cost: " +
-            money(row.cost, 0) +
-            "<br>Surface Area: " +
-            decimal(row.area, 2) +
-            " dm²" +
-            (row.complete === false
-              ? "<br><b>Partial cost:</b> " + row.unpriced + " missing rate" + (row.unpriced === 1 ? "" : "s")
-              : "")
+          safeHtml(row.period) +
+          "</b><br>Chemical Cost: " +
+          money(row.cost, 0) +
+          "<br>Surface Area: " +
+          decimal(row.area, 2) +
+          " dm²" +
+          (row.complete === false
+            ? "<br><b>Partial cost:</b> " +
+              row.unpriced +
+              " missing rate" +
+              (row.unpriced === 1 ? "" : "s")
+            : "")
         );
       });
     });
@@ -592,11 +688,19 @@
     const root = byId(el);
     if (!root) return;
     const usable = (items || [])
-      .filter((item) => item.total_chemical_cost != null && Number(item.total_chemical_cost) > 0)
-      .sort((left, right) => Number(right.total_chemical_cost) - Number(left.total_chemical_cost))
+      .filter(
+        (item) =>
+          item.total_chemical_cost != null &&
+          Number(item.total_chemical_cost) > 0,
+      )
+      .sort(
+        (left, right) =>
+          Number(right.total_chemical_cost) - Number(left.total_chemical_cost),
+      )
       .slice(0, 6);
     if (!usable.length) {
-      root.innerHTML = '<div class="chemical-cost-empty">No fully priced item cost data in selected range</div>';
+      root.innerHTML =
+        '<div class="chemical-cost-empty">No fully priced item cost data in selected range</div>';
       return;
     }
 
@@ -609,11 +713,22 @@
     const bottom = 38;
     const plotWidth = W - left - right;
     const plotHeight = H - top - bottom;
-    const maximum = Math.max(...usable.map((item) => Number(item.total_chemical_cost)));
+    const maximum = Math.max(
+      ...usable.map((item) => Number(item.total_chemical_cost)),
+    );
     const roughStep = maximum / 4;
     const magnitude = 10 ** Math.floor(Math.log10(roughStep || 1));
     const normalized = roughStep / magnitude;
-    const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) * magnitude;
+    const step =
+      (normalized <= 1
+        ? 1
+        : normalized <= 2
+          ? 2
+          : normalized <= 2.5
+            ? 2.5
+            : normalized <= 5
+              ? 5
+              : 10) * magnitude;
     const axisMaximum = step * 4;
     const svg = document.createElementNS(namespace, "svg");
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -622,13 +737,21 @@
 
     const node = function (name, attributes, textContent) {
       const element = document.createElementNS(namespace, name);
-      Object.entries(attributes || {}).forEach(([name, value]) => element.setAttribute(name, String(value)));
+      Object.entries(attributes || {}).forEach(([name, value]) =>
+        element.setAttribute(name, String(value)),
+      );
       if (textContent != null) element.textContent = String(textContent);
       return element;
     };
 
     const defs = node("defs");
-    const gradient = node("linearGradient", { id: "chemical-item-cost-gradient", x1: "0", y1: "0", x2: "1", y2: "0" });
+    const gradient = node("linearGradient", {
+      id: "chemical-item-cost-gradient",
+      x1: "0",
+      y1: "0",
+      x2: "1",
+      y2: "0",
+    });
     gradient.append(
       node("stop", { offset: "0", "stop-color": "#285f99" }),
       node("stop", { offset: "1", "stop-color": "#61a6df" }),
@@ -639,8 +762,27 @@
     for (let index = 0; index <= 4; index += 1) {
       const value = step * index;
       const x = left + (value / axisMaximum) * plotWidth;
-      svg.appendChild(node("line", { x1: x, y1: top, x2: x, y2: H - bottom, class: "chemical-cost-gridline chemical-cost-item-gridline" }));
-      svg.appendChild(node("text", { x, y: H - 12, "text-anchor": "middle", class: "chemical-cost-axis" }, "₹" + fmtShort(value)));
+      svg.appendChild(
+        node("line", {
+          x1: x,
+          y1: top,
+          x2: x,
+          y2: H - bottom,
+          class: "chemical-cost-gridline chemical-cost-item-gridline",
+        }),
+      );
+      svg.appendChild(
+        node(
+          "text",
+          {
+            x,
+            y: H - 12,
+            "text-anchor": "middle",
+            class: "chemical-cost-axis",
+          },
+          "₹" + fmtShort(value),
+        ),
+      );
     }
 
     const rowHeight = plotHeight / usable.length;
@@ -648,26 +790,66 @@
       const cost = Number(item.total_chemical_cost);
       const y = top + index * rowHeight + Math.max(4, (rowHeight - 27) / 2);
       const width = Math.max(2, (cost / axisMaximum) * plotWidth);
-      const label = node("text", { x: left - 10, y: y + 18, "text-anchor": "end", class: "chemical-cost-axis chemical-cost-item-label" }, item.item_code);
-      const bar = node("rect", { x: left, y, width, height: 27, rx: 6, class: "chemical-cost-item-bar chemical-cost-mark", tabindex: 0, "data-i": index });
-      const title = node("title", {}, `${item.item_code} · ${item.chemical_name || "Chemical"} · ${money(cost, 2)}`);
+      const label = node(
+        "text",
+        {
+          x: left - 10,
+          y: y + 18,
+          "text-anchor": "end",
+          class: "chemical-cost-axis chemical-cost-item-label",
+        },
+        item.item_code,
+      );
+      const bar = node("rect", {
+        x: left,
+        y,
+        width,
+        height: 27,
+        rx: 6,
+        class: "chemical-cost-item-bar chemical-cost-mark",
+        tabindex: 0,
+        "data-i": index,
+      });
+      const title = node(
+        "title",
+        {},
+        `${item.item_code} · ${item.chemical_name || "Chemical"} · ${money(cost, 2)}`,
+      );
       bar.appendChild(title);
       svg.append(label, bar);
-      svg.appendChild(node("text", { x: Math.min(left + width + 8, W - right + 8), y: y + 18, class: "chemical-cost-item-value" }, "₹" + fmtShort(cost)));
+      svg.appendChild(
+        node(
+          "text",
+          {
+            x: Math.min(left + width + 8, W - right + 8),
+            y: y + 18,
+            class: "chemical-cost-item-value",
+          },
+          "₹" + fmtShort(cost),
+        ),
+      );
     });
 
     root.replaceChildren(svg);
-    const total = usable.reduce((sum, item) => sum + Number(item.total_chemical_cost || 0), 0);
+    const total = usable.reduce(
+      (sum, item) => sum + Number(item.total_chemical_cost || 0),
+      0,
+    );
     root.querySelectorAll(".chemical-cost-item-bar").forEach((bar) => {
       bindTooltip(bar, () => {
         const item = usable[Number(bar.dataset.i)];
         const cost = Number(item.total_chemical_cost || 0);
         const share = total > 0 ? (cost / total) * 100 : 0;
         return (
-          "<b>" + safeHtml(item.item_code) + "</b><br>" +
+          "<b>" +
+          safeHtml(item.item_code) +
+          "</b><br>" +
           safeHtml(item.chemical_name || "Chemical") +
-          "<br>Cost: " + money(cost, 2) +
-          "<br>Top-item share: " + decimal(share, 1) + "%"
+          "<br>Cost: " +
+          money(cost, 2) +
+          "<br>Top-item share: " +
+          decimal(share, 1) +
+          "%"
         );
       });
     });

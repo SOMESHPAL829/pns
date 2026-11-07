@@ -1713,6 +1713,13 @@ table.data tbody tr:hover {
 .chemical-cost-item-bar { fill: url(#chemical-item-cost-gradient); }
 .chemical-cost-item-label { font-size: 12px; }
 .chemical-cost-item-value { fill: var(--ink); font-size: 11px; font-weight: 750; }
+.chemical-cost-data-label {
+  fill: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.chemical-cost-data-label-area { fill: #0f7a6d; }
 .chemical-cost-gridline { opacity: 0.28; }
 .chemical-cost-axis { fill: currentColor; font-size: 11px; }
 .chemical-combo-axis-title { font-size: 10px; font-weight: 750; }
