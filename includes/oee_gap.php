@@ -14,21 +14,25 @@ function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
     $add = static function (string $source, array $before, array $after, array $cycleRow, ?array $firstEmpty = null) use (&$events, $identity, $thresholdMinutes): void {
         $cycle = (float) ($cycleRow['cycle_minutes'] ?? 0);
         if ($cycle <= 0 || !is_finite($cycle)) throw new InvalidArgumentException('Gap detection requires a resolved positive cycle time.');
-        // The threshold decides whether a SCADA gap is downtime; it is not a
-        // deductible allowance. Keep the complete measured interval once the
-        // gap qualifies so review screens and OEE use the same actual time.
-        $start = $before['loading_at'];
-        if (oee_wall_timestamp($start) >= oee_wall_timestamp($after['loading_at'])) return;
+        // Threshold decides whether the SCADA gap qualifies as a stop. Once it
+        // does, downtime starts after the ideal cycle pitch (previous load +
+        // cycle → next load) so that pitch is not removed from run time and
+        // also counted in Ideal Output.
         $gap = (oee_wall_timestamp($after['loading_at']) - oee_wall_timestamp($before['loading_at'])) / 60;
         if ($gap < $thresholdMinutes) return;
+        $start = oee_wall_datetime($before['loading_at'])
+            ->modify('+' . (int) round($cycle * 60) . ' seconds')
+            ->format('Y-m-d H:i:s');
+        if (oee_wall_timestamp($start) >= oee_wall_timestamp($after['loading_at'])) return;
         $flags = $cycleRow['flags'] ?? [];
         if (!is_array($flags)) $flags = json_decode((string) $flags, true) ?: [];
+        $stopMinutes = (oee_wall_timestamp($after['loading_at']) - oee_wall_timestamp($start)) / 60;
         $events[] = ['report_date' => substr($start, 0, 10), 'starts_at' => $start, 'ends_at' => $after['loading_at'],
             'raw_start' => $before['loading_at'], 'raw_end' => $after['loading_at'], 'source' => $source,
             'evidence_key' => hash('sha256', json_encode([$source, $identity($before), $identity($firstEmpty ?? $after)])),
-            'notes' => sprintf('SCADA %s: %s -> %s; raw gap %.3f min; cycle %.3f min (%s); %s.%s',
+            'notes' => sprintf('SCADA %s: %s -> %s; raw gap %.3f min; cycle %.3f min (%s); stop %.3f min after cycle; %s.%s',
                 $source, $before['seq'] ?? $before['si_no'], $after['seq'] ?? $after['si_no'], $gap, $cycle,
-                $cycleRow['cycle_colour'] ?? $cycleRow['used_colour'] ?? '',
+                $cycleRow['cycle_colour'] ?? $cycleRow['used_colour'] ?? '', $stopMinutes,
                 sprintf('plant stop threshold >=%.3f min', $thresholdMinutes),
                 !empty($flags['colour_no_standard']) ? ' Missing standard: default 12 min applied.' : '')];
     };
@@ -53,7 +57,14 @@ function oee_gap_candidates(array $rows, float $thresholdMinutes = 20.0): array
     return $events;
 }
 
-/** Refresh only automatic proposals; keyed operator decisions always win. */
+/** True when stored bounds still match the legacy full load-to-load SCADA gap. */
+function oee_gap_interval_matches(string $startsAt, string $endsAt, string $expectedStart, string $expectedEnd, int $toleranceSeconds = 90): bool
+{
+    return abs(oee_wall_timestamp($startsAt) - oee_wall_timestamp($expectedStart)) <= $toleranceSeconds
+        && abs(oee_wall_timestamp($endsAt) - oee_wall_timestamp($expectedEnd)) <= $toleranceSeconds;
+}
+
+/** Refresh automatic gap/empty-rack events; rejected and operator-edited times win. */
 function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate): int
 {
     $day = new DateTimeImmutable($reportDate);
@@ -84,17 +95,20 @@ function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate
     $ownsTransaction = !$pdo->inTransaction();
     if ($ownsTransaction) $pdo->beginTransaction();
     try {
-        $decisions = $pdo->prepare("SELECT evidence_key, starts_at, ends_at FROM oee_downtime_events WHERE line_code = ? AND source IN ('gap','empty_rack') AND status <> 'proposed'");
+        $decisions = $pdo->prepare("SELECT evidence_key, starts_at, ends_at, status FROM oee_downtime_events WHERE line_code = ? AND source IN ('gap','empty_rack') AND status <> 'proposed'");
         $decisions->execute([$lineCode]);
         $preserved = $decisions->fetchAll();
         $insert = $pdo->prepare("INSERT INTO oee_downtime_events (line_code, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes, evidence_key) VALUES (?, ?, ?, ?, 'unplanned', ?, 'proposed', 'UNK', ?, ?)");
-        $exists = $pdo->prepare('SELECT id, status FROM oee_downtime_events WHERE line_code = ? AND evidence_key = ?' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : ''));
-        $update = $pdo->prepare("UPDATE oee_downtime_events SET report_date = ?, starts_at = ?, ends_at = ?, notes = ? WHERE line_code = ? AND evidence_key = ? AND status = 'proposed'");
+        $exists = $pdo->prepare('SELECT id, status, starts_at, ends_at FROM oee_downtime_events WHERE line_code = ? AND evidence_key = ?' . ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? ' FOR UPDATE' : ''));
+        $updateProposed = $pdo->prepare("UPDATE oee_downtime_events SET report_date = ?, starts_at = ?, ends_at = ?, notes = ? WHERE line_code = ? AND evidence_key = ? AND status = 'proposed'");
+        $updateTagged = $pdo->prepare("UPDATE oee_downtime_events SET report_date = ?, starts_at = ?, ends_at = ?, notes = ? WHERE line_code = ? AND evidence_key = ? AND status IN ('confirmed','approved')");
         $created = 0;
         $keep = [];
         foreach ($candidates as $event) {
             foreach ($preserved as $decision) {
-                if ($decision['evidence_key'] === $event['evidence_key'] || (!$decision['evidence_key'] && $decision['starts_at'] < $event['raw_end'] && $decision['ends_at'] > $event['raw_start'])) continue 2;
+                $sameKey = $decision['evidence_key'] !== null && $decision['evidence_key'] !== '' && $decision['evidence_key'] === $event['evidence_key'];
+                if ($sameKey && $decision['status'] === 'rejected') continue 2;
+                if (!$decision['evidence_key'] && $decision['starts_at'] < $event['raw_end'] && $decision['ends_at'] > $event['raw_start']) continue 2;
             }
             $keep[] = $event['evidence_key'];
             $exists->execute([$lineCode, $event['evidence_key']]);
@@ -103,7 +117,15 @@ function oee_propose_gap_downtime(PDO $pdo, string $lineCode, string $reportDate
                 if ($existing['status'] === 'proposed') {
                     // Retain event IDs so an operator's open Tag form survives
                     // a dashboard refresh or a cumulative report re-import.
-                    $update->execute([$event['report_date'], $event['starts_at'], $event['ends_at'], $event['notes'], $lineCode, $event['evidence_key']]);
+                    $updateProposed->execute([$event['report_date'], $event['starts_at'], $event['ends_at'], $event['notes'], $lineCode, $event['evidence_key']]);
+                    $created++;
+                } elseif (in_array($existing['status'], ['confirmed', 'approved'], true)
+                    && oee_gap_interval_matches((string) $existing['starts_at'], (string) $existing['ends_at'], $event['raw_start'], $event['raw_end'])
+                ) {
+                    // Realign tagged rows that still use the legacy full load-to-load
+                    // gap so Downtime Review, reports and OEE share cycle-adjusted
+                    // times. Keep status/reason. Operator-edited times stay.
+                    $updateTagged->execute([$event['report_date'], $event['starts_at'], $event['ends_at'], $event['notes'], $lineCode, $event['evidence_key']]);
                     $created++;
                 }
                 continue;

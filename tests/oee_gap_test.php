@@ -11,31 +11,32 @@ function gap_row(string $load, float $cycle = 10, int $pcs = 5, string $seq = ''
 }
 $rows = [gap_row('2026-10-23 00:30:25'), gap_row('2026-10-23 00:50:48')];
 $events = oee_gap_candidates($rows);
-gap_check(count($events) === 1 && $events[0]['starts_at'] === '2026-10-23 00:30:25' && $events[0]['ends_at'] === '2026-10-23 00:50:48', 'Qualifying gap must retain the complete SCADA interval');
-gap_check(str_contains($events[0]['notes'], '10') && str_contains($events[0]['notes'], '20'), 'Gap evidence must explain cycle and threshold');
+gap_check(count($events) === 1 && $events[0]['starts_at'] === '2026-10-23 00:40:25' && $events[0]['ends_at'] === '2026-10-23 00:50:48', 'Qualifying gap must start after the arriving cycle pitch');
+gap_check(str_contains($events[0]['notes'], '10') && str_contains($events[0]['notes'], '20') && str_contains($events[0]['notes'], 'stop 10.383 min'), 'Gap evidence must explain cycle, threshold and stop remainder');
 gap_check(count(oee_gap_candidates([gap_row('2026-10-23 00:30:25'), gap_row('2026-10-23 00:50:25')])) === 1, 'Gap equal to threshold must be shown');
 gap_check(oee_gap_candidates([gap_row('2026-10-23 00:30:25'), gap_row('2026-10-23 00:50:24')]) === [], 'Below-threshold gap proposed a stop');
 $longCycle = oee_gap_candidates([gap_row('2026-10-23 00:30:25'), gap_row('2026-10-23 00:50:48', 30)]);
-gap_check(count($longCycle) === 1 && $longCycle[0]['starts_at'] === '2026-10-23 00:30:25', 'Cycle time incorrectly suppressed or shortened an above-threshold gap');
+gap_check($longCycle === [], 'Non-positive remainder after cycle must create no event');
 $dstFalsePositive = oee_gap_candidates([gap_row('2026-10-25 01:54:17', 12, 850, 'M10Y26-2642'), gap_row('2026-10-25 02:04:00', 12, 432, 'M10Y26-2643')]);
 gap_check($dstFalsePositive === [], 'Server daylight-saving transition turned a 9.717-minute SCADA gap into 69.717 minutes');
 $dstBoundary = oee_gap_candidates([gap_row('2026-10-25 01:54:17'), gap_row('2026-10-25 02:14:17')]);
-gap_check(count($dstBoundary) === 1 && str_contains($dstBoundary[0]['notes'], 'raw gap 20.000 min'), 'Threshold equality changed across a server daylight-saving transition');
+gap_check(count($dstBoundary) === 1 && str_contains($dstBoundary[0]['notes'], 'raw gap 20.000 min') && $dstBoundary[0]['starts_at'] === '2026-10-25 02:04:17', 'Threshold equality changed across a server daylight-saving transition');
 $night = oee_gap_candidates([gap_row('2026-10-22 23:34:22'), gap_row('2026-10-23 00:06:04')]);
-gap_check(count($night) === 1 && $night[0]['starts_at'] === '2026-10-22 23:34:22' && $night[0]['report_date'] === '2026-10-22', 'Midnight event must retain full interval and start date');
+gap_check(count($night) === 1 && $night[0]['starts_at'] === '2026-10-22 23:44:22' && $night[0]['report_date'] === '2026-10-22', 'Midnight event must start after cycle and keep start date');
 $nightEvent = array_merge($night[0], ['status' => 'proposed', 'event_type' => 'unplanned']);
 $left = oee_window_metrics(oee_window_definition('2026-10-22'), [], [$nightEvent], []);
 $right = oee_window_metrics(oee_window_definition('2026-10-23'), [], [$nightEvent], []);
-gap_check(abs($left['unplanned_minutes'] - 25.633) < 1e-9 && abs($right['unplanned_minutes'] - 6.067) < 1e-9, 'Midnight stop not clipped once to each date');
+gap_check(abs($left['unplanned_minutes'] - 15.633) < 1e-9 && abs($right['unplanned_minutes'] - 6.067) < 1e-9, 'Midnight stop not clipped once to each date');
 $transition = oee_gap_candidates([gap_row('2026-10-23 00:00:00', 7), gap_row('2026-10-23 00:25:00', 10)]);
-gap_check($transition[0]['starts_at'] === '2026-10-23 00:00:00', 'Cycle time must not be subtracted from a qualifying transition gap');
+gap_check($transition[0]['starts_at'] === '2026-10-23 00:10:00', 'Transition gap must deduct the arriving FB cycle');
 gap_check(oee_gap_candidates([gap_row('2026-10-21 23:34:22'), gap_row('2026-10-23 00:06:04')]) === [], 'Must not infer a stop across a missing calendar date');
 $emptyRows = [gap_row('2026-10-22 23:35:00'), gap_row('2026-10-22 23:50:00', 0, 0), gap_row('2026-10-23 00:05:00', 0, 0), gap_row('2026-10-23 00:15:00')];
 $empty = oee_gap_candidates($emptyRows);
-gap_check(count($empty) === 1 && $empty[0]['source'] === 'empty_rack' && $empty[0]['starts_at'] === '2026-10-22 23:35:00' && $empty[0]['ends_at'] === '2026-10-23 00:05:00', 'Empty run must retain its complete SCADA interval across midnight');
+gap_check(count($empty) === 1 && $empty[0]['source'] === 'empty_rack' && $empty[0]['starts_at'] === '2026-10-22 23:45:00' && $empty[0]['ends_at'] === '2026-10-23 00:05:00', 'Empty run must start after the preceding productive cycle');
 $shortEmpty = [gap_row('2026-10-25 04:23:16'), gap_row('2026-10-25 04:38:50', 0, 0), gap_row('2026-10-25 04:45:00')];
 gap_check(oee_gap_candidates($shortEmpty, 20) === [], 'Below-threshold empty-rack downtime must not be displayed');
-gap_check(count(oee_gap_candidates($shortEmpty, 15.566)) === 1, 'Qualifying empty-rack downtime must remain detectable');
+$shortEmptyHit = oee_gap_candidates($shortEmpty, 15.566);
+gap_check(count($shortEmptyHit) === 1 && $shortEmptyHit[0]['starts_at'] === '2026-10-25 04:33:16', 'Qualifying empty-rack downtime must remain detectable after cycle');
 $same = $rows; $same[0]['id'] = 999; $same[1]['id'] = 1000;
 gap_check(oee_gap_candidates($same)[0]['evidence_key'] === $events[0]['evidence_key'], 'Re-import row IDs must not change evidence identity');
 
@@ -52,12 +53,12 @@ foreach ([gap_row('2026-10-22 23:34:22'), gap_row('2026-10-23 00:06:04'), ...$ro
 }
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-22');
 $before = $pdo->query("SELECT id,starts_at,ends_at,evidence_key FROM oee_downtime_events WHERE starts_at < '2026-10-23 00:00:00'")->fetchAll();
-gap_check(count($before) === 1 && $before[0]['starts_at'] === '2026-10-22 23:34:22', 'Boundary context missing or full SCADA start not persisted');
+gap_check(count($before) === 1 && $before[0]['starts_at'] === '2026-10-22 23:44:22', 'Boundary context missing or cycle-adjusted start not persisted');
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-23');
 $after = $pdo->query("SELECT id,starts_at,ends_at,evidence_key FROM oee_downtime_events WHERE starts_at < '2026-10-23 00:00:00'")->fetchAll();
 gap_check($before === $after, 'Refresh order changed/duplicated crossing event');
-$target = $pdo->query("SELECT * FROM oee_downtime_events WHERE starts_at = '2026-10-23 00:30:25'")->fetch();
-gap_check((bool) $target, 'Full SCADA interval not applied by database path');
+$target = $pdo->query("SELECT * FROM oee_downtime_events WHERE starts_at = '2026-10-23 00:40:25'")->fetch();
+gap_check((bool) $target, 'Cycle-adjusted interval not applied by database path');
 $update = $pdo->prepare("UPDATE oee_downtime_events SET status='confirmed', starts_at='2026-10-23 00:39:00', notes='Operator decision' WHERE id=?"); $update->execute([$target['id']]);
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-23');
 $preserved = $pdo->query("SELECT * FROM oee_downtime_events WHERE evidence_key='" . $target['evidence_key'] . "'")->fetchAll();
@@ -66,19 +67,31 @@ $pdo->exec("UPDATE oee_downtime_events SET status='rejected', evidence_key=NULL 
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-23');
 gap_check((int) $pdo->query("SELECT COUNT(*) FROM oee_downtime_events WHERE starts_at >= '2026-10-23 00:30:25' AND ends_at <= '2026-10-23 00:50:48'")->fetchColumn() === 1, 'Legacy false alarm recreated as proposed downtime');
 oee_propose_gap_downtime($pdo, 'APP-06', '2026-10-24');
-gap_check((bool) $pdo->query("SELECT id FROM oee_downtime_events WHERE starts_at='2026-10-24 00:10:00' AND ends_at='2026-10-24 00:35:00'")->fetchColumn(), 'Full SCADA interval changed with effective-date cycle master');
+gap_check((bool) $pdo->query("SELECT id FROM oee_downtime_events WHERE starts_at='2026-10-24 00:18:00' AND ends_at='2026-10-24 00:35:00'")->fetchColumn(), 'Cycle-adjusted interval changed with effective-date cycle master');
 $pdo->exec("INSERT INTO oee_cycle_time_standards VALUES ('APP-07','CLEAR',7,'2026-01-01',NULL), ('APP-07','NO COLOUR',16,'2026-01-01',NULL)");
 foreach ([['01:00:00','CLEAR'], ['01:25:00',''], ['02:00:00','UNKNOWN'], ['02:25:00','UNKNOWN']] as [$time, $colour]) {
     $insert->execute(['APP-07','2026-10-23',1,$time,'2026-10-23 ' . $time,$colour,'',5,1,999,'{}']);
 }
 oee_propose_gap_downtime($pdo, 'APP-07', '2026-10-23');
-$noColour = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 01:00:00' AND ends_at='2026-10-23 01:25:00'")->fetchColumn();
+$noColour = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 01:16:00' AND ends_at='2026-10-23 01:25:00'")->fetchColumn();
 gap_check(is_string($noColour) && str_contains($noColour, '16.000 min (NO COLOUR)') && !str_contains($noColour, 'Missing standard'), 'Blank APP-07 colour did not use its NO COLOUR cycle standard');
 gap_check(oee_cycle_colour('APP-03', '', '', 'BLACK-1') === 'NO COLOUR' && oee_cycle_colour('APP-04', '', '', 'CLEAR') === 'NO COLOUR' && oee_cycle_colour('APP-10', '', '', 'BLUE') === 'NO COLOUR', 'Configured blank-colour plants must not inherit a previous colour');
 gap_check(oee_cycle_colour('APP-06', '', '', 'BLACK-1') === 'BLACK-1', 'Other plants must retain existing colour fill-forward behaviour');
-$fallback = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 02:00:00' AND ends_at='2026-10-23 02:25:00'")->fetchColumn();
+$fallback = $pdo->query("SELECT notes FROM oee_downtime_events WHERE line_code='APP-07' AND starts_at='2026-10-23 02:12:00' AND ends_at='2026-10-23 02:25:00'")->fetchColumn();
 gap_check(is_string($fallback) && str_contains($fallback, 'Missing standard'), 'Fallback cycle must be 12 and explicitly flagged');
 $oldMetrics = oee_metrics(1440, 0, 26.567, 969, 99);
 $newMetrics = oee_metrics(1440, 0, 59, 969, 99);
 gap_check(abs($oldMetrics['oee'] - $newMetrics['oee']) < 1e-10 && $newMetrics['availability'] < $oldMetrics['availability'] && $newMetrics['performance'] > $oldMetrics['performance'], 'Downtime must not be charged twice in OEE');
-echo "Full-interval gap and midnight persistence tests passed\n";
+
+$pdo->exec("DELETE FROM oee_fb_runs WHERE line_code='APP-09'");
+$pdo->exec("DELETE FROM oee_downtime_events WHERE line_code='APP-09'");
+$pdo->exec("INSERT INTO oee_cycle_time_standards VALUES ('APP-09','BLACK-1',7,'2026-01-01',NULL)");
+foreach ([gap_row('2026-11-06 01:42:00', 7, 5, 'A'), gap_row('2026-11-06 02:03:04', 7, 5, 'B')] as $row) {
+    $insert->execute(['APP-09', $row['report_date'], 1, $row['seq'], $row['loading_at'], 'BLACK-1', '', 5, 1, 7, '{}']);
+}
+$pdo->exec("INSERT INTO oee_downtime_events (line_code, report_date, starts_at, ends_at, event_type, source, status, reason_code, notes, evidence_key) VALUES ('APP-09','2026-11-06','2026-11-06 01:42:00','2026-11-06 02:03:04','unplanned','gap','confirmed','TRANSPORTER_BREAKDOWN','legacy full gap','" . oee_gap_candidates([gap_row('2026-11-06 01:42:00', 7, 5, 'A'), gap_row('2026-11-06 02:03:04', 7, 5, 'B')])[0]['evidence_key'] . "')");
+oee_propose_gap_downtime($pdo, 'APP-09', '2026-11-06');
+$realigned = $pdo->query("SELECT starts_at, ends_at, status, reason_code FROM oee_downtime_events WHERE line_code='APP-09'")->fetch();
+gap_check($realigned['starts_at'] === '2026-11-06 01:49:00' && $realigned['ends_at'] === '2026-11-06 02:03:04' && $realigned['status'] === 'confirmed' && $realigned['reason_code'] === 'TRANSPORTER_BREAKDOWN', 'Confirmed full-gap downtime must realign to cycle-adjusted interval for review/report/OEE');
+
+echo "Cycle-adjusted gap and midnight persistence tests passed\n";
