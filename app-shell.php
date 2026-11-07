@@ -229,7 +229,7 @@ try{$downtimeReasonCatalog=$shellPdo->query("SELECT code,label,loss_type FROM oe
                 <thead>
                   <tr>
                     <th>Plant</th><th>SI</th><th>Sequence</th><th>Part</th>
-                    <th>Grade</th><th>Colour</th><th>Cycle (Min)</th><th>Loading</th><th>Unloading</th>
+                    <th>Grade</th><th>Colour</th><th>Standard (Min)</th><th>Actual Cycle (Min)</th><th>Loading</th><th>Unloading</th>
                     <th>PCS</th><th>Total SA</th><th>State</th>
                   </tr>
                 </thead>

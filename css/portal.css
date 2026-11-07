@@ -3575,7 +3575,7 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
   min-width: 10.5rem;
 }
 [data-view="oee-report"] .oee-report-table {
-  min-width: 86rem;
+  min-width: 94rem;
 }
 [data-view="oee-report"] .oee-report-table th:first-child,
 [data-view="oee-report"] .oee-report-table td:first-child,
@@ -3585,8 +3585,10 @@ html[data-theme="dark"] .table-page-button:hover:not(:disabled):not(.is-current)
 [data-view="oee-report"] .oee-report-table td:nth-child(6),
 [data-view="oee-report"] .oee-report-table th:nth-child(7),
 [data-view="oee-report"] .oee-report-table td:nth-child(7),
-[data-view="oee-report"] .oee-report-table th:nth-child(12),
-[data-view="oee-report"] .oee-report-table td:nth-child(12) {
+[data-view="oee-report"] .oee-report-table th:nth-child(8),
+[data-view="oee-report"] .oee-report-table td:nth-child(8),
+[data-view="oee-report"] .oee-report-table th:nth-child(13),
+[data-view="oee-report"] .oee-report-table td:nth-child(13) {
   min-width: 7.5rem;
 }
 

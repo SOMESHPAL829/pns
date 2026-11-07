@@ -589,17 +589,22 @@
         item.report_colour ||
         item.cycle_colour ||
         "—";
-      const cycle =
+      const standard =
         item.cycle_minutes == null || item.cycle_minutes === ""
           ? "—"
           : Number(item.cycle_minutes).toFixed(1);
+      const actual =
+        item.actual_cycle_minutes == null || item.actual_cycle_minutes === ""
+          ? "—"
+          : Number(item.actual_cycle_minutes).toFixed(1);
       makeCell(row, item.line_code || "—");
       makeCell(row, item.si_no);
       makeCell(row, item.seq, "mono");
       makeCell(row, item.part_code);
       makeCell(row, item.grade);
       makeCell(row, colour);
-      makeCell(row, cycle);
+      makeCell(row, standard);
+      makeCell(row, actual);
       makeCell(row, readableDateTime(item.loading_at));
       makeCell(row, readableDateTime(item.unloading_at));
       makeCell(row, item.pcs);
@@ -615,7 +620,7 @@
     if (filtered.length === 0) {
       const row = document.createElement("tr");
       const cell = makeCell(row, "No rows match these filters.");
-      cell.colSpan = 12;
+      cell.colSpan = 13;
       fragment.appendChild(row);
     }
     body.replaceChildren(fragment);

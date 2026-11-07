@@ -21,22 +21,47 @@ function oee_cycle_colour(string $lineCode, mixed $usedColour, mixed $reportColo
     return trim($previousColour) !== '' ? trim($previousColour) : 'NO_COLOUR';
 }
 
-/** Attach the cycle colour OEE used and a UI display colour for blank SCADA feeds. */
+/** Attach cycle colour, display colour, and actual load-to-load cycle minutes. */
 function oee_enrich_fb_rows(array $rows): array
 {
-    $previous = [];
+    require_once __DIR__ . '/oee_time.php';
+    $previousColour = [];
     foreach ($rows as &$row) {
         $line = strtoupper(trim((string) ($row['line_code'] ?? '')));
         $raw = trim((string) (($row['used_colour'] ?? '') ?: ($row['report_colour'] ?? '')));
-        $resolved = oee_cycle_colour($line, $row['used_colour'] ?? '', $row['report_colour'] ?? '', $previous[$line] ?? '');
-        if ($raw !== '') $previous[$line] = $raw;
+        $resolved = oee_cycle_colour($line, $row['used_colour'] ?? '', $row['report_colour'] ?? '', $previousColour[$line] ?? '');
+        if ($raw !== '') $previousColour[$line] = $raw;
         $row['cycle_colour'] = $resolved;
         $row['display_colour'] = $raw !== '' ? $raw : $resolved;
         if (isset($row['cycle_minutes']) && $row['cycle_minutes'] !== null && $row['cycle_minutes'] !== '') {
             $row['cycle_minutes'] = (float) $row['cycle_minutes'];
         }
+        $row['actual_cycle_minutes'] = null;
     }
     unset($row);
+
+    $byLine = [];
+    foreach ($rows as $index => $row) {
+        $line = strtoupper(trim((string) ($row['line_code'] ?? '')));
+        if ($line === '' || empty($row['loading_at'])) continue;
+        $byLine[$line][] = $index;
+    }
+    foreach ($byLine as $indices) {
+        usort($indices, static function (int $left, int $right) use ($rows): int {
+            return [$rows[$left]['loading_at'], (int) ($rows[$left]['si_no'] ?? 0)]
+                <=> [$rows[$right]['loading_at'], (int) ($rows[$right]['si_no'] ?? 0)];
+        });
+        $previous = null;
+        foreach ($indices as $index) {
+            if ($previous !== null) {
+                $gap = (oee_wall_timestamp((string) $rows[$index]['loading_at']) - oee_wall_timestamp((string) $rows[$previous]['loading_at'])) / 60;
+                if (is_finite($gap) && $gap >= 0) {
+                    $rows[$index]['actual_cycle_minutes'] = round($gap, 3);
+                }
+            }
+            $previous = $index;
+        }
+    }
     return $rows;
 }
 
