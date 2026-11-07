@@ -557,12 +557,13 @@
     const colour = document.getElementById("report-colour-filter")?.value || "";
     const state = document.getElementById("report-state-filter")?.value || "";
     const filtered = (rows || []).filter(function (item) {
-      const text = [
-        item.seq,
-        item.part_code,
-        item.used_colour,
-        item.report_colour,
-      ]
+      const colourValue =
+        item.display_colour ||
+        item.used_colour ||
+        item.report_colour ||
+        item.cycle_colour ||
+        "";
+      const text = [item.seq, item.part_code, colourValue]
         .join(" ")
         .toLowerCase();
       const itemState =
@@ -570,18 +571,29 @@
       return (
         (!search || text.includes(search)) &&
         (!grade || item.grade === grade) &&
-        (!colour || (item.used_colour || item.report_colour) === colour) &&
+        (!colour || colourValue === colour) &&
         (!state || itemState === state)
       );
     });
     filtered.forEach(function (item) {
       const row = document.createElement("tr");
+      const colour =
+        item.display_colour ||
+        item.used_colour ||
+        item.report_colour ||
+        item.cycle_colour ||
+        "—";
+      const cycle =
+        item.cycle_minutes == null || item.cycle_minutes === ""
+          ? "—"
+          : Number(item.cycle_minutes).toFixed(1);
       makeCell(row, item.line_code || "—");
       makeCell(row, item.si_no);
       makeCell(row, item.seq, "mono");
       makeCell(row, item.part_code);
       makeCell(row, item.grade);
-      makeCell(row, item.used_colour || item.report_colour);
+      makeCell(row, colour);
+      makeCell(row, cycle);
       makeCell(row, readableDateTime(item.loading_at));
       makeCell(row, readableDateTime(item.unloading_at));
       makeCell(row, item.pcs);
@@ -597,7 +609,7 @@
     if (filtered.length === 0) {
       const row = document.createElement("tr");
       const cell = makeCell(row, "No rows match these filters.");
-      cell.colSpan = 11;
+      cell.colSpan = 12;
       fragment.appendChild(row);
     }
     body.replaceChildren(fragment);
@@ -639,7 +651,10 @@
             .map(function (item) {
               return id.includes("grade")
                 ? item.grade
-                : item.used_colour || item.report_colour;
+                : item.display_colour ||
+                    item.used_colour ||
+                    item.report_colour ||
+                    item.cycle_colour;
             })
             .filter(Boolean),
         ),
@@ -895,7 +910,11 @@
         app.oee?.date === date ? app.oee?.window?.duration_minutes : null;
       const query = dashboardDuration
         ? { duration_minutes: String(dashboardDuration), start_time: "00:00" }
-        : { duration_minutes: "saved", duration_mode: "saved", start_time: "00:00" };
+        : {
+            duration_minutes: "saved",
+            duration_mode: "saved",
+            start_time: "00:00",
+          };
       setText(
         "report-window",
         dashboardDuration
@@ -906,7 +925,9 @@
         query: { machine: machine, ...query, ...(date ? { date: date } : {}) },
       });
       if (requestId === app.reportRequest) {
-        app.durationMinutes = String(data.window?.duration_minutes || dashboardDuration || 1440);
+        app.durationMinutes = String(
+          data.window?.duration_minutes || dashboardDuration || 1440,
+        );
         renderReport(data);
       }
     } catch (error) {

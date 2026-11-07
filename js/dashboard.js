@@ -22,7 +22,8 @@
   function cell(row, value, detail) {
     const td = document.createElement("td");
     td.textContent = value ?? "—";
-    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(td.textContent)) td.classList.add("table-date-cell");
+    if (/^\d{2}-\d{2}-\d{4}(?:\s|$)/.test(td.textContent))
+      td.classList.add("table-date-cell");
     if (detail) {
       const small = document.createElement("span");
       small.className = "pns-cell-detail";
@@ -152,8 +153,14 @@
       cell(row, item.part_code || item.seq || "—", item.line_code);
       cell(
         row,
-        item.grade || "—",
-        item.used_colour || item.report_colour || "No colour",
+        item.display_colour ||
+          item.used_colour ||
+          item.report_colour ||
+          item.cycle_colour ||
+          "NO COLOUR",
+        item.cycle_minutes == null || item.cycle_minutes === ""
+          ? "Cycle not applied"
+          : Number(item.cycle_minutes).toFixed(1) + " min/FB",
       );
       cell(row, Number(item.pcs || 0).toLocaleString());
       cell(row, Number(item.total_surface_area || 0).toFixed(2));
@@ -173,7 +180,12 @@
     stopEvents = data.recent_downtime || [];
     stopEvents.forEach(function (item) {
       const row = document.createElement("tr");
-      cell(row, window.PortalFormatDateTime?.(item.ends_at) || String(item.ends_at || "—").slice(0, 16), item.line_code);
+      cell(
+        row,
+        window.PortalFormatDateTime?.(item.ends_at) ||
+          String(item.ends_at || "—").slice(0, 16),
+        item.line_code,
+      );
       cell(
         row,
         titleLabel(
@@ -195,7 +207,8 @@
         const button = document.createElement("button");
         button.type = "button";
         button.className = "action-icon-button pns-tag-action";
-        const actionLabel = item.status === "proposed" ? "Tag Reason" : "Edit Reason";
+        const actionLabel =
+          item.status === "proposed" ? "Tag Reason" : "Edit Reason";
         const icon = document.createElement("span");
         icon.dataset.icon = "tag";
         button.appendChild(icon);
@@ -204,11 +217,7 @@
         button.dataset.permissionAction = "update";
         button.setAttribute(
           "aria-label",
-          actionLabel +
-            " for " +
-            item.line_code +
-            " ending " +
-            item.ends_at,
+          actionLabel + " for " + item.line_code + " ending " + item.ends_at,
         );
         button.title = actionLabel;
         statusCell.appendChild(button);
@@ -281,7 +290,9 @@
       cachedReasons.forEach((reason) =>
         select.appendChild(new Option(reason.label, reason.code)),
       );
-      select.value = cachedReasons.some((reason) => reason.code === selectedReason)
+      select.value = cachedReasons.some(
+        (reason) => reason.code === selectedReason,
+      )
         ? selectedReason
         : "";
       select.disabled = false;
@@ -437,7 +448,8 @@
       if (target === "report") {
         node("report-date").value = date;
         node("report-machine-filter").value = node("dashboard-machine").value;
-        if (node("report-duration")) node("report-duration").value = node("dashboard-duration").value;
+        if (node("report-duration"))
+          node("report-duration").value = node("dashboard-duration").value;
       } else {
         node("downtime-date").value = date;
         if (node("dashboard-machine").value !== "ALL")

@@ -21,6 +21,25 @@ function oee_cycle_colour(string $lineCode, mixed $usedColour, mixed $reportColo
     return trim($previousColour) !== '' ? trim($previousColour) : 'NO_COLOUR';
 }
 
+/** Attach the cycle colour OEE used and a UI display colour for blank SCADA feeds. */
+function oee_enrich_fb_rows(array $rows): array
+{
+    $previous = [];
+    foreach ($rows as &$row) {
+        $line = strtoupper(trim((string) ($row['line_code'] ?? '')));
+        $raw = trim((string) (($row['used_colour'] ?? '') ?: ($row['report_colour'] ?? '')));
+        $resolved = oee_cycle_colour($line, $row['used_colour'] ?? '', $row['report_colour'] ?? '', $previous[$line] ?? '');
+        if ($raw !== '') $previous[$line] = $raw;
+        $row['cycle_colour'] = $resolved;
+        $row['display_colour'] = $raw !== '' ? $raw : $resolved;
+        if (isset($row['cycle_minutes']) && $row['cycle_minutes'] !== null && $row['cycle_minutes'] !== '') {
+            $row['cycle_minutes'] = (float) $row['cycle_minutes'];
+        }
+    }
+    unset($row);
+    return $rows;
+}
+
 /**
  * Dynamic plant list from live OEE tables — no hardcoded APP/CED codes.
  * New lines appear automatically after the first successful Unit 1 ingest

@@ -45,8 +45,8 @@ function oee_dashboard_view(PDO $pdo,array $dashboard,array $permissions): array
     $lines=$dashboard['machine']==='ALL'?oee_known_lines($pdo):[$dashboard['machine']];
     $in=implode(',',array_fill(0,count($lines),'?'));$window=$dashboard['window'];
     if($batches){
-        $q=$pdo->prepare('SELECT line_code,seq,part_code,grade,used_colour,report_colour,loading_at,unloading_at,pcs,total_surface_area,is_productive FROM oee_fb_runs WHERE line_code IN ('.$in.') AND loading_at>=? AND loading_at<? ORDER BY loading_at DESC,line_code,si_no DESC LIMIT 6');
-        $q->execute([...$lines,$window['window_start'],$window['window_end']]);$dashboard['recent_batches']=$q->fetchAll();
+        $q=$pdo->prepare('SELECT line_code,seq,part_code,grade,used_colour,report_colour,loading_at,unloading_at,pcs,total_surface_area,is_productive,cycle_minutes FROM oee_fb_runs WHERE line_code IN ('.$in.') AND loading_at>=? AND loading_at<? ORDER BY loading_at DESC,line_code,si_no DESC LIMIT 6');
+        $q->execute([...$lines,$window['window_start'],$window['window_end']]);$dashboard['recent_batches']=oee_enrich_fb_rows($q->fetchAll());
     }
     if($downtime){
         $q=$pdo->prepare("SELECT e.id,e.line_code,e.starts_at,e.ends_at,e.event_type,e.source,e.status,e.reason_code,e.notes,COALESCE(r.label,e.reason_code) AS reason_label FROM oee_downtime_events e LEFT JOIN oee_reason_codes r ON r.code=e.reason_code WHERE e.line_code IN (".$in.') AND e.starts_at<? AND e.ends_at>? ORDER BY e.ends_at DESC,e.id DESC');

@@ -200,6 +200,7 @@ function oee_window_report(PDO $pdo, string $date, string $machine, array $windo
         }
     }
     $result['oee'] = oee_window_aggregate($result['line_metrics']);
+    $result['rows'] = oee_enrich_fb_rows($result['rows']);
     $result['sync'] = $pdo->query('SELECT source, last_batch_id, last_report_date, last_received_at, last_status, last_error FROM oee_sync_state ORDER BY updated_at DESC LIMIT 10')->fetchAll();
     $in = implode(',', array_fill(0, count($lines), '?'));
     $imports = $pdo->prepare('SELECT id, batch_id, source, report_date, row_count, status, received_at, processed_at, error_message FROM oee_import_batches WHERE line_code IN (' . $in . ') ORDER BY received_at DESC LIMIT 8');

@@ -195,7 +195,7 @@ function oee_report(PDO $pdo, ?string $date, string $machine = 'APP-06', int $du
         'SELECT line_code, si_no, seq, part_code, grade, report_colour, used_colour, loading_at, unloading_at, pcs, surface_area, total_surface_area, is_productive, cycle_minutes, flags FROM oee_fb_runs WHERE line_code IN (' . $placeholders . ') AND report_date = ? ORDER BY line_code, si_no ASC'
     );
     $rows->execute([...$lines, $dashboard['date']]);
-    $dashboard['rows'] = $rows->fetchAll();
+    $dashboard['rows'] = oee_enrich_fb_rows($rows->fetchAll());
     $lineMetrics = $pdo->prepare(
         'SELECT line_code, window_start, window_end, availability, performance, quality, oee, utilization_24h, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 AS window_minutes, GREATEST(0, TIMESTAMPDIFF(SECOND, window_start, window_end) / 60 - planned_minutes) AS planned_stop_minutes, planned_minutes, unplanned_minutes, run_minutes, ideal_output_minutes, productive_fb, good_fb, 1440 AS calendar_minutes FROM oee_snapshots WHERE line_code = ? AND report_date = ?'
     );
